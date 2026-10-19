@@ -10,6 +10,7 @@
     <a href="/" {{if eq .Nav "corral"}}class="on"{{end}}>corral</a>
     <a href="/tally" {{if eq .Nav "tally"}}class="on"{{end}}>tally</a>
     <a href="/rules" {{if eq .Nav "rules"}}class="on"{{end}}>rules</a>
+    {{if .Outcomes}}<a href="/outcomes" {{if eq .Nav "outcomes"}}class="on"{{end}}>outcomes</a>{{end}}
     <a href="/trail" {{if eq .Nav "trail"}}class="on"{{end}}>trail</a>
   </nav>
   <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">on your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · dry run{{end}}{{if .Setup}} · <a href="/setup">github</a>{{end}}{{if .SignOut}} · <a href="/logout">sign out</a>{{end}}</span>

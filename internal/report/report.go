@@ -148,6 +148,8 @@ type Report struct {
 	From, To time.Time
 	Rows     []app.AgentTally
 	Link     string
+	// Audit is the audit record's fingerprint ("" if none is kept).
+	Audit string
 }
 
 func (r Report) totals() (all app.AgentTally, agents int) {
@@ -159,6 +161,7 @@ func (r Report) totals() (all app.AgentTally, agents int) {
 		all.Doubles += x.Doubles
 		all.Strays += x.Strays
 		all.Corrected += x.Corrected
+		all.Trouble += x.Trouble
 		if x.Agent != "" {
 			agents += x.Total
 		}
@@ -199,6 +202,9 @@ func (r Report) Summary() string {
 	if all.Corrected > 0 {
 		extra = append(extra, fmt.Sprintf("your team moved %d to another pen", all.Corrected))
 	}
+	if all.Trouble > 0 {
+		extra = append(extra, plural(all.Trouble, "problem", "problems")+" found after merge")
+	}
 	if len(extra) > 0 {
 		s += " " + upper(strings.Join(extra, ", ")) + "."
 	}
@@ -219,7 +225,7 @@ func upper(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-var cols = []string{"who", "prs", "easy", "normal", "careful", "doubles", "strays", "moved"}
+var cols = []string{"who", "prs", "easy", "normal", "careful", "doubles", "strays", "moved", "trouble"}
 
 func (r Report) cells() [][]string {
 	out := [][]string{cols}
@@ -228,7 +234,7 @@ func (r Report) cells() [][]string {
 		if who == "" {
 			who = "people"
 		}
-		out = append(out, []string{who, n(x.Total), n(x.Easy), n(x.Normal), n(x.Careful), n(x.Doubles), n(x.Strays), n(x.Corrected)})
+		out = append(out, []string{who, n(x.Total), n(x.Easy), n(x.Normal), n(x.Careful), n(x.Doubles), n(x.Strays), n(x.Corrected), n(x.Trouble)})
 	}
 	return out
 }
@@ -268,6 +274,9 @@ func (r Report) Text() string {
 	if r.Link != "" {
 		fmt.Fprintf(&b, "\nFull tally: %s/tally\n", r.Link)
 	}
+	if r.Audit != "" {
+		fmt.Fprintf(&b, "\n%s\n", r.Audit)
+	}
 	return b.String()
 }
 
@@ -280,6 +289,9 @@ func (r Report) Slack() string {
 	}
 	if r.Link != "" {
 		fmt.Fprintf(&b, "\n<%s/tally|Open the full tally>", r.Link)
+	}
+	if r.Audit != "" {
+		fmt.Fprintf(&b, "\n_%s_", r.Audit)
 	}
 	return b.String()
 }
@@ -310,6 +322,9 @@ func (r Report) HTML() string {
 	if r.Link != "" {
 		fmt.Fprintf(&b, `<p style="margin:16px 0 0"><a href="%s/tally">Open the full tally</a></p>`, html.EscapeString(r.Link))
 	}
+	if r.Audit != "" {
+		fmt.Fprintf(&b, `<p style="margin:16px 0 0;color:#666;font-size:12px">%s</p>`, html.EscapeString(r.Audit))
+	}
 	b.WriteString(`<p style="margin:16px 0 0;color:#666;font-size:12px">Sent by your Cowboy server.</p></div>`)
 	return b.String()
 }
@@ -317,7 +332,11 @@ func (r Report) HTML() string {
 // Build makes the report for the 7 days ending at end.
 func Build(a *app.App, end time.Time, link string) Report {
 	from := end.AddDate(0, 0, -7)
-	return Report{From: from, To: end, Rows: a.TallyBetween(from, end), Link: link}
+	r := Report{From: from, To: end, Rows: a.TallyBetween(from, end), Link: link}
+	if n, fp := a.Audit.Fingerprint(); n > 0 {
+		r.Audit = fmt.Sprintf("Audit record: %d entries, fingerprint %s. Keep this post: it lets you check the record wasn't changed later.", n, fp)
+	}
+	return r
 }
 
 // client is swapped in tests.

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -28,11 +29,13 @@ import (
 
 	"github.com/sgracia13/Cowboy/internal/analyze"
 	"github.com/sgracia13/Cowboy/internal/app"
+	"github.com/sgracia13/Cowboy/internal/audit"
 	"github.com/sgracia13/Cowboy/internal/config"
 	"github.com/sgracia13/Cowboy/internal/detect"
 	"github.com/sgracia13/Cowboy/internal/diff"
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/model"
+	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 	"github.com/sgracia13/Cowboy/internal/report"
 	"github.com/sgracia13/Cowboy/internal/score"
@@ -43,6 +46,12 @@ import (
 
 // tallyNote says where the weekly tally goes, for the dashboard.
 var tallyNote string
+
+// outcomeUI and incidents turn on the outcomes page and incident webhooks.
+var (
+	outcomeUI *web.OutcomeSettings
+	incidents *outcome.IncidentHooks
+)
 
 // ghSetup is the "Connect GitHub" flow (GitHub App mode only), and hooks
 // the webhook handler, so finishing setup can set the new app's secret.
@@ -60,6 +69,9 @@ const usage = `cowboy: sorts ai-agent pull requests into easy, normal and carefu
   cowboy serve                     run for real (see env below)
   cowboy score --diff F --meta M   sort one pr from files and print why
   cowboy tally [--send]            print this week's tally, or send it now
+  cowboy outcomes [--check]        what happened after merge, by pen (--check reads the git host now)
+  cowboy audit verify|export       check the audit record wasn't changed, or export it
+  cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
   cowboy check-model               check the local model server answers
   cowboy version                   print the version
@@ -81,6 +93,13 @@ env for serve:
   DATA            store file (default ./data/cowboy.json)
   ADDR            listen address (default :8080)
   DRY_RUN         1 = sort and store, never write to the forge
+
+after merge (on by default; OUTCOMES=off to turn off):
+  OUTCOME_WINDOW_DAYS  how long after merge trouble counts (default 30)
+  INCIDENT_SECRET      turns on /webhook/incident (any tool; HMAC or bearer token)
+  SENTRY_CLIENT_SECRET turns on /webhook/sentry (a Sentry internal integration)
+  PAGERDUTY_SECRET     turns on /webhook/pagerduty (a v3 webhook subscription)
+  INCIDENT_REPOS       "sentry-project=owner/repo,service=owner/repo" when a tool doesn't name the repo
 
 optional weekly tally (sent Mondays at 09:00 server time by default):
   TALLY_SLACK_WEBHOOK  a Slack incoming webhook (or Mattermost, or any {"text": ...} webhook)
@@ -117,6 +136,12 @@ func main() {
 		fmt.Println("cowboy", version)
 	case "sign":
 		signCmd(os.Args[2:])
+	case "audit":
+		auditCmd(os.Args[2:])
+	case "benchmark":
+		benchmarkCmd(os.Args[2:])
+	case "outcomes":
+		outcomesCmd(os.Args[2:])
 	default:
 		fmt.Print(usage)
 		os.Exit(2)
@@ -194,10 +219,16 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 	mux.HandleFunc("/webhook/github", h.GitHub)
 	mux.HandleFunc("/webhook/gitea", h.Gitea)
 	mux.HandleFunc("/webhook/forgejo", h.Gitea)
+	if incidents != nil {
+		mux.HandleFunc("/webhook/incident", incidents.Generic)
+		mux.HandleFunc("/webhook/sentry", incidents.Sentry)
+		mux.HandleFunc("/webhook/pagerduty", incidents.PagerDuty)
+	}
 	ui := web.New(a)
 	ui.SignOut = auth.Password != "" && auth.ProxyHeader == ""
 	ui.TallyNote = tallyNote
 	ui.Setup = ghSetup
+	ui.Outcomes = outcomeUI
 	ui.Routes(mux)
 	base, cancelBase := context.WithCancel(context.Background())
 	srv := &http.Server{
@@ -468,6 +499,202 @@ func firstNonEmpty(xs ...string) string {
 	return ""
 }
 
+// setupOutcomes turns on the audit record and outcome tracking.
+func setupOutcomes(a *app.App, f forge.Forge) {
+	dir := filepath.Dir(env("DATA", "data/cowboy.json"))
+	al, err := audit.Open(filepath.Join(dir, "audit.jsonl"))
+	if err != nil {
+		log.Fatalf("audit record: %v", err)
+	}
+	a.Audit = al
+	if strings.EqualFold(os.Getenv("OUTCOMES"), "off") {
+		log.Printf("after merge: off (OUTCOMES=off)")
+		return
+	}
+	st, err := outcome.Open(filepath.Join(dir, "outcomes.json"))
+	if err != nil {
+		log.Fatalf("outcomes: %v", err)
+	}
+	a.Outcomes = st
+	window := outcomeWindow()
+	w := &outcome.Watcher{Forge: f, Decisions: a.Store, State: st, OnEvent: a.OnOutcome}
+	a.OnMerged = func(repo string, n int) { safely("record merge", func() { w.RecordMerge(repo, n) }) }
+	go func() {
+		time.Sleep(2 * time.Minute) // let the startup sort finish first
+		for {
+			safely("after-merge check", func() {
+				for _, repo := range a.Store.Repos() {
+					log.Print("after merge: " + w.Check(repo))
+				}
+			})
+			time.Sleep(time.Hour)
+		}
+	}()
+	var sources []string
+	incidents = &outcome.IncidentHooks{
+		Secret: os.Getenv("INCIDENT_SECRET"), SentrySecret: os.Getenv("SENTRY_CLIENT_SECRET"), PagerDutySecret: os.Getenv("PAGERDUTY_SECRET"),
+		Repo:   incidentRepo(a),
+		Ingest: a.IngestIncident,
+	}
+	for name, v := range map[string]string{"any tool (/webhook/incident)": incidents.Secret, "Sentry": incidents.SentrySecret, "PagerDuty": incidents.PagerDutySecret} {
+		if v != "" {
+			sources = append(sources, name)
+		}
+	}
+	sort.Strings(sources)
+	outcomeUI = &web.OutcomeSettings{State: st, Window: window, Audit: al, Version: version, Sources: strings.Join(sources, ", "),
+		MinFanIn: func(repo string) int { return a.Config(repo).Careful.MinFanIn }}
+	log.Printf("after merge: on (%d-day window; incidents from %s)", int(window.Hours()/24), firstNonEmpty(strings.Join(sources, ", "), "nothing yet"))
+}
+
+func outcomeWindow() time.Duration {
+	days := 30
+	if v, err := strconv.Atoi(os.Getenv("OUTCOME_WINDOW_DAYS")); err == nil && v > 0 {
+		days = v
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
+// incidentRepo maps a tool's project or service name to a repo
+// (INCIDENT_REPOS), or picks the only repo Cowboy sorts.
+func incidentRepo(a *app.App) func(string) string {
+	m := map[string]string{}
+	for _, kv := range strings.Split(os.Getenv("INCIDENT_REPOS"), ",") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(kv), "="); ok {
+			m[strings.ToLower(strings.TrimSpace(k))] = strings.TrimSpace(v)
+		}
+	}
+	return func(hint string) string {
+		if r, ok := m[strings.ToLower(hint)]; ok {
+			return r
+		}
+		if repos := a.Store.Repos(); len(repos) == 1 {
+			return repos[0]
+		}
+		return ""
+	}
+}
+
+func dataDir() string { return filepath.Dir(env("DATA", "data/cowboy.json")) }
+
+func auditCmd(args []string) {
+	path := filepath.Join(dataDir(), "audit.jsonl")
+	if len(args) == 0 {
+		args = []string{"verify"}
+	}
+	switch args[0] {
+	case "verify":
+		n, err := audit.Verify(path)
+		if err != nil {
+			fmt.Printf("the audit record was changed: %v (%d entries before that are fine)\n", err, n)
+			os.Exit(1)
+		}
+		es, _ := audit.Read(path)
+		fp := ""
+		if len(es) > 0 {
+			fp = es[len(es)-1].Hash[:12]
+		}
+		fmt.Printf("ok: %d entries, unchanged. latest fingerprint %s (compare with the one in your weekly tally post)\n", n, fp)
+	case "export":
+		fs := flag.NewFlagSet("audit export", flag.ExitOnError)
+		format := fs.String("format", "csv", "csv or json")
+		since := fs.String("since", "", "only entries from this date (YYYY-MM-DD)")
+		repo := fs.String("repo", "", "only this repo")
+		fs.Parse(args[1:])
+		es, err := audit.Read(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		t, _ := time.Parse("2006-01-02", *since)
+		es = audit.Filter(es, t, *repo)
+		if *format == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			enc.Encode(es)
+			return
+		}
+		audit.WriteCSV(os.Stdout, es)
+	default:
+		log.Fatal("usage: cowboy audit verify | cowboy audit export [--format csv|json] [--since 2026-01-01] [--repo owner/repo]")
+	}
+}
+
+func openForReport() (*store.Store, *outcome.State) {
+	st, err := store.Open(env("DATA", "data/cowboy.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	oc, err := outcome.Open(filepath.Join(dataDir(), "outcomes.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return st, oc
+}
+
+func benchmarkCmd(args []string) {
+	if len(args) == 0 {
+		args = []string{"export"}
+	}
+	switch args[0] {
+	case "export":
+		st, os2 := openForReport()
+		b := outcome.Benchmark(st.List("", ""), os2, time.Now().UTC(), outcomeWindow(), version)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(b)
+		fmt.Fprintln(os.Stderr, "counts only: no repo names, file paths, titles or people. read it before you share it.")
+	case "report":
+		var bs []outcome.Bench
+		for _, p := range args[1:] {
+			raw, err := os.ReadFile(p)
+			if err != nil {
+				log.Fatal(err)
+			}
+			var b outcome.Bench
+			if err := json.Unmarshal(raw, &b); err != nil {
+				log.Fatalf("%s: %v", p, err)
+			}
+			bs = append(bs, b)
+		}
+		if len(bs) == 0 {
+			log.Fatal("usage: cowboy benchmark report team1.json team2.json ...")
+		}
+		fmt.Print(outcome.CombinedReport(bs))
+	default:
+		log.Fatal("usage: cowboy benchmark export > mine.json | cowboy benchmark report a.json b.json ...")
+	}
+}
+
+func outcomesCmd(args []string) {
+	fs := flag.NewFlagSet("outcomes", flag.ExitOnError)
+	check := fs.Bool("check", false, "read merged prs and the default branch from the git host now (uses FORGE settings)")
+	fs.Parse(args)
+	st, os2 := openForReport()
+	if *check {
+		f, err := forge.New(env("FORGE", "github"), os.Getenv("FORGE_URL"), os.Getenv("FORGE_TOKEN"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		a := app.New(f, st, nil)
+		if al, err := audit.Open(filepath.Join(dataDir(), "audit.jsonl")); err == nil {
+			a.Audit = al
+		}
+		a.Outcomes = os2
+		w := &outcome.Watcher{Forge: f, Decisions: st, State: os2, OnEvent: a.OnOutcome}
+		for _, repo := range st.Repos() {
+			fmt.Println(w.Check(repo))
+		}
+	}
+	r := outcome.Build(st.List("", ""), os2, time.Now().UTC(), outcomeWindow(), nil)
+	fmt.Printf("after merge (%d-day window): %d prs rated, %d still inside the window, %d waiting for a person\n", r.WindowDays, r.Matured, r.Recent, r.Pending)
+	for _, p := range r.ByPen {
+		fmt.Printf("  %-8s %s\n", p.Pen, p.Rate)
+	}
+	for _, s := range r.Suggestions {
+		fmt.Printf("  suggestion: %s. %s\n", s.Change, s.Why)
+	}
+}
+
 func serve() {
 	f, err := forge.New(env("FORGE", "github"), os.Getenv("FORGE_URL"), os.Getenv("FORGE_TOKEN"))
 	if err != nil {
@@ -506,6 +733,7 @@ func serve() {
 	} else {
 		log.Printf("baselines: %v (undisclosed-agent check off)", err)
 	}
+	setupOutcomes(a, f)
 	if m := modelFromEnv(); m != nil {
 		a.Model = m
 		a.StartNotes()

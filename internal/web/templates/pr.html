@@ -16,6 +16,10 @@
     <ul class="reasons">{{range .D.Reasons}}<li class="r-{{.Effect}}"><span class="chk">{{.Check}}</span>{{.Detail}}</li>{{end}}</ul>
     {{if .D.DoubleOf}}<p class="note"><b>double:</b> same work as <a href="/pr?repo={{.D.Repo}}&n={{.D.DoubleOf}}">#{{.D.DoubleOf}}</a>. keep one.</p>{{end}}
     {{if .D.Stray}}<p class="note"><b>stray:</b> no commits since a reviewer asked for changes.</p>{{end}}
+    {{if .Merge}}<h2>after merge</h2>
+    <p class="small">merged {{day .Merge.MergedAt}}{{if .Merge.Approvers}} · approved by {{range $i, $a := .Merge.Approvers}}{{if $i}}, {{end}}{{$a}}{{end}}{{else}} · no approval before merge{{end}}{{if .Merge.Release}} · shipped in {{.Merge.Release}} ({{day .Merge.ReleasedAt}}){{end}}{{range $k, $v := .Merge.Survival}} · {{pctf $v}} of its code still there after {{$k}}{{end}}</p>
+    {{if .Outcomes}}<ul class="reasons">{{range .Outcomes}}<li class="r-{{if .Counts}}careful{{else}}info{{end}}"><span class="chk">{{kindLabel .Kind}}</span>{{.Evidence}} · {{day .At}} · {{.Status}}{{if .By}} by {{.By}}{{end}}{{if .Link}} · <a href="{{.Link}}">source</a>{{end}}{{if eq .Status "suggested"}} <form method="post" action="/outcomes/decide" class="move" style="display:inline"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="back" value="/pr?repo={{$.Data.D.Repo}}&n={{$.Data.D.Number}}"><button class="btn" name="confirm" value="yes">yes</button> <button class="btn ghost" name="confirm" value="no">no</button></form>{{end}}</li>{{end}}</ul>
+    {{else}}<p class="small">no trouble found so far.</p>{{end}}{{end}}
     <h2>move to another pen</h2>
     <form method="post" action="/pr/move" class="move">
       <input type="hidden" name="repo" value="{{.D.Repo}}"><input type="hidden" name="n" value="{{.D.Number}}">

@@ -16,6 +16,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/app"
 	"github.com/sgracia13/Cowboy/internal/detect"
 	"github.com/sgracia13/Cowboy/internal/forge"
+	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 	"github.com/sgracia13/Cowboy/internal/score"
 )
@@ -33,6 +34,8 @@ type Server struct {
 	TallyNote string
 	// Setup is the "Connect GitHub" flow, when Cowboy signs in as a GitHub App.
 	Setup *GitHubSetup
+	// Outcomes turns on the outcomes page (nil = off).
+	Outcomes *OutcomeSettings
 }
 
 // New parses templates.
@@ -94,7 +97,11 @@ func New(a *app.App) *Server {
 		"modname": func(m string) string {
 			return map[string]string{"disclosure": "deterministic", "time": "behaviour", "text": "text", "code": "code", "baseline": "history"}[m]
 		},
-		"mulf": func(a, b float64) float64 { return a * b },
+		"mulf":      func(a, b float64) float64 { return a * b },
+		"pctf":      func(f float64) string { return strconv.FormatFloat(f*100, 'f', 0, 64) + "%" },
+		"kindLabel": func(k string) string { return outcome.KindLabel[k] },
+		"ruleLabel": outcome.RuleLabel,
+		"day":       func(t time.Time) string { return t.Format("Jan 2") },
 		"modsum": func(rs []detect.Contribution, mod string) float64 {
 			t := 0.0
 			for _, r := range rs {
@@ -127,6 +134,13 @@ func New(a *app.App) *Server {
 // Routes registers the UI on mux.
 func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /static/", http.FileServerFS(files))
+	if s.Outcomes != nil {
+		mux.HandleFunc("GET /outcomes", s.outcomes)
+		mux.HandleFunc("POST /outcomes/decide", s.decideOutcome)
+		mux.HandleFunc("POST /outcomes/link", s.linkIncident)
+		mux.HandleFunc("GET /audit.csv", s.auditCSV)
+		mux.HandleFunc("GET /benchmark.json", s.benchmark)
+	}
 	if s.Setup != nil {
 		mux.HandleFunc("GET /setup", s.setupHome)
 		mux.HandleFunc("POST /setup/github/start", s.setupStart)
@@ -156,11 +170,14 @@ type page struct {
 	SignOut bool
 	// NeedsSetup shows the "connect GitHub" banner; Setup links the setup page.
 	NeedsSetup, Setup bool
-	Data              any
+	// Outcomes shows the outcomes tab.
+	Outcomes bool
+	Data     any
 }
 
 func (s *Server) render(w http.ResponseWriter, name, nav string, data any) {
 	p := page{Title: nav, Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun, SignOut: s.SignOut, Data: data}
+	p.Outcomes = s.Outcomes != nil
 	if s.Setup != nil {
 		p.Setup = true
 		p.NeedsSetup = nav != "setup" && !s.Setup.Status().Connected
@@ -225,12 +242,14 @@ func (s *Server) corral(w http.ResponseWriter, r *http.Request) {
 }
 
 type prData struct {
-	D       pipeline.Decision
-	Comment string
-	Reviews []string
-	OnForge []string
-	Pens    []score.Pen
-	Moved   bool
+	D        pipeline.Decision
+	Comment  string
+	Reviews  []string
+	OnForge  []string
+	Pens     []score.Pen
+	Moved    bool
+	Merge    *outcome.Merge
+	Outcomes []outcome.Outcome
 }
 
 func (s *Server) pr(w http.ResponseWriter, r *http.Request) {
@@ -245,6 +264,12 @@ func (s *Server) pr(w http.ResponseWriter, r *http.Request) {
 	if f, ok := s.App.Forge.(*forge.Fake); ok {
 		pd.OnForge = f.Labels[n]
 		pd.Reviews = f.Reviews[n]
+	}
+	if s.Outcomes != nil {
+		if m, ok := s.Outcomes.State.Merge(repo, n); ok {
+			pd.Merge = &m
+		}
+		pd.Outcomes = s.Outcomes.State.Outcomes(repo, n)
 	}
 	s.render(w, "pr.html", "corral", pd)
 }

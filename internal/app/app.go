@@ -14,12 +14,14 @@ import (
 	"time"
 
 	"github.com/sgracia13/Cowboy/internal/analyze"
+	"github.com/sgracia13/Cowboy/internal/audit"
 	"github.com/sgracia13/Cowboy/internal/config"
 	"github.com/sgracia13/Cowboy/internal/detect"
 	"github.com/sgracia13/Cowboy/internal/diff"
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/graph"
 	"github.com/sgracia13/Cowboy/internal/model"
+	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 	"github.com/sgracia13/Cowboy/internal/score"
 	"github.com/sgracia13/Cowboy/internal/store"
@@ -42,6 +44,13 @@ type App struct {
 	ArchiveLimit int64
 	DryRun       bool // sort and store, but write nothing to the forge
 	Now          func() time.Time
+
+	// Audit is the tamper-evident record (nil = not kept).
+	Audit *audit.Log
+	// Outcomes tracks what happened after merge (nil = off).
+	Outcomes *outcome.State
+	// OnMerged runs when a PR is marked merged (records the merge).
+	OnMerged func(repo string, n int)
 
 	// Model is the optional local model. nil = rules only.
 	Model model.Model
@@ -460,6 +469,9 @@ func (a *App) sort(meta analyze.PRMeta, patch, owners string) (pipeline.Decision
 	} else {
 		a.publish("sorted", d.Repo, d.Number, string(pen), "#%d %s %s (%s)", d.Number, verb, pen, who)
 	}
+	if !had || old.Pen != d.Pen || old.HeadSHA != d.HeadSHA {
+		a.record("sorted", d.Repo, d.Number, "", map[string]string{"pen": string(pen), "agent": agentOf(d), "rules": carefulRules(d), "head": d.HeadSHA})
+	}
 	a.queueNotes(d, diff.Parse(patch))
 	if got, ok := a.Store.Get(d.Repo, d.Number); ok {
 		d = got
@@ -511,6 +523,7 @@ func (a *App) Correct(repo string, n int, to score.Pen, by string) error {
 	d.Labels[0] = "cowboy:" + string(to)
 	a.Store.Put(d)
 	a.publish("moved", repo, n, string(to), "#%d moved to %s by %s", n, to, by)
+	a.record("moved", repo, n, by, map[string]string{"from": string(d.Pen), "to": string(to)})
 	if a.DryRun {
 		return nil
 	}
@@ -528,6 +541,10 @@ func (a *App) Closed(repo string, n int, merged bool) {
 	a.learn(repo, n)
 	if had && d.State == "open" {
 		a.publish("closed", repo, n, "", "#%d %s", n, state)
+		a.record(state, repo, n, "", map[string]string{"pen": string(outcome.PenOf(d)), "agent": agentOf(d)})
+		if merged && a.OnMerged != nil {
+			go a.OnMerged(repo, n)
+		}
 	}
 }
 
@@ -577,6 +594,9 @@ type AgentTally struct {
 	Total, Easy, Normal, Careful               int
 	Doubles, Strays, Merged, Closed, Corrected int
 	Shortcuts                                  int
+	// Trouble: problems found after merge this period (reverts, main
+	// breaking, confirmed fixes and incidents), by the PR's author.
+	Trouble int
 }
 
 // Tally counts decisions per agent since a time.
@@ -624,6 +644,23 @@ func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 			r.Closed++
 		}
 	}
+	if a.Outcomes != nil {
+		for _, o := range a.Outcomes.Outcomes("", 0) {
+			if !o.Counts() || o.Found.Before(from) || (!to.IsZero() && !o.Found.Before(to)) {
+				continue
+			}
+			d, ok := a.Store.Get(o.Repo, o.Number)
+			if !ok {
+				continue
+			}
+			r := rows[d.Agent]
+			if r == nil {
+				r = &AgentTally{Agent: d.Agent}
+				rows[d.Agent] = r
+			}
+			r.Trouble++
+		}
+	}
 	var out []AgentTally
 	for _, r := range rows {
 		out = append(out, *r)
@@ -640,13 +677,13 @@ func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 // TallyMarkdown renders the tally for chat or email.
 func TallyMarkdown(rows []AgentTally) string {
 	var b strings.Builder
-	b.WriteString("## cowboy tally\n\n| agent | prs | easy | normal | careful | doubles | strays | shortcuts | re-penned |\n|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("## cowboy tally\n\n| agent | prs | easy | normal | careful | doubles | strays | shortcuts | re-penned | trouble after merge |\n|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
 		who := r.Agent
 		if who == "" {
 			who = "people"
 		}
-		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %d |\n", who, r.Total, r.Easy, r.Normal, r.Careful, r.Doubles, r.Strays, r.Shortcuts, r.Corrected)
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %d | %d |\n", who, r.Total, r.Easy, r.Normal, r.Careful, r.Doubles, r.Strays, r.Shortcuts, r.Corrected, r.Trouble)
 	}
 	return b.String()
 }
