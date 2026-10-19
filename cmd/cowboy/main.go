@@ -810,7 +810,7 @@ func evaluateCmd(args []string) {
 		}
 	} else {
 		st, os2 := openForReport()
-		items = outcome.Items(st.List("", ""), os2, time.Now().UTC(), outcomeWindow())
+		items = outcome.Items(st.List("", ""), os2, time.Now().UTC(), outcomeWindow(), nil)
 	}
 	r := evaluate.Evaluate(items, evaluate.Defaults())
 	if *asJSON {
