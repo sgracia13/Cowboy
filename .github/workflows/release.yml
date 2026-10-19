@@ -1,10 +1,20 @@
-# Tag a version to release:  git tag v0.1.0 && git push origin v0.1.0
+# Two ways to release:
+#   - push a tag:  git tag v0.1.0 && git push origin v0.1.0
+#   - or on GitHub: Actions > release > Run workflow, and type the version
+#     (the workflow creates the tag for you)
 # Builds the downloads, publishes a GitHub release with checksums and the
 # install script, and pushes the Docker image to ghcr.io.
 name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. v0.1.0-preview"
+        required: true
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
 permissions:
   contents: write
   packages: write
@@ -19,15 +29,16 @@ jobs:
       - name: test
         run: go vet ./... && go test ./...
       - name: build downloads
-        run: make dist VERSION=${{ github.ref_name }}
+        run: make dist VERSION="$VERSION"
       - name: publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          case "$VERSION" in v*) ;; *) echo "version must start with v"; exit 1 ;; esac
           pre=""
-          case "${{ github.ref_name }}" in *-*) pre="--prerelease" ;; esac
-          gh release create "${{ github.ref_name }}" dist/* $pre --verify-tag \
-            --title "cowboy ${{ github.ref_name }}" --notes-file - <<'NOTES'
+          case "$VERSION" in *-*) pre="--prerelease" ;; esac
+          gh release create "$VERSION" dist/* $pre --target "$GITHUB_SHA" \
+            --title "cowboy $VERSION" --notes-file - <<'NOTES'
           ## install
 
           ```sh
@@ -63,7 +74,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          build-args: VERSION=${{ github.ref_name }}
+          build-args: VERSION=${{ env.VERSION }}
           tags: |
-            ghcr.io/sgracia13/cowboy:${{ github.ref_name }}
+            ghcr.io/sgracia13/cowboy:${{ env.VERSION }}
             ghcr.io/sgracia13/cowboy:latest
