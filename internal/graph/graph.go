@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,9 @@ type Graph struct {
 	files     map[string]bool
 	importers map[string]map[string]bool
 	Stats     Stats
+
+	topMu sync.Mutex
+	top   map[float64]int
 }
 
 // Stats describes how a graph was built, for the rules page and the log.
@@ -334,6 +338,62 @@ func (g *Graph) FanIn(rel string) (int, []string) {
 	}
 	sort.Strings(out)
 	return len(out), out
+}
+
+// TopFanIn returns the fan-in a file needs to be in the top pct percent of
+// the files anything imports (at least 1). Each pct is worked out once.
+func (g *Graph) TopFanIn(pct float64) int {
+	g.topMu.Lock()
+	defer g.topMu.Unlock()
+	if v, ok := g.top[pct]; ok {
+		return v
+	}
+	seen := map[string]bool{}
+	var counts []int
+	for target, froms := range g.importers {
+		var name string
+		if strings.HasPrefix(target, "dir:") {
+			// a Go package counts once, by its importers outside the package
+			dir := strings.TrimPrefix(target, "dir:")
+			name = target
+			n := 0
+			for f := range froms {
+				if path.Dir(f) != dir {
+					n++
+				}
+			}
+			if n > 0 && !seen[name] {
+				seen[name] = true
+				counts = append(counts, n)
+			}
+			continue
+		}
+		name = target
+		n := 0
+		for f := range froms {
+			if f != target {
+				n++
+			}
+		}
+		if n > 0 && !seen[name] {
+			seen[name] = true
+			counts = append(counts, n)
+		}
+	}
+	v := 1
+	if len(counts) > 0 && pct > 0 && pct < 100 {
+		sort.Sort(sort.Reverse(sort.IntSlice(counts)))
+		i := int(float64(len(counts)) * pct / 100)
+		if i >= len(counts) {
+			i = len(counts) - 1
+		}
+		v = counts[i]
+	}
+	if g.top == nil {
+		g.top = map[float64]int{}
+	}
+	g.top[pct] = v
+	return v
 }
 
 // Has reports whether the graph saw this file.

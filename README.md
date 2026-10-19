@@ -263,7 +263,7 @@ only these, ever:
 
 defaults below. override per repo with `cowboy.json` on the default branch (a pr can't loosen its own rules). see `testdata/acme/cowboy.json`.
 
-- **careful** if any: sensitive path (`auth/**`, `billing/**`, `payments/**`, `migrations/**`, `.github/workflows/**`, `security/**`) · 20+ files import a changed file · a catch-all that may hide errors · ci loosened · asserts lost across the pr (not counting a feature removed with its tests) · checks failing
+- **careful** if any: sensitive path (`auth/**`, `billing/**`, `payments/**`, `migrations/**`, `.github/workflows/**`, `security/**`) · a changed file is among the repo's 1% most-imported files (and has 20+ importers) · a catch-all whose body does nothing with the error · ci loosened · asserts lost across the pr (not counting a feature removed with its tests) · checks failing
 - **easy** if all: ≤50 lines, ≤2 folders, ≤3 importers, checks ok. or: no source code at all and ≤600 lines
 - **normal** otherwise
 - **worth a look** (shown on the pr, never changes the pen): warning silencers, skipped tests, "special case for test" comments, 400+ source lines ("too big to review well")
