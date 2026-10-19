@@ -24,7 +24,8 @@ v2 on the same repos, for comparison (counts toward nothing):
 | 3. vs chance | 1.11× | 0.84× to 1.39× |
 | 4. easy vs smallest | −0.02 points | −0.13 to +0.10 |
 
-The v3 changes made the careful pen smaller, as intended, but not better:
+The v3 changes made the careful pen smaller in Airflow (26% → 14%) and
+Kibana (32% → 29%), slightly larger in next.js (18% → 20%), and not better:
 v3 does no better than v2 here.
 
 ## per repo (weighted rates, reverted within 30 days)
@@ -37,15 +38,24 @@ v3 does no better than v2 here.
 
 In Airflow and next.js the pens line up the way they should (easy lowest,
 careful highest), though not by enough to clear the bar. In Kibana they
-don't: its easy pen had the highest revert rate of the three. Claim 4
-holds pooled, but not in Kibana on its own.
+don't: its easy pen had the highest revert rate of the three, and its
+easy rate was a little above the same share of smallest PRs (0.48% vs
+0.42%; no per-repo range was computed). Claim 4 holds pooled; in Kibana
+alone the point estimate went the wrong way.
 
 ## what this means
 
 Across eight repos now (five tuned-on or spent, three fresh), the default
 careful pen has not been shown to beat "biggest PRs first" or chance in
 any pre-registered test. The easy-pen claim held pooled in every test,
-with Kibana as the first repo where it clearly didn't.
+though in Kibana alone the estimate went the wrong way.
+
+## a note on timing
+
+CLAIMS-v3.md was committed 19 seconds before the first clone. The
+collector's screen-only switch (a few lines that stop after printing the
+counts) was committed a minute after the screen started; the screen ran
+that same code.
 
 ## rerun
 

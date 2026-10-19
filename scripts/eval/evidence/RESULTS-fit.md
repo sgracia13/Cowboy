@@ -19,8 +19,9 @@ fitted on the 90 days before it.
 found rules in 15 of the 21; the other 6 fell back to the defaults.
 
 **Claim 1 holds for a weak reason.** On these repos the largest PRs were
-reverted *less* often than average: the biggest 12% of PRs held only 5% of
-the reverts, below the 12% chance would give. Beating biggest-first here
+reverted *less* often than average: the largest PRs, taking the same share
+as the fitted pen, held only 5% of the reverts, below the 11% chance
+would give. Beating biggest-first here
 mostly says size is a poor signal in these repos, not that fitting is a
 strong one. The honest comparison is claim 2 (chance), and that is not
 shown.
@@ -37,7 +38,8 @@ shown.
 
 - **Kibana:** `.buildkite/**` (its CI configuration) in four of seven
   months. It carried over: in the test months, CI-config PRs were reverted
-  about 3.5× as often as the repo's average (5 of about 415 weighted PRs).
+  about 3.1× as often as the repo's average (5 reverted, of about 415
+  weighted PRs).
 - **Airflow:** `task-sdk/**` and `providers/google/**`, folders under
   heavy change. Each caught one later revert.
 - **next.js:** mostly single files (`base-server.ts`, `build/index.ts`,
@@ -49,10 +51,23 @@ lift 0.89× pooled, below the defaults' 1.17×. In Sentry, where it fitted
 every month, it chased last quarter's hot spots (a feature area under
 heavy development) that had moved on by the next month.
 
+## how much is fitting, and how much is the fallback
+
+Months without a usable fit used the default rules, as the live product
+would, and those count as the fitted pen. They supply 8 of the fitted
+pen's 17 catches: 5 of Kibana's 10 and 2 of Airflow's 4. So Kibana's
+fitting result rests on the 5 `.buildkite` catches, and about half of
+Airflow's 3.53× comes from default-rule months.
+
+One method detail: the cautious rate uses the count of PRs with trouble
+over the weighted count of PRs. Each sampled PR without trouble stands for
+about 2–6 real ones, so the cautious rates are slightly off from what a
+live repo (every PR weight 1) would compute.
+
 ## what this means
 
-Fitting helped where a repo has a stable kind of trouble (Kibana's CI
-config) and did nothing where trouble moves around with whatever is under
+Fitting looked useful where a repo has a stable kind of trouble
+(Kibana's CI config, on 5 catches) and did nothing where trouble moves around with whatever is under
 active development (next.js, Sentry). Across the pooled test it made a
 pen half the size of the defaults' with a higher hit rate, but the
 difference is within noise, so it can't be claimed.
