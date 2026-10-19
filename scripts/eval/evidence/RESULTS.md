@@ -109,12 +109,14 @@ never worse than the same share of smallest PRs.
 The honest reading of everything so far: the easy pen is a safe place to
 skim; the careful pen is not yet shown to beat a plain size rule, and
 whether it beats chance depends on the repo. The next step is rules that
-travel better, checked on fresh held-out repos again. The first lead: in
-PostHog, the "adds a catch-all that may hide errors" shortcut fired on 257
-of 968 careful PRs (Python `except Exception` is common there), and the
-"warning silencer" shortcut fired on routine `# noqa` and `# type: ignore`
-comments. Those two
-rules alone fill much of the pen.
+travel better, checked on fresh held-out repos again.
+
+Correction (same day): an earlier version of this file said the catch-all
+and warning-silencer rules fill the careful pen. The silencer rule is only
+a note and never moves a PR into careful. What fills the pen is blast
+radius: "changes a file 20+ others import" put 441 of PostHog's 968
+careful PRs there on its own, against 141 for catch-all alone. See
+CLAIMS-v3.md for the change that followed.
 
 ## appendix: the unweighted run
 
