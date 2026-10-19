@@ -21,8 +21,6 @@
       }
       if (tickerText) {
         tickerText.textContent = e.text;
-        var t = document.getElementById("ticker");
-        t.classList.remove("flash"); void t.offsetWidth; t.classList.add("flash");
       }
       fresh.push(key);
       refresh();
