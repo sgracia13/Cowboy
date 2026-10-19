@@ -36,6 +36,8 @@ type Server struct {
 	TallyNote string
 	// Setup is the "Connect GitHub" flow, when Cowboy signs in as a GitHub App.
 	Setup *GitHubSetup
+	// Connect is the setup page's token route (GitHub CLI login or a token).
+	Connect *Connect
 	// Outcomes turns on the outcomes page (nil = off).
 	Outcomes *OutcomeSettings
 
@@ -169,11 +171,21 @@ func (s *Server) Routes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /audit.csv", s.auditCSV)
 		mux.HandleFunc("GET /benchmark.json", s.benchmark)
 	}
-	if s.Setup != nil {
+	if s.Setup != nil || s.Connect != nil {
 		mux.HandleFunc("GET /setup", s.setupHome)
+	}
+	if s.Setup != nil {
 		mux.HandleFunc("POST /setup/github/start", s.setupStart)
 		mux.HandleFunc("GET /setup/github/callback", s.setupCallback)
 		mux.HandleFunc("GET /setup/github/installed", s.setupInstalled)
+	}
+	if s.Connect != nil {
+		mux.HandleFunc("POST /setup/gh", s.setupGH)
+		mux.HandleFunc("POST /setup/token", s.setupToken)
+		mux.HandleFunc("GET /setup/repos", s.setupRepos)
+		mux.HandleFunc("POST /setup/repos", s.setupChoose)
+		mux.HandleFunc("POST /setup/mode", s.setupMode)
+		mux.HandleFunc("POST /setup/disconnect", s.setupDisconnect)
 	}
 	mux.HandleFunc("GET /{$}", s.corral)
 	mux.HandleFunc("GET /pr", s.pr)
@@ -204,11 +216,11 @@ type page struct {
 }
 
 func (s *Server) render(w http.ResponseWriter, name, nav string, data any) {
-	p := page{Title: nav, Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun, SignOut: s.SignOut, Data: data}
+	p := page{Title: nav, Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun(), SignOut: s.SignOut, Data: data}
 	p.Outcomes = s.Outcomes != nil
-	if s.Setup != nil {
+	if s.Setup != nil || s.Connect != nil {
 		p.Setup = true
-		p.NeedsSetup = nav != "setup" && !s.Setup.Status().Connected
+		p.NeedsSetup = nav != "setup" && !s.connected()
 	}
 	var buf bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&buf, name, p); err != nil {

@@ -163,7 +163,7 @@ func securityHeaders(w http.ResponseWriter) {
 	h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
-	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("Referrer-Policy", "same-origin") // a same-site form post must carry its Origin (no-referrer sends "null")
 }
 
 // sameOrigin accepts a post whose Origin (or, failing that, Referer) is this

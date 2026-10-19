@@ -118,6 +118,18 @@ type client struct {
 	scheme string // "Bearer" or "token"
 	http   *http.Client
 	app    atomic.Pointer[AppAuth] // set: sign in as a GitHub App instead of the token
+	live   atomic.Pointer[string]  // set: a token chosen while running (the setup page)
+}
+
+// SetToken switches to signing in with this token. Safe while requests are
+// running (the setup page connects a token with Cowboy already up).
+func (c *client) SetToken(t string) { c.live.Store(&t) }
+
+func (c *client) currentToken() string {
+	if t := c.live.Load(); t != nil {
+		return *t
+	}
+	return c.token
 }
 
 func (c *client) do(method, path string, body any, accept string, out any) ([]byte, error) {
@@ -140,8 +152,8 @@ func (c *client) do(method, path string, body any, accept string, out any) ([]by
 				return nil, err
 			}
 			req.Header.Set("Authorization", h)
-		} else if c.token != "" {
-			req.Header.Set("Authorization", c.scheme+" "+c.token)
+		} else if t := c.currentToken(); t != "" {
+			req.Header.Set("Authorization", c.scheme+" "+t)
 		}
 		if accept == "" {
 			accept = "application/json"

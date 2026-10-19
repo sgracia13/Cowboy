@@ -15,7 +15,7 @@
   </nav>
   <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">on your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · dry run{{end}}{{if .Setup}} · <a href="/setup">github</a>{{end}}{{if .SignOut}} · <a href="/logout">sign out</a>{{end}}</span>
 </header>
-{{if .NeedsSetup}}<div class="setup-banner">Cowboy isn't connected to GitHub yet. <a href="/setup">Connect GitHub</a>: one click to create the app, then pick your repos.</div>{{end}}
+{{if .NeedsSetup}}<div class="setup-banner">Cowboy isn't connected to GitHub yet. <a href="/setup">Connect GitHub</a> and pick your repos: it takes a minute and writes nothing to GitHub until you say so.</div>{{end}}
 <main>
 {{end}}
 {{define "foot"}}</main>

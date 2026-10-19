@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sgracia13/Cowboy/internal/analyze"
@@ -42,7 +43,7 @@ type App struct {
 	ArchiveGraphs bool
 	// ArchiveLimit caps the archive download in bytes (0 = no cap).
 	ArchiveLimit int64
-	DryRun       bool // sort and store, but write nothing to the forge
+	dryRun       atomic.Bool // sort and store, but write nothing to the forge
 	Now          func() time.Time
 
 	// Audit is the tamper-evident record (nil = not kept).
@@ -351,7 +352,7 @@ func (a *App) addNotes(d pipeline.Decision, files []diff.File) {
 	if n.Error == "" {
 		a.publish("notes", d.Repo, d.Number, "", "#%d local model notes added (on task: %s)", d.Number, onTask(n.OnTask))
 	}
-	if !a.DryRun {
+	if !a.DryRun() {
 		a.Forge.UpsertComment(d.Repo, d.Number, marker, pipeline.FullComment(cur), a.startComment(cur, cur.CurrentPen()))
 	}
 }
@@ -493,7 +494,7 @@ func (a *App) startComment(d pipeline.Decision, pen score.Pen) bool {
 // write puts labels and the comment on the forge. Cowboy never merges,
 // closes, approves or leaves review comments.
 func (a *App) write(d pipeline.Decision, penChanged bool) error {
-	if a.DryRun {
+	if a.DryRun() {
 		return nil
 	}
 	if err := a.Forge.SetLabels(d.Repo, d.Number, d.Labels, minus(ownLabels, d.Labels)); err != nil {
@@ -524,7 +525,7 @@ func (a *App) Correct(repo string, n int, to score.Pen, by string) error {
 	a.Store.Put(d)
 	a.publish("moved", repo, n, string(to), "#%d moved to %s by %s", n, to, by)
 	a.record("moved", repo, n, by, map[string]string{"from": string(d.Pen), "to": string(to)})
-	if a.DryRun {
+	if a.DryRun() {
 		return nil
 	}
 	return a.Forge.SetLabels(repo, n, d.Labels, minus(ownLabels, d.Labels))
@@ -580,7 +581,7 @@ func (a *App) Sweep() (nudged []string) {
 				}
 				nudged = append(nudged, msg)
 			}
-			if !a.DryRun {
+			if !a.DryRun() {
 				a.Forge.SetLabels(repo, d.Number, d.Labels, minus(ownLabels, d.Labels))
 			}
 		}
@@ -704,3 +705,10 @@ func minus(xs, drop []string) []string {
 	}
 	return out
 }
+
+// DryRun reports whether Cowboy sorts and stores without writing to the
+// git host. It can change while Cowboy runs (the setup page's mode switch).
+func (a *App) DryRun() bool { return a.dryRun.Load() }
+
+// SetDryRun turns writing to the git host off (true) or on (false).
+func (a *App) SetDryRun(on bool) { a.dryRun.Store(on) }

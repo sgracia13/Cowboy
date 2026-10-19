@@ -148,6 +148,55 @@ func (g *GitHub) Activity(repo string, n int) (Activity, error) {
 	return a, nil
 }
 
+// WhoAmI is the account the token signs in as.
+func (g *GitHub) WhoAmI() (string, error) {
+	var u struct {
+		Login string `json:"login"`
+	}
+	if _, err := g.do("GET", "/user", nil, "", &u); err != nil {
+		return "", err
+	}
+	if u.Login == "" {
+		return "", fmt.Errorf("GitHub didn't say who this token belongs to")
+	}
+	return u.Login, nil
+}
+
+// MyRepos lists the repos the token can see, most recently pushed first
+// (a fine-grained token sees only the repos it was given).
+func (g *GitHub) MyRepos(max int) ([]string, error) {
+	var out []string
+	for page := 1; len(out) < max; page++ {
+		var rs []struct {
+			FullName string `json:"full_name"`
+			Archived bool   `json:"archived"`
+		}
+		if _, err := g.do("GET", fmt.Sprintf("/user/repos?per_page=100&sort=pushed&page=%d", page), nil, "", &rs); err != nil {
+			return out, err
+		}
+		for _, r := range rs {
+			if !r.Archived && len(out) < max {
+				out = append(out, r.FullName)
+			}
+		}
+		if len(rs) < 100 {
+			break
+		}
+	}
+	return out, nil
+}
+
+// CanLabel checks the token can write labels on repo by making sure the
+// cowboy:easy label exists (creating it if needed: Cowboy would on its
+// first sort anyway). It touches no pull request.
+func (g *GitHub) CanLabel(repo string) error {
+	_, err := g.do("POST", "/repos/"+repo+"/labels", map[string]string{"name": "cowboy:easy", "color": "ffd400", "description": "sorted by cowboy: small and low-risk"}, "", nil)
+	if err != nil && strings.Contains(err.Error(), ": 422 ") {
+		return nil // already there
+	}
+	return err
+}
+
 func (g *GitHub) SetLabels(repo string, n int, add, remove []string) error {
 	for _, l := range remove {
 		_, err := g.do("DELETE", fmt.Sprintf("/repos/%s/issues/%d/labels/%s", repo, n, esc(l)), nil, "", nil)
