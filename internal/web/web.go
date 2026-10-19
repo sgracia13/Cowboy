@@ -11,10 +11,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sgracia13/Cowboy/internal/app"
 	"github.com/sgracia13/Cowboy/internal/detect"
+	"github.com/sgracia13/Cowboy/internal/evaluate"
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
@@ -36,6 +38,10 @@ type Server struct {
 	Setup *GitHubSetup
 	// Outcomes turns on the outcomes page (nil = off).
 	Outcomes *OutcomeSettings
+
+	checkMu  sync.Mutex
+	checkKey string
+	checkRes evaluate.Result
 }
 
 // New parses templates.
@@ -97,8 +103,28 @@ func New(a *app.App) *Server {
 		"modname": func(m string) string {
 			return map[string]string{"disclosure": "deterministic", "time": "behaviour", "text": "text", "code": "code", "baseline": "history"}[m]
 		},
-		"mulf":      func(a, b float64) float64 { return a * b },
-		"pctf":      func(f float64) string { return strconv.FormatFloat(f*100, 'f', 0, 64) + "%" },
+		"mulf": func(a, b float64) float64 { return a * b },
+		"pctf": func(f float64) string { return strconv.FormatFloat(f*100, 'f', 0, 64) + "%" },
+		"pct1": func(f float64) string { return strconv.FormatFloat(f*100, 'f', 1, 64) + "%" },
+		"pts": func(f float64) string {
+			v := strconv.FormatFloat(f*100, 'f', 1, 64)
+			if f >= 0 {
+				v = "+" + v
+			}
+			return strings.Replace(v, "-", "−", 1)
+		},
+		"times": func(f float64) string { return strconv.FormatFloat(f, 'f', 2, 64) + "×" },
+		"safeWord": func(v string) string {
+			switch v {
+			case evaluate.Outperformed:
+				return "safer"
+			case evaluate.Worse:
+				return "riskier"
+			case evaluate.NoAdvantage:
+				return "no demonstrated difference"
+			}
+			return v
+		},
 		"kindLabel": func(k string) string { return outcome.KindLabel[k] },
 		"ruleLabel": outcome.RuleLabel,
 		"day":       func(t time.Time) string { return t.Format("Jan 2") },

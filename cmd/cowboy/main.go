@@ -34,6 +34,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/config"
 	"github.com/sgracia13/Cowboy/internal/detect"
 	"github.com/sgracia13/Cowboy/internal/diff"
+	"github.com/sgracia13/Cowboy/internal/evaluate"
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/model"
 	"github.com/sgracia13/Cowboy/internal/outcome"
@@ -72,6 +73,7 @@ const usage = `cowboy: sorts ai-agent pull requests into easy, normal and carefu
   cowboy tally [--send]            print this week's tally, or send it now
   cowboy outcomes [--check]        what happened after merge, by pen (--check reads the git host now)
   cowboy backfill [--days 90]      rate pull requests that already merged (writes nothing to the git host)
+  cowboy evaluate [--json]         do the pens beat largest-first, most-files and chance? (same method as the evidence)
   cowboy audit verify|export       check the audit record wasn't changed, or export it
   cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
@@ -146,6 +148,8 @@ func main() {
 		outcomesCmd(os.Args[2:])
 	case "backfill":
 		backfillCmd(os.Args[2:])
+	case "evaluate":
+		evaluateCmd(os.Args[2:])
 	default:
 		fmt.Print(usage)
 		os.Exit(2)
@@ -785,6 +789,60 @@ func outcomesCmd(args []string) {
 		fmt.Printf("  suggestion: %s. %s\n", s.Change, s.Why)
 	}
 }
+
+// evaluateCmd judges the careful and easy pens against simple
+// alternatives: on this install's history, or on replay files (the same
+// code the published evidence and the outcomes page use).
+func evaluateCmd(args []string) {
+	fs := flag.NewFlagSet("evaluate", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "print the full result as JSON")
+	sorted := fs.String("sorted", "", "replay: sorted PRs from cowboy-sortlab (instead of this install's history)")
+	replay := fs.String("replay", "", "replay: cowboy-replay output dir")
+	var logs multiFlag
+	fs.Var(&logs, "collectlog", "replay: collect_sort.py log (repeat)")
+	fs.Parse(args)
+	var items []evaluate.Item
+	if *sorted != "" {
+		var err error
+		items, err = evaluate.LoadReplay(*sorted, *replay, logs)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		st, os2 := openForReport()
+		items = outcome.Items(st.List("", ""), os2, time.Now().UTC(), outcomeWindow())
+	}
+	r := evaluate.Evaluate(items, evaluate.Defaults())
+	if *asJSON {
+		b, _ := json.MarshalIndent(r, "", " ")
+		fmt.Println(string(b))
+		return
+	}
+	for _, x := range r.Repos {
+		note := ""
+		if !x.Counted {
+			note = fmt.Sprintf(" (needs %d with trouble to count)", evaluate.MinEvents)
+		}
+		fmt.Printf("%s: %d prs rated, %d had trouble%s\n", x.Repo, x.PRs, x.BadCount, note)
+	}
+	if len(r.Counted) == 0 {
+		fmt.Println("insufficient evidence: no repo has enough prs with trouble yet")
+		return
+	}
+	fmt.Printf("\nsame share of prs as the careful pen, share of prs with trouble caught:\n")
+	fmt.Printf("  careful pen %5.1f%%   largest first %5.1f%%   most files %5.1f%%   random %5.1f%%\n",
+		r.Recall["rule"]*100, r.Recall["size"]*100, r.Recall["spread"]*100, r.Recall["chance"]*100)
+	fmt.Printf("\nvs chance:      %s (%.2fx, likely %.2fx to %.2fx)\n", r.Verdict["chance"], r.Lift.Value, r.Lift.Low, r.Lift.High)
+	fmt.Printf("vs largest:     %s (%+.1f points, likely %+.1f to %+.1f)\n", r.Verdict["size"], r.VsSize.Value*100, r.VsSize.Low*100, r.VsSize.High*100)
+	fmt.Printf("vs most files:  %s (%+.1f points, likely %+.1f to %+.1f)\n", r.Verdict["files"], r.VsFiles.Value*100, r.VsFiles.Low*100, r.VsFiles.High*100)
+	safe := map[string]string{evaluate.Outperformed: "safer", evaluate.Worse: "riskier", evaluate.NoAdvantage: "no demonstrated difference"}[r.Verdict["safe"]]
+	fmt.Printf("easy vs smallest: %s (%+.2f points of trouble rate, likely %+.2f to %+.2f)\n", safe, r.SafeVs.Value*100, r.SafeVs.Low*100, r.SafeVs.High*100)
+}
+
+type multiFlag []string
+
+func (m *multiFlag) String() string     { return strings.Join(*m, ",") }
+func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 
 func serve() {
 	f, err := forge.New(env("FORGE", "github"), os.Getenv("FORGE_URL"), os.Getenv("FORGE_TOKEN"))

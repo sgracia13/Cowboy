@@ -20,6 +20,25 @@
 {{if $r.Survival}}<p class="small">code still there 30 days later (median):{{range $r.Survival}} {{.Pen}} {{pctf .Median}} ({{.N}} prs){{end}}</p>{{end}}
 </section>
 
+{{with .Check}}<section class="box" id="check"><h2>do the pens beat simple alternatives?</h2>
+<p class="small">give each method the same share of prs the careful pen took, then count how many of the prs that had trouble each one caught. same method as the <a href="https://github.com/sgracia13/Cowboy/tree/main/scripts/eval/evidence">published evidence</a>, except that here every kind of trouble counts, not only reverts.</p>
+{{if not .Counted}}<p><b>insufficient evidence.</b> a fair comparison needs at least 20 prs with trouble in a repo; until then any difference is noise.</p>
+{{if .Repos}}<table class="sig"><tr><th>repo</th><th>prs rated</th><th>had trouble</th></tr>{{range .Repos}}<tr><td>{{.Repo}}</td><td>{{.PRs}}</td><td>{{.BadCount}} of 20 needed</td></tr>{{end}}</table>{{end}}
+{{else}}<table class="sig"><tr><th>method (same share of prs)</th><th>caught</th></tr>
+<tr><td><b>cowboy's careful pen</b></td><td>{{pct1 (index .Recall "rule")}} of prs with trouble</td></tr>
+<tr><td>largest prs first</td><td>{{pct1 (index .Recall "size")}}</td></tr>
+<tr><td>most files touched first</td><td>{{pct1 (index .Recall "spread")}}</td></tr>
+<tr><td>picked at random</td><td>{{pct1 (index .Recall "chance")}}</td></tr></table>
+<ul class="reasons">
+<li class="{{if eq (index .Verdict "chance") "outperformed"}}r-careful{{else}}r-note{{end}}"><span class="chk">vs chance</span><b>{{index .Verdict "chance"}}</b>: careful prs had trouble {{times .Lift.Value}} as often as all prs (likely {{times .Lift.Low}} to {{times .Lift.High}})</li>
+<li class="{{if eq (index .Verdict "size") "outperformed"}}r-careful{{else}}r-note{{end}}"><span class="chk">vs largest</span><b>{{index .Verdict "size"}}</b>: {{pts .VsSize.Value}} points (likely {{pts .VsSize.Low}} to {{pts .VsSize.High}})</li>
+<li class="{{if eq (index .Verdict "files") "outperformed"}}r-careful{{else}}r-note{{end}}"><span class="chk">vs most files</span><b>{{index .Verdict "files"}}</b>: {{pts .VsFiles.Value}} points (likely {{pts .VsFiles.Low}} to {{pts .VsFiles.High}})</li>
+<li class="r-note"><span class="chk">easy pen</span><b>{{safeWord (index .Verdict "safe")}}</b> compared with the same share of smallest prs: {{pts .SafeVs.Value}} points of trouble rate (likely {{pts .SafeVs.Low}} to {{pts .SafeVs.High}})</li>
+</ul>
+<table class="sig"><tr><th>repo</th><th>prs rated</th><th>had trouble</th><th>sent to careful</th><th>careful vs all</th></tr>{{range .Repos}}<tr><td>{{.Repo}}</td><td>{{.PRs}}</td><td>{{.BadCount}}{{if not .Counted}} (too few to count){{end}}</td><td>{{pctf .Share}}</td><td>{{if .Lift}}{{times .Lift}}{{else}}–{{end}}</td></tr>{{end}}</table>
+<p class="small">{{.Events}} prs with trouble in the repos counted. "likely" is a 95% range from {{.Draws}} resamples. <b>outperformed</b> means the whole range clears the line; <b>no demonstrated advantage</b> means it doesn't, which is not the same as the pen being useless. careful prs often get more attention, so these numbers describe what happened, not what the pen caused.</p>{{end}}
+</section>{{end}}
+
 {{if $r.Rules}}<section class="box"><h2>rule report card</h2>
 <table class="sig"><tr><th>careful because</th><th>had trouble</th></tr>{{range $r.Rules}}<tr><td>{{.Label}}</td><td>{{.Rate}}</td></tr>{{end}}</table>
 {{if or $r.Reviewed.N $r.NotReviewed.N}}<p class="small">careful prs approved before merge: {{$r.Reviewed}} · merged without an approval: {{$r.NotReviewed}}</p>{{end}}
