@@ -3,6 +3,29 @@
 The claims are in CLAIMS.md, committed (b9251e0) before anything was run.
 This file reports what came out, including the claims that failed.
 
+## correction: the first run used the old import finder
+
+The run below sorted Sentry, Grafana and n8n with a sortlab binary built
+before v0.3, so blast radius came from the old line-pattern import finder
+(which caught under 1% of Sentry's files with 20+ importers), not the
+parser Cowboy ships. The held-out run already used the shipped parser.
+Re-run on October 19 with the v2 rules and the shipped parser
+(sortlab built from 07cf05a), same replay, same weights:
+
+| claim | result | 95% range | verdict |
+|---|---|---|---|
+| 1. careful beats size | 38.1% vs 32.7% of reverted PRs (+5.3 points) | −4.8 to +14.1 | not shown |
+| 2. careful beats spread | 38.1% vs 37.8% (+0.3 points) | −8.5 to +9.1 | not shown |
+| 3. careful beats chance | 1.21× | 0.98× to 1.45× | **not shown** (was "holds") |
+| 4. easy vs smallest | −0.10 points | −0.28 to +0.06 | holds |
+
+Per pen (weighted): Sentry easy 0.81%, normal 1.23%, careful 1.42%
+(careful share 28.8%); Grafana 0.34%, 0.36%, 0.69% (35.6%); n8n 0.00%,
+0.02%, 0.00% (20.0%).
+
+So with the code as shipped, only claim 4 held, in-sample and held-out.
+The sections below are the original run, kept for the record.
+
 ## short version
 
 | claim | result | 95% range | verdict |
