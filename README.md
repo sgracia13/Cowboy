@@ -53,7 +53,24 @@ send it a real signed webhook while the demo runs:
 ./scripts/send-webhook.sh 512
 ```
 
-## run it for real
+## try it on your repo
+
+```sh
+cowboy
+```
+
+that's it. cowboy starts on this machine only and opens your browser on a setup page:
+
+1. **connect github**: one click to use your github cli (`gh`) login if you have one, or paste a token. the "open github's token page" button opens github with the name and read-only permissions already filled in; you pick the repos and press generate.
+2. **pick repos** from the list it can see.
+3. **choose what it does**: *just look* (the default: sorts pull requests and checks past ones, writes nothing to github) or *label pull requests*.
+4. **save**. cowboy sorts the open pull requests and rates the ones merged in the last 90 days, and you land on the outcomes page while it works: what got reverted, and whether the pens would have caught it.
+
+when the pens look sensible, press **start labelling** on the setup page. cowboy first checks the login can write labels on every repo (by adding the `cowboy:easy` label) and says so if it can't. the login, repos and mode are saved (`settings.json` in your config folder, readable only by you), so next time it's just `cowboy` again. sign out or swap the token on the same page.
+
+this runs on your laptop, so github can't send webhooks to it: cowboy checks for new pull requests every 5 minutes instead. for a server your team shares, see below.
+
+## run it on a server
 
 ### on github: connect with one click (preview)
 
