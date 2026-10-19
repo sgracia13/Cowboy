@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	_ "time/tzdata" // TZ works in the slim Docker image
 
 	"github.com/sgracia13/Cowboy/internal/analyze"
 	"github.com/sgracia13/Cowboy/internal/app"
@@ -33,11 +34,15 @@ import (
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/model"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
+	"github.com/sgracia13/Cowboy/internal/report"
 	"github.com/sgracia13/Cowboy/internal/score"
 	"github.com/sgracia13/Cowboy/internal/store"
 	"github.com/sgracia13/Cowboy/internal/web"
 	"github.com/sgracia13/Cowboy/internal/webhook"
 )
+
+// tallyNote says where the weekly tally goes, for the dashboard.
+var tallyNote string
 
 // version is set at release time (-ldflags "-X main.version=v0.1.0").
 var version = "dev"
@@ -47,7 +52,7 @@ const usage = `cowboy: sorts ai-agent pull requests into easy, normal and carefu
   cowboy demo                      run a sample ranch on http://localhost:8080
   cowboy serve                     run for real (see env below)
   cowboy score --diff F --meta M   sort one pr from files and print why
-  cowboy tally                     print this week's tally
+  cowboy tally [--send]            print this week's tally, or send it now
   cowboy sign --secret S FILE      print a webhook signature for FILE
   cowboy check-model               check the local model server answers
   cowboy version                   print the version
@@ -63,6 +68,13 @@ env for serve:
   DATA            store file (default ./data/cowboy.json)
   ADDR            listen address (default :8080)
   DRY_RUN         1 = sort and store, never write to the forge
+
+optional weekly tally (sent Mondays at 09:00 server time by default):
+  TALLY_SLACK_WEBHOOK  a Slack incoming webhook (or Mattermost, or any {"text": ...} webhook)
+  TALLY_EMAIL_TO       comma-separated addresses; needs SMTP_HOST, SMTP_PORT (587),
+                       SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+  TALLY_DAY            e.g. friday      TALLY_HOUR  0-23      TZ  e.g. Europe/Berlin
+  PUBLIC_URL           your dashboard address, linked from the post
 
 optional local model (any OpenAI-compatible server: ollama, vllm, llama.cpp, lm studio):
   MODEL_URL       e.g. http://localhost:11434
@@ -85,7 +97,7 @@ func main() {
 	case "score":
 		scoreCmd(os.Args[2:])
 	case "tally":
-		tallyCmd()
+		tallyCmd(os.Args[2:])
 	case "check-model":
 		checkModel()
 	case "version", "--version", "-v":
@@ -170,6 +182,7 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 	mux.HandleFunc("/webhook/forgejo", h.Gitea)
 	ui := web.New(a)
 	ui.SignOut = auth.Password != "" && auth.ProxyHeader == ""
+	ui.TallyNote = tallyNote
 	ui.Routes(mux)
 	base, cancelBase := context.WithCancel(context.Background())
 	srv := &http.Server{
@@ -328,6 +341,16 @@ func serve() {
 	repos := strings.FieldsFunc(os.Getenv("REPOS"), func(r rune) bool { return r == ',' || r == ' ' })
 	addr := env("ADDR", ":8080")
 	auth := authFromEnv(addr)
+	if rc, ok, err := report.FromEnv(os.Getenv); err != nil {
+		log.Fatalf("weekly tally: %v", err)
+	} else if ok {
+		sch := report.NewScheduler(rc, a, env("DATA", "data/cowboy.json"))
+		tallyNote = fmt.Sprintf("Sent to the %s, %s. Next: %s.", rc.Where(), rc.When(), rc.Next(time.Now()).Format("Mon Jan 2"))
+		log.Printf("weekly tally: %s, %s", rc.Where(), rc.When())
+		go safely("weekly tally", func() { sch.Run(context.Background()) })
+	} else {
+		tallyNote = "Not sent anywhere yet. Set TALLY_SLACK_WEBHOOK or TALLY_EMAIL_TO to get it every week."
+	}
 	checkAccess(f, repos)
 	run(a, addr, secret, catchUp, auth, func(chan<- webhook.Job) {
 		for _, repo := range repos {
@@ -561,13 +584,36 @@ func scoreCmd(args []string) {
 	fmt.Println(d.Comment)
 }
 
-func tallyCmd() {
+func tallyCmd(args []string) {
+	fs := flag.NewFlagSet("tally", flag.ExitOnError)
+	send := fs.Bool("send", false, "send the last 7 days now, to TALLY_SLACK_WEBHOOK and/or TALLY_EMAIL_TO")
+	fs.Parse(args)
 	st, err := store.Open(env("DATA", "data/cowboy.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	a := app.New(nil, st, nil)
-	fmt.Print(app.TallyMarkdown(a.Tally(time.Now().AddDate(0, 0, -7))))
+	if !*send {
+		fmt.Print(app.TallyMarkdown(a.Tally(time.Now().AddDate(0, 0, -7))))
+		return
+	}
+	rc, ok, err := report.FromEnv(os.Getenv)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !ok {
+		log.Fatal("nowhere to send it: set TALLY_SLACK_WEBHOOK and/or TALLY_EMAIL_TO")
+	}
+	r := report.Build(a, time.Now(), rc.Link)
+	fmt.Print(r.Text())
+	errs := report.Send(context.Background(), rc, r, nil)
+	for d, err := range errs {
+		log.Printf("%s: %v", d, err)
+	}
+	if len(errs) > 0 {
+		os.Exit(1)
+	}
+	fmt.Printf("sent to the %s\n", rc.Where())
 }
 
 func signCmd(args []string) {

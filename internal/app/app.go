@@ -445,9 +445,14 @@ type AgentTally struct {
 
 // Tally counts decisions per agent since a time.
 func (a *App) Tally(since time.Time) []AgentTally {
+	return a.TallyBetween(since, time.Time{})
+}
+
+// TallyBetween counts decisions per agent in [from, to). A zero to means now.
+func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 	rows := map[string]*AgentTally{}
 	for _, d := range a.Store.List("", "") {
-		if d.DecidedAt.Before(since) {
+		if d.DecidedAt.Before(from) || (!to.IsZero() && !d.DecidedAt.Before(to)) {
 			continue
 		}
 		r := rows[d.Agent]
@@ -487,7 +492,12 @@ func (a *App) Tally(since time.Time) []AgentTally {
 	for _, r := range rows {
 		out = append(out, *r)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Total > out[j].Total })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Total != out[j].Total {
+			return out[i].Total > out[j].Total
+		}
+		return out[i].Agent < out[j].Agent
+	})
 	return out
 }
 

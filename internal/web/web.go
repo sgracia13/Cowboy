@@ -29,6 +29,8 @@ type Server struct {
 	tmpl *template.Template
 	// SignOut shows a sign-out link (password login is on).
 	SignOut bool
+	// TallyNote says where the weekly tally is sent.
+	TallyNote string
 }
 
 // New parses templates.
@@ -254,7 +256,7 @@ func (s *Server) move(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) tally(w http.ResponseWriter, r *http.Request) {
 	rows := s.App.Tally(time.Now().AddDate(0, 0, -7))
-	s.render(w, "tally.html", "tally", map[string]any{"Rows": rows, "Markdown": app.TallyMarkdown(rows), "Corrections": s.App.Store.Corrections()})
+	s.render(w, "tally.html", "tally", map[string]any{"Rows": rows, "Markdown": app.TallyMarkdown(rows), "Corrections": s.App.Store.Corrections(), "TallyNote": s.TallyNote})
 }
 
 func (s *Server) rules(w http.ResponseWriter, r *http.Request) {

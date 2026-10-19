@@ -7,5 +7,6 @@
 </table>
 </section>
 {{if .Corrections}}<section class="box"><h2>re-penned by humans</h2><ul class="trail">{{range .Corrections}}<li>{{.Repo}}#{{.Number}}: {{.From}} → {{.To}} by {{.By}} · {{ago .At}}</li>{{end}}</ul></section>{{end}}
-<section class="box"><h2>monday post (copy into chat)</h2><pre class="comment">{{.Markdown}}</pre></section>
+{{if .TallyNote}}<section class="box"><h2>weekly post</h2><p>{{.TallyNote}}</p></section>{{end}}
+<section class="box"><h2>copy into chat</h2><pre class="comment">{{.Markdown}}</pre></section>
 {{end}}{{template "foot" .}}
