@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,6 +120,20 @@ func (s *Store) AddRepo(repo string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.trackRepo(repo)
+	return s.save()
+}
+
+// RemoveRepo stops sweeping a repo (its decisions stay for the record).
+func (s *Store) RemoveRepo(repo string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.d.Repos[:0]
+	for _, r := range s.d.Repos {
+		if !strings.EqualFold(r, repo) {
+			kept = append(kept, r)
+		}
+	}
+	s.d.Repos = kept
 	return s.save()
 }
 

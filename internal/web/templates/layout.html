@@ -12,8 +12,9 @@
     <a href="/rules" {{if eq .Nav "rules"}}class="on"{{end}}>rules</a>
     <a href="/trail" {{if eq .Nav "trail"}}class="on"{{end}}>trail</a>
   </nav>
-  <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">on your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · dry run{{end}}{{if .SignOut}} · <a href="/logout">sign out</a>{{end}}</span>
+  <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">on your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · dry run{{end}}{{if .Setup}} · <a href="/setup">github</a>{{end}}{{if .SignOut}} · <a href="/logout">sign out</a>{{end}}</span>
 </header>
+{{if .NeedsSetup}}<div class="setup-banner">Cowboy isn't connected to GitHub yet. <a href="/setup">Connect GitHub</a>: one click to create the app, then pick your repos.</div>{{end}}
 <main>
 {{end}}
 {{define "foot"}}</main>
