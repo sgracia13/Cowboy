@@ -234,7 +234,11 @@ func handleJob(a *app.App, j webhook.Job) {
 		case !ok:
 			log.Printf("%s#%d skipped (not an agent pr)", j.Repo, j.Number)
 		default:
-			log.Printf("%s#%d -> %s (%s)", j.Repo, j.Number, d.Pen, d.Agent)
+			who := d.Agent
+			if who == "" {
+				who = "person"
+			}
+			log.Printf("%s#%d -> %s (%s)", j.Repo, j.Number, d.Pen, who)
 		}
 	}
 }
@@ -361,6 +365,7 @@ func demo(args []string) {
 	modelURL := fs.String("model-url", os.Getenv("MODEL_URL"), "use a real local model server instead of the demo's prewritten answers")
 	modelName := fs.String("model-name", env("MODEL_NAME", "qwen2.5-coder:7b"), "model name on that server")
 	noModel := fs.Bool("no-model", false, "rules only, no model notes")
+	agentCheck := fs.Bool("agent-check", false, "also run the experimental check for unmarked agent pull requests")
 	fs.Parse(args)
 
 	td := findTestdata()
@@ -369,11 +374,16 @@ func demo(args []string) {
 	os.Remove(dataFile)
 	st, _ := store.Open(dataFile)
 	a := app.New(fake, st, map[string]string{"acme/app": filepath.Join(td, "acme")})
-	bs, _ := detect.OpenBaselines("", 90)
-	if err := detect.SeedDir(bs, fake.Name(), filepath.Join(td, "history"), time.Now()); err != nil {
-		log.Printf("demo history: %v", err)
+	// The experimental check is off in the demo unless asked for: its
+	// sample authors are made up, and on real repos it catches little.
+	// Without it, the sample PRs from people are sorted quietly like any other.
+	if *agentCheck {
+		bs, _ := detect.OpenBaselines("", 90)
+		if err := detect.SeedDir(bs, fake.Name(), filepath.Join(td, "history"), time.Now()); err != nil {
+			log.Printf("demo history: %v", err)
+		}
+		a.Baselines = bs
 	}
-	a.Baselines = bs
 	switch {
 	case *noModel:
 	case *modelURL != "":
@@ -450,7 +460,11 @@ func sortAll(a *app.App, fake *forge.Fake, repo string) {
 			if d.Detection != nil && d.Detection.Label == "likely agent" {
 				extra += fmt.Sprintf("  no agent label, caught by agent check (%d)", d.Detection.Score)
 			}
-			fmt.Printf("  #%d  %-8s  %-14s %s%s\n", n, d.Pen, d.Agent, trunc(d.Title, 38), extra)
+			who := d.Agent
+			if who == "" {
+				who = "person"
+			}
+			fmt.Printf("  #%d  %-8s  %-14s %s%s\n", n, d.Pen, who, trunc(d.Title, 38), extra)
 		}
 	}
 	for _, m := range a.Sweep() {
