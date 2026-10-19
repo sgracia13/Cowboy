@@ -125,9 +125,11 @@ func (w *Watcher) recordOne(repo string, n int, h forge.History) (Merge, bool) {
 		return Merge{}, false
 	}
 	m := Merge{Repo: repo, Number: n, SHA: mi.SHA, MergedAt: mi.MergedAt.UTC(), Title: mi.Title, Author: mi.Author,
-		Files: mi.Files, Approvers: mi.Approvers}
+		Files: mi.Files, Approvers: mi.Approvers, ReviewsKnown: mi.ReviewsRead}
 	if text, err := w.Forge.GetDiff(repo, n); err == nil {
-		m.Lines = lineHashes(diff.Parse(text))
+		files := diff.Parse(text)
+		m.Lines = lineHashes(files)
+		m.Removed = removedHashes(files)
 	}
 	if err := w.State.PutMerge(m); err != nil {
 		log.Printf("outcomes: %v", err)
@@ -135,6 +137,32 @@ func (w *Watcher) recordOne(repo string, n int, h forge.History) (Merge, bool) {
 	}
 	w.emit(Event{Kind: "merge-recorded", Repo: repo, Number: n, Merge: &m})
 	return m, true
+}
+
+// removedHashes keeps a short hash of an even sample of the source and test
+// lines a PR removed (a rewritten line shows up as removed and added).
+func removedHashes(files []diff.File) []uint32 {
+	var all []uint32
+	for _, f := range files {
+		c := analyze.Classify(f.Path)
+		if c != analyze.Source && c != analyze.Test {
+			continue
+		}
+		for _, l := range f.Removed {
+			if t := strings.TrimSpace(l); len(t) >= 8 {
+				all = append(all, hash32(t))
+			}
+		}
+	}
+	if len(all) <= SurvivalSample {
+		return all
+	}
+	out := make([]uint32, 0, SurvivalSample)
+	step := float64(len(all)) / SurvivalSample
+	for i := 0.0; int(i) < len(all) && len(out) < SurvivalSample; i += step {
+		out = append(out, all[int(i)])
+	}
+	return out
 }
 
 // SurvivalSample is the most line hashes kept per PR: an even sample is
@@ -304,28 +332,45 @@ func (w *Watcher) checkBreaks(repo string) int {
 var fixWords = regexp.MustCompile(`(?i)\b(fix|fixes|fixed|fixing|hotfix|regression|broke|broken|bug)\b`)
 var hashRef = regexp.MustCompile(`#(\d+)\b`)
 
-// followUps suggests "needed a fix" for an earlier PR when a newer merged PR
-// says it fixes something and either names the earlier PR or changes mostly
-// the same files within a week.
+// followUps suggests "needed a fix" for an earlier PR when a newer merged
+// PR says it fixes something and either names the earlier PR, or rewrites
+// lines the earlier PR added (within two weeks). Sharing files isn't enough:
+// lockfiles and busy files make unrelated PRs look connected. Lines that
+// show up in many PRs (boilerplate like "if err != nil {") don't count.
 func (w *Watcher) followUps(repo string, newer []Merge) int {
 	if len(newer) == 0 {
 		return 0
 	}
 	all := w.State.Merges(repo)
+	// how many PRs added each line: common lines say nothing
+	df := map[uint32]int{}
+	for _, m := range all {
+		seen := map[uint32]bool{}
+		for _, hs := range m.Lines {
+			for _, h := range hs {
+				if !seen[h] {
+					seen[h] = true
+					df[h]++
+				}
+			}
+		}
+	}
 	found := 0
 	for _, m := range newer {
-		if _, isRevert := ParseRevert(m.Title); isRevert {
+		if _, isRevert := ParseRevert(m.Title); isRevert || !fixWords.MatchString(m.Title) {
 			continue
 		}
 		info, _ := w.Decisions.Get(repo, m.Number)
-		text := m.Title + "\n" + info.Body
-		if !fixWords.MatchString(text) {
-			continue
-		}
 		named := map[int]bool{}
-		for _, r := range hashRef.FindAllStringSubmatch(text, -1) {
-			if n, _ := strconv.Atoi(r[1]); n > 0 {
+		for _, r := range hashRef.FindAllStringSubmatch(m.Title+"\n"+info.Body, -1) {
+			if n, _ := strconv.Atoi(r[1]); n > 0 && n != m.Number {
 				named[n] = true
+			}
+		}
+		removed := map[uint32]bool{}
+		for _, h := range m.Removed {
+			if df[h] <= 3 {
+				removed[h] = true
 			}
 		}
 		best, bestScore, why := 0, 0.0, ""
@@ -333,16 +378,24 @@ func (w *Watcher) followUps(repo string, newer []Merge) int {
 			if prev.Number == m.Number || !prev.MergedAt.Before(m.MergedAt) || m.MergedAt.Sub(prev.MergedAt) > 14*24*time.Hour {
 				continue
 			}
+			days := plural(int(m.MergedAt.Sub(prev.MergedAt).Hours()/24), "day")
 			if named[prev.Number] {
-				best, bestScore, why = prev.Number, 2, fmt.Sprintf("#%d %q says it fixes #%d", m.Number, m.Title, prev.Number)
+				best, bestScore, why = prev.Number, 100, fmt.Sprintf("#%d %q names #%d, %s later", m.Number, m.Title, prev.Number, days)
 				break
 			}
-			if m.MergedAt.Sub(prev.MergedAt) > 7*24*time.Hour || len(m.Files) == 0 || len(m.Files) > 20 {
+			if len(removed) == 0 {
 				continue
 			}
-			if o := overlap(m.Files, prev.Files); o >= 0.5 && o > bestScore {
-				days := int(m.MergedAt.Sub(prev.MergedAt).Hours() / 24)
-				best, bestScore, why = prev.Number, o, fmt.Sprintf("#%d %q changed the same files %s later", m.Number, m.Title, plural(days, "day"))
+			hits := 0
+			for _, hs := range prev.Lines {
+				for _, h := range hs {
+					if removed[h] {
+						hits++
+					}
+				}
+			}
+			if hits >= 3 && float64(hits) > bestScore {
+				best, bestScore, why = prev.Number, float64(hits), fmt.Sprintf("#%d %q rewrote %d lines it added, %s later", m.Number, m.Title, hits, days)
 			}
 		}
 		if best == 0 {

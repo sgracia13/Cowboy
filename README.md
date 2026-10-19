@@ -198,7 +198,7 @@ what counts as trouble:
 |---|---|---|
 | reverted | a revert commit on the default branch names the pr (github's revert button, `git revert`, a revert branch, or the pr's title) | straight away |
 | broke main | checks failed on the merge commit after the pr itself was green | straight away |
-| needed a fix | a later pr says it fixes something and names this one, or changes mostly the same files within a week | once a person confirms |
+| needed a fix | within two weeks, a pr titled as a fix names this one, or rewrites 3+ of the lines it added (lines common to many prs don't count) | once a person confirms |
 | incident | an alert from sentry, pagerduty or any tool, matched by release and by files in the error | once a person confirms |
 
 anything that counts can be marked "not a problem". cowboy also records which release each pr shipped in, who approved it, and how much of its code is still there after 30 and 90 days (from fingerprints of a sample of its added lines; no code is kept).
@@ -232,6 +232,10 @@ cowboy suggests up to three likely causes per incident (shipped in that release,
 **the benchmark.** `cowboy benchmark export` writes counts only (pens, agents, rules, outcome kinds; no repo names, paths, titles or people). read it, and share it only if you want to. `cowboy benchmark report a.json b.json …` pools several teams' files into one report. nothing is ever sent anywhere by cowboy.
 
 **how well revert detection works**: on two years of n8n, grafana and sentry history it traced 70%, 87% and 98.8% of reverts to the pr they undid; the rest name no pr, title or commit. details: [`scripts/eval/outcomes`](scripts/eval/outcomes).
+
+**don't wait a month.** on a fresh install the outcomes page offers **rate the last 90 days** (or run `cowboy backfill --days 90`): cowboy sorts the prs that already merged, the way it would have, and checks what happened to them. nothing is written to your git host, it uses today's rules and import graph, and these prs stay out of the tally.
+
+**replayed on real history.** `cmd/cowboy-replay` runs the same engine on 7,721 real merged prs from sentry, grafana and n8n (november 2025 to september 2026). reverts it found matched an independent earlier count on 213 prs (8 only there, 5 only here). on sentry, careful prs had trouble 11% of the time (likely 9–14%) against 4% for easy (3–6%), and it suggested lowering the blast-radius line from 20 to 10. suggested fixes looked right by title in about 7 in 10 of a sample, which is why a person confirms them.
 
 `OUTCOMES=off` turns this off. it needs a host that reports history (github, forgejo, gitea).
 
@@ -277,6 +281,7 @@ cowboy score --diff my.diff --meta meta.json --repo ./checkout   # sort one pr o
 cowboy tally                                                     # this week's per-agent table as markdown
 cowboy tally --send                                              # send the last 7 days to slack/email now
 cowboy outcomes [--check]                                        # after merge, by pen (--check reads the git host now)
+cowboy backfill --days 90                                        # rate prs that already merged (writes nothing to the host)
 cowboy audit verify                                              # was the audit record changed?
 cowboy audit export --format csv --since 2026-01-01              # the record, for an auditor
 cowboy benchmark export > ours.json                              # counts only, to share if you want

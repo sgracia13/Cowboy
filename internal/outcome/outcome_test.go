@@ -136,7 +136,11 @@ func TestWatcher(t *testing.T) {
 		releases: []forge.Release{{Tag: "v1.0", At: t0.Add(30 * time.Minute)}, {Tag: "v1.1", At: t0.Add(50 * time.Hour)}},
 		checks:   map[string]*bool{"aaa111": no(), "bbb2222": yes(), "ccc333": yes(), "ddd444": nil},
 		diffs: map[int]string{
-			1: "diff --git a/billing/retry.go b/billing/retry.go\n--- a/billing/retry.go\n+++ b/billing/retry.go\n@@ -1,1 +1,3 @@\n package billing\n+func Retry(n int) int { return n * 2 }\n+var maxRetries = 5 // tuned\n",
+			1: "diff --git a/billing/retry.go b/billing/retry.go\n--- a/billing/retry.go\n+++ b/billing/retry.go\n@@ -1,1 +1,4 @@\n package billing\n+func Retry(n int) int { return n * 2 }\n+var maxRetries = 5 // tuned\n+const backoffBase = 250 // ms\n",
+			// #3 rewrites a line #1 added, and one more: a real follow-up fix
+			3: "diff --git a/billing/retry.go b/billing/retry.go\n--- a/billing/retry.go\n+++ b/billing/retry.go\n@@ -1,4 +1,4 @@\n package billing\n-func Retry(n int) int { return n * 2 }\n-var maxRetries = 5 // tuned\n-const backoffBase = 250 // ms\n+func Retry(n int) int { return n + 1 }\n+var maxRetries = 3 // tuned\n+const backoffBase = 100 // ms\n",
+			// #4 shares no lines with anything: no suggestion even though it says fix
+			4: "diff --git a/search/index.go b/search/index.go\n--- a/search/index.go\n+++ b/search/index.go\n@@ -1,1 +1,2 @@\n package search\n+func Fast() bool { return true }\n",
 		},
 		files: map[string]string{"billing/retry.go": "package billing\nfunc Retry(n int) int { return n * 2 }\n"},
 	}
@@ -162,7 +166,7 @@ func TestWatcher(t *testing.T) {
 		t.Errorf("outcomes %v", got)
 	}
 	m1, _ := st.Merge("acme/web", 1)
-	if m1.Release != "v1.0" || len(m1.Lines["billing/retry.go"]) != 2 {
+	if m1.Release != "v1.0" || len(m1.Lines["billing/retry.go"]) != 3 {
 		t.Errorf("merge 1: release %q lines %v", m1.Release, m1.Lines)
 	}
 	if m3, _ := st.Merge("acme/web", 3); m3.Release != "v1.1" {
@@ -174,12 +178,12 @@ func TestWatcher(t *testing.T) {
 	if len(st.Outcomes("", 0)) != n {
 		t.Error("a second run added outcomes again")
 	}
-	// 30 days on: survival — one of the two added lines is still there
+	// 30 days on: survival — one of the three added lines is still there
 	now = t0.Add(31 * 24 * time.Hour)
 	w.Check("acme/web")
 	m1, _ = st.Merge("acme/web", 1)
-	if s := m1.Survival["30d"]; s != 0.5 {
-		t.Errorf("survival %v, want 0.5", m1.Survival)
+	if s := m1.Survival["30d"]; s < 0.33 || s > 0.34 {
+		t.Errorf("survival %v, want 1/3", m1.Survival)
 	}
 	if len(events) == 0 {
 		t.Error("no events")
@@ -294,7 +298,7 @@ func TestReport(t *testing.T) {
 		d := pipeline.Decision{Repo: "acme/web", Number: n, Title: fmt.Sprintf("pr %d", n), Pen: pen, Agent: agent, State: "merged", Reasons: reasons,
 			Signals: score.Signals{FanIn: fan, FanInKnown: true}}
 		ds = append(ds, d)
-		st.PutMerge(Merge{Repo: "acme/web", Number: n, MergedAt: t0, Files: []string{area + "/x.go"}, Approvers: approvers})
+		st.PutMerge(Merge{Repo: "acme/web", Number: n, MergedAt: t0, Files: []string{area + "/x.go"}, Approvers: approvers, ReviewsKnown: true})
 		if bad {
 			st.Add(Outcome{Repo: "acme/web", Number: n, Kind: Revert, Severity: 2, At: t0.Add(24 * time.Hour), Evidence: "r", Status: Auto})
 		}

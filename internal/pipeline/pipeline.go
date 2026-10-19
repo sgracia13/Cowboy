@@ -41,6 +41,9 @@ type Decision struct {
 	Detection *detect.Assessment `json:"detection,omitempty"`
 	// AgentCleared names the person who removed an agent:likely label.
 	AgentCleared string `json:"agent_cleared,omitempty"`
+	// Backfilled: sorted after it merged, to rate past PRs. Nothing was
+	// written to the git host for it, and it stays out of the tally.
+	Backfilled bool `json:"backfilled,omitempty"`
 }
 
 // Input is one PR plus the context needed to sort it.

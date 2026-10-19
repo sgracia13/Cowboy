@@ -95,7 +95,7 @@ func Benchmark(decisions []pipeline.Decision, st *State, now time.Time, window t
 		for _, r := range rules(d) {
 			bump(b.Rules, r, bad)
 		}
-		if PenOf(d) == score.Careful {
+		if PenOf(d) == score.Careful && m.ReviewsKnown {
 			c := &b.Unreviewed
 			if len(m.Approvers) > 0 {
 				c = &b.Reviewed

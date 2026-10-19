@@ -274,7 +274,7 @@ func Build(decisions []pipeline.Decision, st *State, now time.Time, window time.
 				rep.Missed = append(rep.Missed, PR{Repo: d.Repo, Number: d.Number, Title: d.Title, Pen: pen, Agent: AgentName(d), Area: area, MergedAt: m.MergedAt, Outcomes: outs})
 			}
 		}
-		if pen == score.Careful {
+		if pen == score.Careful && m.ReviewsKnown {
 			if len(m.Approvers) > 0 {
 				rep.Reviewed.add(bad, cost)
 			} else {

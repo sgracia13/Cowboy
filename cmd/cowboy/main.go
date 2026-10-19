@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	_ "time/tzdata" // TZ works in the slim Docker image
@@ -70,6 +71,7 @@ const usage = `cowboy: sorts ai-agent pull requests into easy, normal and carefu
   cowboy score --diff F --meta M   sort one pr from files and print why
   cowboy tally [--send]            print this week's tally, or send it now
   cowboy outcomes [--check]        what happened after merge, by pen (--check reads the git host now)
+  cowboy backfill [--days 90]      rate pull requests that already merged (writes nothing to the git host)
   cowboy audit verify|export       check the audit record wasn't changed, or export it
   cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
@@ -142,6 +144,8 @@ func main() {
 		benchmarkCmd(os.Args[2:])
 	case "outcomes":
 		outcomesCmd(os.Args[2:])
+	case "backfill":
+		backfillCmd(os.Args[2:])
 	default:
 		fmt.Print(usage)
 		os.Exit(2)
@@ -544,7 +548,44 @@ func setupOutcomes(a *app.App, f forge.Forge) {
 	sort.Strings(sources)
 	outcomeUI = &web.OutcomeSettings{State: st, Window: window, Audit: al, Version: version, Sources: strings.Join(sources, ", "),
 		MinFanIn: func(repo string) int { return a.Config(repo).Careful.MinFanIn }}
+	var fillMu sync.Mutex
+	fillStatus := ""
+	outcomeUI.BackfillStatus = func() string { fillMu.Lock(); defer fillMu.Unlock(); return fillStatus }
+	outcomeUI.Backfill = func(days int) {
+		fillMu.Lock()
+		if fillStatus != "" {
+			fillMu.Unlock()
+			return // already running
+		}
+		fillStatus = "starting…"
+		fillMu.Unlock()
+		go safely("backfill", func() {
+			defer func() { fillMu.Lock(); fillStatus = ""; fillMu.Unlock() }()
+			runBackfill(a, w, days, 0, func(msg string) { fillMu.Lock(); fillStatus = msg; fillMu.Unlock() })
+		})
+	}
 	log.Printf("after merge: on (%d-day window; incidents from %s)", int(window.Hours()/24), firstNonEmpty(strings.Join(sources, ", "), "nothing yet"))
+}
+
+// runBackfill rates the last days of merged PRs in every repo, then reads
+// what happened to them.
+func runBackfill(a *app.App, w *outcome.Watcher, days, max int, status func(string)) {
+	repos := a.Store.Repos()
+	for i, repo := range repos {
+		n, err := a.Backfill(repo, days, max, func(done, total int) {
+			status(fmt.Sprintf("%s (%d of %d repos): %d of %d merged pull requests sorted", repo, i+1, len(repos), done, total))
+		})
+		if err != nil {
+			log.Printf("backfill %s: %v", repo, err)
+			continue
+		}
+		status(fmt.Sprintf("%s: checking what happened to %d pull requests…", repo, n))
+		old := w.Lookback
+		w.Lookback = time.Duration(days+7) * 24 * time.Hour
+		w.State.Rewind(repo, time.Now().Add(-w.Lookback))
+		log.Printf("backfill %s: %d sorted; %s", repo, n, w.Check(repo))
+		w.Lookback = old
+	}
 }
 
 func outcomeWindow() time.Duration {
@@ -663,6 +704,56 @@ func benchmarkCmd(args []string) {
 	default:
 		log.Fatal("usage: cowboy benchmark export > mine.json | cowboy benchmark report a.json b.json ...")
 	}
+}
+
+func backfillCmd(args []string) {
+	fs := flag.NewFlagSet("backfill", flag.ExitOnError)
+	days := fs.Int("days", 90, "how far back to go")
+	max := fs.Int("max", 2000, "most pull requests per repo")
+	fs.Parse(args)
+	fmt.Fprintln(os.Stderr, "stop `cowboy serve` first (or use the button on the outcomes page): both write the same files.")
+	f, err := forge.New(env("FORGE", "github"), os.Getenv("FORGE_URL"), os.Getenv("FORGE_TOKEN"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	st, oc := openForReport()
+	a := app.New(f, st, parsePaths(os.Getenv("REPO_PATHS")))
+	a.DryRun = true // never write to the git host from here
+	a.ArchiveGraphs = !strings.EqualFold(os.Getenv("BLAST_RADIUS"), "off")
+	a.ArchiveLimit = 300 << 20
+	if gh, ok := f.(*forge.GitHub); ok && os.Getenv("FORGE_TOKEN") == "" {
+		creds, ok, err := forge.LoadAppCreds(filepath.Join(dataDir(), "github-app.json"))
+		if err != nil || !ok {
+			log.Fatal("no FORGE_TOKEN and no GitHub App connected yet")
+		}
+		auth, err := forge.NewAppAuth(os.Getenv("FORGE_URL"), creds)
+		if err != nil {
+			log.Fatal(err)
+		}
+		gh.UseApp(auth)
+		if repos, err := auth.Repos(); err == nil {
+			for _, r := range repos {
+				st.AddRepo(r)
+			}
+		}
+	}
+	for _, r := range strings.FieldsFunc(os.Getenv("REPOS"), func(r rune) bool { return r == ',' || r == ' ' }) {
+		st.AddRepo(r)
+	}
+	if al, err := audit.Open(filepath.Join(dataDir(), "audit.jsonl")); err == nil {
+		a.Audit = al
+	}
+	a.Outcomes = oc
+	w := &outcome.Watcher{Forge: f, Decisions: st, State: oc, OnEvent: a.OnOutcome}
+	last := ""
+	runBackfill(a, w, *days, *max, func(msg string) {
+		if msg != last {
+			fmt.Fprintf(os.Stderr, "\r%-100s", msg)
+			last = msg
+		}
+	})
+	fmt.Fprintln(os.Stderr)
+	outcomesCmd(nil)
 }
 
 func outcomesCmd(args []string) {
