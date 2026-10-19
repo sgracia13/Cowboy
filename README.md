@@ -1,10 +1,32 @@
+<p align="center">
+  <img src="docs/banner.png" alt="Cowboy: a herd of pixel-art cows tagged PR. Keep the review rules that work. Drop the ones that don't." width="840">
+</p>
+
+<p align="center">
+  <a href="https://github.com/sgracia13/Cowboy/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/sgracia13/Cowboy?include_prereleases&style=flat-square&color=111111&labelColor=ffd400"></a>
+  <a href="https://github.com/sgracia13/Cowboy/actions/workflows/ci.yml"><img alt="ci" src="https://img.shields.io/github/actions/workflow/status/sgracia13/Cowboy/ci.yml?branch=main&style=flat-square&label=ci&labelColor=ffd400&color=111111"></a>
+  <a href="LICENSE"><img alt="license: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-111111?style=flat-square&labelColor=ffd400"></a>
+  <img alt="go 1.24" src="https://img.shields.io/badge/go-1.24-111111?style=flat-square&labelColor=ffd400">
+  <img alt="free forever" src="https://img.shields.io/badge/price-free%2C%20forever-111111?style=flat-square&labelColor=ffd400">
+</p>
+
+<p align="center">
+  <b><a href="#try-it-in-one-minute-no-setup">try it in one minute</a></b> ·
+  <a href="#try-it-on-your-repo">run it on your repo</a> ·
+  <a href="scripts/eval/evidence">the evidence</a>
+</p>
+
 # cowboy
 
-finds out what actually breaks your repo. cowboy traces reverts, broken builds and follow-up fixes back to the pull request that caused them, then shows whether your review rules would have caught them, against simple alternatives (largest first, most files touched, a random pick), with the counts and a likely range.
+every team has review rules: *big prs need two reviewers*, *anything in migrations needs an owner*, *agent work gets a closer look*. some of them catch real problems. some just cost reviewer time. **cowboy tells you which.**
 
-it also sorts new pull requests into **easy**, **normal** and **careful** by fixed rules, with the reasons written down, and tags agent work. treat the pens as a starting point: in our tests on eight public repos the easy pen mostly held up and the careful pen didn't beat simpler rules ([evidence](scripts/eval/evidence)). the outcomes page checks them on your repo.
+- 🐄 **sorts every pull request as it arrives** into **easy**, **normal** or **careful**, by fixed rules, with the reasons written on the pr. work from claude code, copilot, codex and other agents is tagged.
+- 🔎 **watches what happens after merge.** reverts, main breaking, follow-up fixes and incidents, traced back to the pull request that caused them. it can rate your last 90 days on day one.
+- ⚖️ **checks which rules earn their place,** against simple alternatives (largest first, most files touched, a random pick), with the counts and a likely range. with too little history, it says so.
 
-**measures first, recommends second, changes nothing without a person.** runs on your server. never merges, closes or reviews. your code never leaves.
+we ran that test on our own rules first, on about 20,000 merged prs from eight public repos: the easy pen mostly held up, and the careful pen didn't beat simpler rules. [we publish all of it](scripts/eval/evidence). your repo may tell a different story, and cowboy will show you either way.
+
+**measures first, recommends second, changes nothing without a person.** runs on your machine or your server. never merges, closes or reviews. your code never leaves.
 
 **free. all of it. whatever's free today stays free.**
 
