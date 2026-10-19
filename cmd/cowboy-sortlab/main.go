@@ -90,6 +90,8 @@ func main() {
 		all["sensitive"] = len(s.Sensitive) > 0
 		all["shortcuts"] = s.Shortcuts
 		all["classes"] = s.Classes
+		all["facts"] = score.Facts(s, cfg)
+		all["agent"] = s.Agent
 		var triggers []string
 		for _, x := range reasons {
 			if x.Effect == "careful" {

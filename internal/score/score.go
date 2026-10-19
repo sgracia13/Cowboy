@@ -113,11 +113,30 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 	var reasons []Reason
 	careful := false
 	add := func(check, detail, effect string) { reasons = append(reasons, Reason{check, detail, effect}) }
+	// With fitted rules, they decide careful; the default triggers become
+	// notes so the PR page still shows them.
+	fitted := len(cfg.Fitted.Rules) > 0
+	if fitted {
+		have := map[string]bool{}
+		for _, f := range Facts(s, cfg) {
+			have[f] = true
+		}
+		for _, r := range cfg.Fitted.Rules {
+			if have[r.Fact] {
+				add("fitted", r.Label, "careful")
+				careful = true
+			}
+		}
+	}
+	trigger := "careful"
+	if fitted {
+		trigger = "note"
+	}
 
 	// careful triggers
 	for _, p := range s.Sensitive {
-		add("sensitive", "touches a sensitive path: "+p, "careful")
-		careful = true
+		add("sensitive", "touches a sensitive path: "+p, trigger)
+		careful = careful || !fitted
 	}
 	bar := blastBar(s, cfg)
 	if s.FanInKnown && s.FanIn >= bar {
@@ -125,8 +144,8 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		if bar > cfg.Careful.MinFanIn {
 			detail += fmt.Sprintf(" (among this repo's %s most-used files)", pctWord(s.FanInTopPct))
 		}
-		add("blast_radius", detail, "careful")
-		careful = true
+		add("blast_radius", detail, trigger)
+		careful = careful || !fitted
 	}
 	carefulKinds := map[string]bool{}
 	for _, k := range cfg.Careful.Shortcuts {
@@ -134,7 +153,7 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 	}
 	var notes []Reason
 	for _, f := range s.Shortcuts {
-		if carefulKinds[f.Kind] {
+		if carefulKinds[f.Kind] && !fitted {
 			add("shortcut", f.Detail, "careful")
 			careful = true
 		} else {
@@ -142,8 +161,8 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		}
 	}
 	if cfg.Careful.MinSourceLines > 0 && s.SourceLines >= cfg.Careful.MinSourceLines {
-		add("size", fmt.Sprintf("%d lines of source changed", s.SourceLines), "careful")
-		careful = true
+		add("size", fmt.Sprintf("%d lines of source changed", s.SourceLines), trigger)
+		careful = careful || !fitted
 	} else if cfg.Notes.BigSourceLines > 0 && s.SourceLines >= cfg.Notes.BigSourceLines {
 		notes = append(notes, Reason{"size", fmt.Sprintf("%d lines of source: too big to review well in one sitting; consider asking for it in smaller parts", s.SourceLines), "note"})
 	}
@@ -186,6 +205,51 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		return Easy, reasons
 	}
 	return Normal, reasons
+}
+
+// BigSourceLines is the size the "big" fact means (the same as the default
+// "too big to review well" note).
+const BigSourceLines = 400
+
+// Facts lists the facts about a PR that fitted rules can use: path
+// prefixes and files it changes, and which default triggers it meets.
+// Sorted, no repeats.
+func Facts(s Signals, cfg config.Config) []string {
+	set := map[string]bool{}
+	for _, p := range s.Paths {
+		c := analyze.Classify(p)
+		if c != analyze.Source && c != analyze.Config {
+			continue
+		}
+		if c == analyze.Source {
+			set["file:"+p] = true
+		}
+		parts := strings.Split(p, "/")
+		for d := 1; d <= 4 && d < len(parts); d++ {
+			set["path:"+strings.Join(parts[:d], "/")+"/**"] = true
+		}
+	}
+	if len(s.Sensitive) > 0 {
+		set["sensitive"] = true
+	}
+	if s.FanInKnown && s.FanIn >= blastBar(s, cfg) {
+		set["blast"] = true
+	}
+	for _, f := range s.Shortcuts {
+		set["shortcut:"+f.Kind] = true
+	}
+	if s.Agent != "" {
+		set["agent"] = true
+	}
+	if s.SourceLines >= BigSourceLines {
+		set["big"] = true
+	}
+	out := make([]string, 0, len(set))
+	for f := range set {
+		out = append(out, f)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // blastBar is the fan-in that sends a PR to careful: MinFanIn, raised to
