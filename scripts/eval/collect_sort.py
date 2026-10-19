@@ -4,7 +4,7 @@ random sample of the rest, their diffs, and what happened after merge.
 
 usage: collect_sort.py REPO_DIR OWNER/NAME OUT.jsonl CHECKOUT_DIR [SAMPLE=2500]
 """
-import json, random, re, subprocess, sys
+import json, os, random, re, subprocess, sys
 from datetime import datetime, timedelta
 
 REPO, NAME, OUT, CHECKOUT = sys.argv[1:5]
@@ -105,6 +105,8 @@ random.seed(7)
 sample = random.sample(rest, min(SAMPLE, len(rest)))
 pick = rev + sample
 print(f"{NAME}: {len(window)} PRs in window, {len(rev)} later reverted, {sum(1 for c in window if c['sha'] in followups)} with follow-up fixes; sorting {len(pick)}", file=sys.stderr)
+if os.environ.get("SCREEN_ONLY"):  # just the counts, for choosing repos
+    sys.exit(0)
 
 # blobs for the diffs
 need, lists = [], {}
