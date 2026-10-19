@@ -1,0 +1,14 @@
+{
+  "repo": "acme/app",
+  "number": 540,
+  "title": "add retry budget to job runner",
+  "author": "jdoe",
+  "body": "## Summary\nThis PR introduces a retry budget for the job runner so failed jobs back off instead of hammering the queue.\n\n## Changes\n- Added a `RetryBudget` class that tracks attempts per job.\n- Updated `j0` to consult the budget before retrying.\n- Added comprehensive unit tests covering edge cases.\n\n## Testing\n- Ran the full test suite locally and all tests pass.",
+  "commits": [
+    "feat(jobs): add RetryBudget class\n\nIntroduce RetryBudget to cap the number of retries per job.",
+    "feat(jobs): use retry budget in j0\n\nUpdate j0 to consult the budget before retrying a failed send.",
+    "test(jobs): add RetryBudget tests\n\nCover the retry limit, empty job ids and invalid limits.",
+    "refactor(jobs): tidy imports\n\nNormalize quote style in the job runner."
+  ],
+  "checks_ok": true
+}

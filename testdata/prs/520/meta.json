@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 520,
+  "title": "tweak logging",
+  "author": "alice",
+  "body": "Human change.",
+  "commits": [
+    "chore: logging"
+  ],
+  "checks_ok": true
+}

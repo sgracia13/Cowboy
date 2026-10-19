@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 530,
+  "title": "speed up CI",
+  "author": "copilot-swe-agent[bot]",
+  "body": "Skips the slow step.",
+  "commits": [
+    "ci: faster"
+  ],
+  "checks_ok": true
+}

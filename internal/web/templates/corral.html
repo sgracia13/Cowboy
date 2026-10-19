@@ -1,0 +1,21 @@
+{{template "head" .}}
+<div id="ticker" class="ticker" aria-live="polite"><span class="dot"></span><span id="ticker-text">listening for pull requests…</span></div>
+<div id="live">{{template "corral-live" .Data}}</div>
+<script src="/static/live.js"></script>
+{{template "foot" .}}
+{{define "corral-live"}}
+<section class="hero">
+  <h1>{{.Total}} agent prs in the corral</h1>
+  <form method="post" action="/sweep"><button class="btn ghost">check for strays</button></form>
+</section>
+{{if gt (len .Repos) 1}}<p class="repos">{{range .Repos}}<a href="/?repo={{.}}">{{.}}</a> {{end}}<a href="/">all</a></p>{{end}}
+{{if or .Doubles .Strays}}<section class="flags">
+  {{range .Doubles}}<a class="flag" href="/pr?repo={{.Repo}}&n={{.Number}}"><b>double</b> #{{.Number}} = same work as #{{.DoubleOf}}</a>{{end}}
+  {{range .Strays}}<a class="flag" href="/pr?repo={{.Repo}}&n={{.Number}}"><b>stray</b> #{{.Number}} went quiet after changes requested</a>{{end}}
+</section>{{end}}
+<section class="pens">
+  {{template "pen" dict3 "easy" "skim it. small, safe, checks green." .Easy}}
+  {{template "pen" dict3 "normal" "a normal review." .Normal}}
+  {{template "pen" dict3 "careful" "slow down. a code owner should look." .Careful}}
+</section>
+{{end}}

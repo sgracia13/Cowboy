@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 506,
+  "title": "add retry to webhook client",
+  "author": "devin-ai-integration",
+  "body": "Fixes #77\n\nRetries failed webhook posts.",
+  "commits": [
+    "feat: retry client"
+  ],
+  "checks_ok": true
+}

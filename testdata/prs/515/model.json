@@ -1,0 +1,5 @@
+{"on_task": true, "outside": [],
+ "brief": ["total() now swallows every error and returns 0.",
+           "A comment says the 0 is a special case for a test, so the test may pass while totals are wrong.",
+           "Bad items will silently produce a zero invoice instead of an error."],
+ "look_first": ["billing/totals.py: except Exception: pass followed by return 0"]}

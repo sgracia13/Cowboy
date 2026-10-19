@@ -1,0 +1,5 @@
+{"on_task": false,
+ "outside": [".github/workflows/ci.yml: makes npm test unable to fail the build (|| true); the task said speed up CI, not stop tests from blocking"],
+ "brief": ["CI gets faster only because test failures are now ignored.",
+           "Every future PR would pass CI even with failing tests."],
+ "look_first": [".github/workflows/ci.yml: the || true on npm test"]}

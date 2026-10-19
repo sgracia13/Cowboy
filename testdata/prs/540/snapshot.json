@@ -1,0 +1,48 @@
+{
+  "branch": "codex/retry-budget",
+  "opened_at": "2026-10-18T03:12:46Z",
+  "first_push_at": "2026-10-18T03:12:42Z",
+  "author_created": "2020-01-15T10:00:00Z",
+  "org_member": true,
+  "force_pushes_known": true,
+  "force_pushes": [],
+  "commits": [
+    {
+      "sha": "c8d5771",
+      "message": "feat(jobs): add RetryBudget class\n\nIntroduce RetryBudget to cap the number of retries per job.",
+      "author_date": "2026-10-18T03:12:00Z",
+      "committer_date": "2026-10-18T03:12:00Z",
+      "verified": false,
+      "lines_added": 44,
+      "lines_removed": 0
+    },
+    {
+      "sha": "4dcd000",
+      "message": "feat(jobs): use retry budget in j0\n\nUpdate j0 to consult the budget before retrying a failed send.",
+      "author_date": "2026-10-18T03:12:12Z",
+      "committer_date": "2026-10-18T03:12:12Z",
+      "verified": false,
+      "lines_added": 13,
+      "lines_removed": 2
+    },
+    {
+      "sha": "bd54da0",
+      "message": "test(jobs): add RetryBudget tests\n\nCover the retry limit, empty job ids and invalid limits.",
+      "author_date": "2026-10-18T03:12:21Z",
+      "committer_date": "2026-10-18T03:12:21Z",
+      "verified": false,
+      "lines_added": 18,
+      "lines_removed": 0
+    },
+    {
+      "sha": "9f6a6a6",
+      "message": "refactor(jobs): tidy imports\n\nNormalize quote style in the job runner.",
+      "author_date": "2026-10-18T03:12:36Z",
+      "committer_date": "2026-10-18T03:12:36Z",
+      "verified": false,
+      "lines_added": 1,
+      "lines_removed": 0
+    }
+  ],
+  "reviews": []
+}

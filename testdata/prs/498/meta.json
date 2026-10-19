@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 498,
+  "title": "bump eslint config",
+  "author": "copilot-swe-agent[bot]",
+  "body": "Updates lint config.",
+  "commits": [
+    "chore: eslint"
+  ],
+  "checks_ok": true
+}

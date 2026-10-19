@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 503,
+  "title": "paginate audit log endpoint",
+  "author": "cursor[bot]",
+  "body": "Adds pagination.",
+  "commits": [
+    "feat: paginate"
+  ],
+  "checks_ok": true
+}

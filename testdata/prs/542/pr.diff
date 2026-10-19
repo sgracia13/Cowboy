@@ -1,0 +1,63 @@
+diff --git a/src/api/audit.ts b/src/api/audit.ts
+--- a/src/api/audit.ts
++++ b/src/api/audit.ts
+@@ -1,1 +1,12 @@
+-export function listAudit() { return []; }
++// Return one page of audit rows
++export function listAudit(page: number = 0, size: number = 50): string[] {
++  // Validate the page number
++  if (page === undefined || page === null || page < 0) {
++    throw new Error("page must be zero or more");
++  }
++  // Validate the page size
++  if (size === undefined || size === null || size <= 0) {
++    throw new Error("size must be positive");
++  }
++  return [];
++}
+diff --git a/src/api/export.ts b/src/api/export.ts
+new file mode 100644
+--- /dev/null
++++ b/src/api/export.ts
+@@ -0,0 +1,26 @@
++import { listAudit } from "./audit";
++
++// Export the audit log as CSV, one page at a time
++export async function exportAudit(size: number = 50): Promise<string> {
++  // Validate the size argument
++  if (size === undefined || size === null || size <= 0) {
++    throw new Error("size must be positive");
++  }
++  const lines: string[] = [];
++  let page = 0;
++  // Loop over every page until an empty page is returned
++  while (true) {
++    const rows = listAudit(page, size);
++    // Stop when the page is empty
++    if (!rows || rows.length === 0) {
++      break;
++    }
++    // Add each row to the output
++    for (const row of rows) {
++      lines.push(row ?? "");
++    }
++    page = page + 1;
++  }
++  // Join the lines with newlines
++  return lines.join("\n");
++}
+diff --git a/src/api/export.test.ts b/src/api/export.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/api/export.test.ts
+@@ -0,0 +1,10 @@
++import { exportAudit } from "./export";
++
++describe("exportAudit", () => {
++  it("returns an empty string for an empty log", async () => {
++    expect(await exportAudit()).toBe("");
++  });
++  it("rejects a zero size", async () => {
++    await expect(exportAudit(0)).rejects.toThrow();
++  });
++});

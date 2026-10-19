@@ -1,0 +1,92 @@
+diff --git a/src/api/audit.ts b/src/api/audit.ts
+--- a/src/api/audit.ts
++++ b/src/api/audit.ts
+@@ -1,1 +1,44 @@
+-export function listAudit() { return []; }
++export function listAudit(page = 0, size = 10) {
++  const rows: string[] = [];
++  const page0 = rows.slice(0, 10);
++  const page1 = rows.slice(10, 20);
++  const page2 = rows.slice(20, 30);
++  const page3 = rows.slice(30, 40);
++  const page4 = rows.slice(40, 50);
++  const page5 = rows.slice(50, 60);
++  const page6 = rows.slice(60, 70);
++  const page7 = rows.slice(70, 80);
++  const page8 = rows.slice(80, 90);
++  const page9 = rows.slice(90, 100);
++  const page10 = rows.slice(100, 110);
++  const page11 = rows.slice(110, 120);
++  const page12 = rows.slice(120, 130);
++  const page13 = rows.slice(130, 140);
++  const page14 = rows.slice(140, 150);
++  const page15 = rows.slice(150, 160);
++  const page16 = rows.slice(160, 170);
++  const page17 = rows.slice(170, 180);
++  const page18 = rows.slice(180, 190);
++  const page19 = rows.slice(190, 200);
++  const page20 = rows.slice(200, 210);
++  const page21 = rows.slice(210, 220);
++  const page22 = rows.slice(220, 230);
++  const page23 = rows.slice(230, 240);
++  const page24 = rows.slice(240, 250);
++  const page25 = rows.slice(250, 260);
++  const page26 = rows.slice(260, 270);
++  const page27 = rows.slice(270, 280);
++  const page28 = rows.slice(280, 290);
++  const page29 = rows.slice(290, 300);
++  const page30 = rows.slice(300, 310);
++  const page31 = rows.slice(310, 320);
++  const page32 = rows.slice(320, 330);
++  const page33 = rows.slice(330, 340);
++  const page34 = rows.slice(340, 350);
++  const page35 = rows.slice(350, 360);
++  const page36 = rows.slice(360, 370);
++  const page37 = rows.slice(370, 380);
++  const page38 = rows.slice(380, 390);
++  const page39 = rows.slice(390, 400);
++  const extra0 = rows.length + 0;
++  const extra1 = rows.length + 1;
++  const extra2 = rows.length + 2;
++  const extra3 = rows.length + 3;
++  const extra4 = rows.length + 4;
++  const extra5 = rows.length + 5;
++  const extra6 = rows.length + 6;
++  const extra7 = rows.length + 7;
++  const extra8 = rows.length + 8;
++  const extra9 = rows.length + 9;
++  const extra10 = rows.length + 10;
++  const extra11 = rows.length + 11;
++  const extra12 = rows.length + 12;
++  const extra13 = rows.length + 13;
++  const extra14 = rows.length + 14;
++  const extra15 = rows.length + 15;
++  const extra16 = rows.length + 16;
++  const extra17 = rows.length + 17;
++  const extra18 = rows.length + 18;
++  const extra19 = rows.length + 19;
++  const extra20 = rows.length + 20;
++  const extra21 = rows.length + 21;
++  const extra22 = rows.length + 22;
++  const extra23 = rows.length + 23;
++  const extra24 = rows.length + 24;
++  const extra25 = rows.length + 25;
++  const extra26 = rows.length + 26;
++  const extra27 = rows.length + 27;
++  const extra28 = rows.length + 28;
++  const extra29 = rows.length + 29;
++  return rows.slice(page * size, (page + 1) * size);
++}
+diff --git a/src/api/routes0.ts b/src/api/routes0.ts
+--- a/src/api/routes0.ts
++++ b/src/api/routes0.ts
+@@ -1,1 +1,1 @@
+-export const r = listAudit;
++export const r = (p: number) => listAudit(p);
+diff --git a/src/api/audit.test.ts b/src/api/audit.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/api/audit.test.ts
+@@ -1,0 +1,2 @@
++import { listAudit } from "./audit";
++test("pages", () => { expect(listAudit(0)).toEqual([]); });

@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 515,
+  "title": "rewrite invoice totals",
+  "author": "claude[bot]",
+  "body": "Handles bad items.",
+  "commits": [
+    "fix: totals\n\nCo-Authored-By: Claude <noreply@anthropic.com>"
+  ],
+  "checks_ok": true
+}

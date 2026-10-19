@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 541,
+  "title": "rename send to dispatch everywhere",
+  "author": "sam",
+  "body": "codemod: send -> dispatch. ran ./scripts/rename.sh, tests green locally. no behaviour change, dont review line by line",
+  "commits": [
+    "rename send -> dispatch (codemod)\n\nran scripts/rename.sh send dispatch, no behaviour change"
+  ],
+  "checks_ok": true
+}

@@ -1,0 +1,18 @@
+diff --git a/src/webhooks/client.ts b/src/webhooks/client.ts
+--- a/src/webhooks/client.ts
++++ b/src/webhooks/client.ts
+@@ -1,1 +1,7 @@
+-export const post = (u: string) => send(u, "");
++export const post = async (u: string) => {
++  for (let i = 0; i < 3; i++) {
++    const r = await send(u, "");
++    if (r.ok) return r;
++  }
++  throw new Error("failed");
++};
+diff --git a/src/webhooks/sender.ts b/src/webhooks/sender.ts
+--- a/src/webhooks/sender.ts
++++ b/src/webhooks/sender.ts
+@@ -1,1 +1,1 @@
+-export async function send(url: string, body: string) { return fetch(url, {method: "POST", body}); }
++export async function send(url: string, body: string) { return fetch(url, {method: "POST", body, keepalive: true}); }

@@ -1,0 +1,5 @@
+{"on_task": true, "outside": [],
+ "brief": ["Meant to add exponential backoff to send(), but most added lines are comments (retry attempt 0..N).",
+           "Overlaps with #506, which retries the same webhook posts in client.ts.",
+           "Check whether any real retry logic is present before reviewing further."],
+ "look_first": ["src/webhooks/sender.ts: count the lines that actually run"]}
