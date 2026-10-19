@@ -81,6 +81,13 @@ func (a Auth) Wrap(h http.Handler) http.Handler {
 			return
 		}
 		securityHeaders(w)
+		// GitHub sends the browser back here from github.com, and a strict
+		// sign-in cookie isn't sent on that redirect. These two pages check
+		// a single-use state value (callback) or only start a repo sync.
+		if r.Method == http.MethodGet && (p == "/setup/github/callback" || p == "/setup/github/installed") {
+			h.ServeHTTP(w, r)
+			return
+		}
 		// buttons on the dashboard post forms; refuse posts from other sites
 		if r.Method == http.MethodPost && !sameOrigin(r) {
 			http.Error(w, "cross-site request refused", http.StatusForbidden)

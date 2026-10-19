@@ -50,22 +50,54 @@ send it a real signed webhook while the demo runs:
 
 ## run it for real
 
+### on github: connect with one click (preview)
+
 ```sh
-# with docker (image: ghcr.io/sgracia13/cowboy)
+# docker (image: ghcr.io/sgracia13/cowboy)
+docker run -d -p 8080:8080 -v cowboy-data:/data \
+  -e UI_PASSWORD=a-dashboard-password \
+  -e PUBLIC_URL=https://cowboy.your-domain.com \
+  ghcr.io/sgracia13/cowboy:latest
+
+# or the binary, on your own machine (no PUBLIC_URL needed)
+cowboy serve
+```
+
+open the dashboard, press **create the github app**, confirm on github, pick your repos, and you're back in the corral with your open prs sorted. no token, no webhook and no secret to copy.
+
+- cowboy asks github to create a **private github app** for your server (github's app-manifest flow). the app's id, private key and webhook secret are saved in `github-app.json` next to the data file, readable only by cowboy's user.
+- it asks for: pull requests read/write, issues read/write (labels, the comment), contents read (cowboy.json, CODEOWNERS), checks and metadata read.
+- cowboy signs in with **short-lived tokens** (one hour, per installation), not a long-lived personal token.
+- repos you add or remove on github are picked up automatically.
+- with a `PUBLIC_URL` github can reach over https, webhooks are turned on and prs are sorted the moment they change. on localhost or a private address the app is created with webhooks off and the catch-up sweep checks every few minutes instead.
+- an org: type its name on the setup page to create the app under the org. github enterprise: set `FORGE_URL` to your api address (`https://ghe.your-co.com/api/v3`).
+- made an app by hand? set `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_FILE` and `WEBHOOK_SECRET` instead.
+
+this has been tested end to end against a stand-in for github's api, not yet against github.com itself.
+
+### with a token (github, forgejo, gitea)
+
+```sh
 docker run -d -p 8080:8080 -v cowboy-data:/data \
   -e FORGE=github -e FORGE_TOKEN=... -e WEBHOOK_SECRET=... -e UI_PASSWORD=... \
   -e REPOS=you/your-repo ghcr.io/sgracia13/cowboy:latest
-
-# or: docker compose up -d   (edit docker-compose.yml first)
 ```
+
+setting `FORGE_TOKEN` keeps the old way: a token, `REPOS`, and a webhook you add yourself:
+
+- github: `https://cowboy.yourhost/webhook/github`, events: pull requests, check suites
+- gitea / forgejo: `https://cowboy.yourhost/webhook/gitea`, events: pull request
+
+### settings
 
 | env | what |
 |---|---|
-| `FORGE` | `github`, `gitea` or `forgejo` |
+| `FORGE` | `github` (default), `gitea` or `forgejo` |
 | `FORGE_URL` | your forge (not needed for github.com) |
-| `FORGE_TOKEN` | token that can read prs and write labels + comments |
-| `WEBHOOK_SECRET` | the secret you set on the webhook |
-| `REPOS` | `owner/repo,...` to sort all open prs at start (optional) |
+| `PUBLIC_URL` | the https address github can reach this cowboy at (github app setup, links in the tally) |
+| `FORGE_TOKEN` | token that can read prs and write labels + comments (leave empty on github to use the app) |
+| `WEBHOOK_SECRET` | the secret you set on the webhook (the github app brings its own) |
+| `REPOS` | `owner/repo,...` to sort all open prs at start (token mode) |
 | `REPO_PATHS` | `owner/repo=/path/to/checkout` to turn on blast radius (optional) |
 | `UI_PASSWORD` | password for the dashboard (one shared login for the team) |
 | `AUTH_PROXY_HEADER` | instead of a password: the header your SSO proxy sets, e.g. `X-Forwarded-User` |
@@ -74,11 +106,6 @@ docker run -d -p 8080:8080 -v cowboy-data:/data \
 | `CATCHUP_MINUTES` | how often the catch-up sweep runs (default 5) |
 | `MODEL_URL` | your model server, e.g. `http://localhost:11434` (optional) |
 | `MODEL_NAME` | e.g. `qwen2.5-coder:7b` (optional) |
-
-then add a webhook on the repo or org:
-
-- github: `https://cowboy.yourhost/webhook/github`, events: pull requests, check suites
-- gitea / forgejo: `https://cowboy.yourhost/webhook/gitea`, events: pull request
 
 ## turn on the local model (optional)
 

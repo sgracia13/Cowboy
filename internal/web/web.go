@@ -31,6 +31,8 @@ type Server struct {
 	SignOut bool
 	// TallyNote says where the weekly tally is sent.
 	TallyNote string
+	// Setup is the "Connect GitHub" flow, when Cowboy signs in as a GitHub App.
+	Setup *GitHubSetup
 }
 
 // New parses templates.
@@ -125,6 +127,12 @@ func New(a *app.App) *Server {
 // Routes registers the UI on mux.
 func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /static/", http.FileServerFS(files))
+	if s.Setup != nil {
+		mux.HandleFunc("GET /setup", s.setupHome)
+		mux.HandleFunc("POST /setup/github/start", s.setupStart)
+		mux.HandleFunc("GET /setup/github/callback", s.setupCallback)
+		mux.HandleFunc("GET /setup/github/installed", s.setupInstalled)
+	}
 	mux.HandleFunc("GET /{$}", s.corral)
 	mux.HandleFunc("GET /pr", s.pr)
 	mux.HandleFunc("POST /pr/move", s.move)
@@ -146,11 +154,17 @@ type page struct {
 	Model   string
 	DryRun  bool
 	SignOut bool
-	Data    any
+	// NeedsSetup shows the "connect GitHub" banner; Setup links the setup page.
+	NeedsSetup, Setup bool
+	Data              any
 }
 
 func (s *Server) render(w http.ResponseWriter, name, nav string, data any) {
 	p := page{Title: nav, Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun, SignOut: s.SignOut, Data: data}
+	if s.Setup != nil {
+		p.Setup = true
+		p.NeedsSetup = nav != "setup" && !s.Setup.Status().Connected
+	}
 	var buf bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&buf, name, p); err != nil {
 		http.Error(w, err.Error(), 500)

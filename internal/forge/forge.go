@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sgracia13/Cowboy/internal/analyze"
@@ -55,6 +56,7 @@ type client struct {
 	token  string
 	scheme string // "Bearer" or "token"
 	http   *http.Client
+	app    atomic.Pointer[AppAuth] // set: sign in as a GitHub App instead of the token
 }
 
 func (c *client) do(method, path string, body any, accept string, out any) ([]byte, error) {
@@ -71,7 +73,13 @@ func (c *client) do(method, path string, body any, accept string, out any) ([]by
 		if err != nil {
 			return nil, err
 		}
-		if c.token != "" {
+		if a := c.app.Load(); a != nil {
+			h, err := a.header(path)
+			if err != nil {
+				return nil, err
+			}
+			req.Header.Set("Authorization", h)
+		} else if c.token != "" {
 			req.Header.Set("Authorization", c.scheme+" "+c.token)
 		}
 		if accept == "" {
@@ -85,12 +93,24 @@ func (c *client) do(method, path string, body any, accept string, out any) ([]by
 		return req, nil
 	}
 	var resp *http.Response
+	refreshed := false
 	for attempt := 0; ; attempt++ {
 		req, err := newReq()
 		if err != nil {
 			return nil, err
 		}
 		resp, err = c.http.Do(req)
+		if err == nil && resp.StatusCode == http.StatusUnauthorized && !refreshed {
+			if a := c.app.Load(); a != nil {
+				// an installation token can be revoked early; get a fresh one once
+				refreshed = true
+				a.drop(path)
+				io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<16))
+				resp.Body.Close()
+				attempt--
+				continue
+			}
+		}
 		if err != nil {
 			if attempt >= maxRetries {
 				return nil, err
@@ -198,12 +218,12 @@ func New(kind, baseURL, token string) (Forge, error) {
 		if baseURL == "" {
 			baseURL = "https://api.github.com"
 		}
-		return &GitHub{client{strings.TrimRight(baseURL, "/"), token, "Bearer", hc}}, nil
+		return &GitHub{client: client{base: strings.TrimRight(baseURL, "/"), token: token, scheme: "Bearer", http: hc}}, nil
 	case "gitea", "forgejo":
 		if baseURL == "" {
 			return nil, fmt.Errorf("FORGE_URL is required for %s", kind)
 		}
-		return &Gitea{client{strings.TrimRight(baseURL, "/") + "/api/v1", token, "token", hc}, kind}, nil
+		return &Gitea{client: client{base: strings.TrimRight(baseURL, "/") + "/api/v1", token: token, scheme: "token", http: hc}, kind: kind}, nil
 	}
 	return nil, fmt.Errorf("unknown forge %q (use github, gitea or forgejo)", kind)
 }

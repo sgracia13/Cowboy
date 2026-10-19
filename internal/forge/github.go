@@ -15,6 +15,13 @@ type GitHub struct{ client }
 
 func (g *GitHub) Name() string { return "github" }
 
+// UseApp switches this client to sign in as a GitHub App. Safe to call
+// while requests are running (setup finishing with Cowboy already up).
+func (g *GitHub) UseApp(a *AppAuth) { g.app.Store(a) }
+
+// App is the GitHub App in use, or nil when signing in with a token.
+func (g *GitHub) App() *AppAuth { return g.app.Load() }
+
 func (g *GitHub) GetPR(repo string, n int) (analyze.PRMeta, string, error) {
 	var pr struct {
 		Title  string                 `json:"title"`

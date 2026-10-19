@@ -1,4 +1,6 @@
 # Next to your Forgejo/Gitea, or pointed at GitHub.
+# On GitHub you can skip FORGE_TOKEN, WEBHOOK_SECRET and REPOS: set FORGE: github and
+# PUBLIC_URL, open the dashboard and press "create the github app".
 services:
   cowboy:
     build: .
@@ -11,6 +13,7 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       REPOS: acme/app                    # sort open PRs on start (optional)
       UI_PASSWORD: ${UI_PASSWORD}        # dashboard login (or AUTH_PROXY_HEADER behind SSO)
+      # PUBLIC_URL: https://cowboy.example.com  # where GitHub can reach this cowboy
       # AUTH_PROXY_HEADER: X-Forwarded-User
       # DRY_RUN: "1"                     # sort and show, write nothing
       # optional local model (uncomment the ollama service below too)

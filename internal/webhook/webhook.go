@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // Job is one PR to (re)sort, or close.
@@ -24,6 +25,9 @@ type Job struct {
 	Repen  string // a human put a cowboy:<pen> label on the PR
 	By     string
 	Unflag bool // a human removed the agent:likely label
+
+	// The GitHub App was installed on, or removed from, these repos.
+	Track, Untrack []string
 }
 
 // Handler turns webhook deliveries into Jobs.
@@ -31,9 +35,22 @@ type Handler struct {
 	Secret string
 	Queue  chan<- Job
 
+	live atomic.Pointer[string] // SetSecret: replaces Secret once set
+
 	mu    sync.Mutex
 	seen  map[string]bool
 	order []string
+}
+
+// SetSecret changes the webhook secret while running (GitHub App setup
+// finishing after start).
+func (h *Handler) SetSecret(s string) { h.live.Store(&s) }
+
+func (h *Handler) secret() string {
+	if s := h.live.Load(); s != nil {
+		return *s
+	}
+	return h.Secret
 }
 
 // duplicate reports whether this delivery ID was already handled. Hosts
@@ -97,7 +114,18 @@ type prEvent struct {
 	} `json:"label"`
 	Sender struct {
 		Login string `json:"login"`
+		Type  string `json:"type"`
 	} `json:"sender"`
+	// installation / installation_repositories (GitHub App)
+	Repositories []struct {
+		FullName string `json:"full_name"`
+	} `json:"repositories"`
+	RepositoriesAdded []struct {
+		FullName string `json:"full_name"`
+	} `json:"repositories_added"`
+	RepositoriesRemoved []struct {
+		FullName string `json:"full_name"`
+	} `json:"repositories_removed"`
 	// check_suite / check_run (GitHub)
 	CheckSuite struct {
 		PullRequests []struct{ Number int } `json:"pull_requests"`
@@ -126,7 +154,7 @@ func (h *Handler) GitHub(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !Verify(h.Secret, body, r.Header.Get("X-Hub-Signature-256")) {
+	if !Verify(h.secret(), body, r.Header.Get("X-Hub-Signature-256")) {
 		http.Error(w, "bad signature", http.StatusUnauthorized)
 		return
 	}
@@ -147,7 +175,7 @@ func (h *Handler) Gitea(w http.ResponseWriter, r *http.Request) {
 	if sig == "" {
 		sig = r.Header.Get("X-Gitea-Signature")
 	}
-	if !Verify(h.Secret, body, sig) {
+	if !Verify(h.secret(), body, sig) {
 		http.Error(w, "bad signature", http.StatusUnauthorized)
 		return
 	}
@@ -184,10 +212,16 @@ func (h *Handler) dispatch(w http.ResponseWriter, event string, body []byte) {
 		case "opened", "reopened", "synchronize", "synchronized", "edited", "ready_for_review":
 			jobs = append(jobs, Job{Repo: repo, Number: n})
 		case "labeled":
+			if e.Sender.Type == "Bot" {
+				break // cowboy's own label changes (and other bots) aren't corrections
+			}
 			if pen, ok := strings.CutPrefix(e.Label.Name, "cowboy:"); ok && (pen == "easy" || pen == "normal" || pen == "careful") {
 				jobs = append(jobs, Job{Repo: repo, Number: n, Repen: pen, By: e.Sender.Login})
 			}
 		case "unlabeled":
+			if e.Sender.Type == "Bot" {
+				break
+			}
 			if e.Label.Name == "agent:likely" {
 				jobs = append(jobs, Job{Repo: repo, Number: n, Unflag: true, By: e.Sender.Login})
 			}
@@ -202,6 +236,33 @@ func (h *Handler) dispatch(w http.ResponseWriter, event string, body []byte) {
 		}
 	case "ping":
 		w.Write([]byte("pong\n"))
+		return
+	case "installation", "installation_repositories":
+		names := func(rs []struct {
+			FullName string `json:"full_name"`
+		}) []string {
+			var out []string
+			for _, r := range rs {
+				out = append(out, r.FullName)
+			}
+			return out
+		}
+		var j Job
+		switch e.Action {
+		case "created", "unsuspend", "new_permissions_accepted":
+			j.Track = names(e.Repositories)
+		case "deleted", "suspend":
+			j.Untrack = names(e.Repositories)
+		case "added":
+			j.Track = names(e.RepositoriesAdded)
+		case "removed":
+			j.Untrack = names(e.RepositoriesRemoved)
+		}
+		if len(j.Track)+len(j.Untrack) > 0 {
+			h.Queue <- j
+		}
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte("queued\n"))
 		return
 	}
 	for _, j := range jobs {

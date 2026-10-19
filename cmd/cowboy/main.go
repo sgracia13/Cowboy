@@ -44,6 +44,13 @@ import (
 // tallyNote says where the weekly tally goes, for the dashboard.
 var tallyNote string
 
+// ghSetup is the "Connect GitHub" flow (GitHub App mode only), and hooks
+// the webhook handler, so finishing setup can set the new app's secret.
+var (
+	ghSetup *web.GitHubSetup
+	hooks   *webhook.Handler
+)
+
 // version is set at release time (-ldflags "-X main.version=v0.1.0").
 var version = "dev"
 
@@ -58,6 +65,9 @@ const usage = `cowboy: sorts ai-agent pull requests into easy, normal and carefu
   cowboy version                   print the version
 
 env for serve:
+  on github, leave FORGE_TOKEN empty and open the dashboard: "create the github app"
+  sets everything up (PUBLIC_URL = the https address github can reach, for webhooks).
+
   FORGE           github | gitea | forgejo
   FORGE_URL       base url (required for gitea/forgejo; github enterprise api url)
   FORGE_TOKEN     token with pr read + label/comment write
@@ -177,12 +187,14 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 
 	mux := http.NewServeMux()
 	h := &webhook.Handler{Secret: secret, Queue: queue}
+	hooks = h
 	mux.HandleFunc("/webhook/github", h.GitHub)
 	mux.HandleFunc("/webhook/gitea", h.Gitea)
 	mux.HandleFunc("/webhook/forgejo", h.Gitea)
 	ui := web.New(a)
 	ui.SignOut = auth.Password != "" && auth.ProxyHeader == ""
 	ui.TallyNote = tallyNote
+	ui.Setup = ghSetup
 	ui.Routes(mux)
 	base, cancelBase := context.WithCancel(context.Background())
 	srv := &http.Server{
@@ -219,6 +231,27 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 	select {} // Shutdown in progress: the signal goroutine exits the process
 }
 
+// trackRepos follows the GitHub App being installed on, or removed from, repos.
+func trackRepos(a *app.App, add, remove []string) {
+	gh, _ := a.Forge.(*forge.GitHub)
+	for _, r := range remove {
+		a.Store.RemoveRepo(r)
+		if gh != nil && gh.App() != nil {
+			gh.App().Forget(r)
+		}
+		log.Printf("%s: the GitHub App was removed; no longer sorting it", r)
+	}
+	for _, r := range add {
+		a.Store.AddRepo(r)
+		log.Printf("%s: the GitHub App was installed; sorting its open pull requests", r)
+	}
+	if len(add) > 0 {
+		for _, m := range a.Reconcile() {
+			log.Print(m)
+		}
+	}
+}
+
 // handleJob runs one webhook job. A panic is logged and the worker carries
 // on, so one strange PR can't stop Cowboy sorting the rest.
 func handleJob(a *app.App, j webhook.Job) {
@@ -228,6 +261,8 @@ func handleJob(a *app.App, j webhook.Job) {
 		}
 	}()
 	switch {
+	case len(j.Track) > 0 || len(j.Untrack) > 0:
+		trackRepos(a, j.Track, j.Untrack)
 	case j.Unflag:
 		if err := a.ClearAgent(j.Repo, j.Number, j.By); err == nil {
 			log.Printf("%s#%d marked not-an-agent by %s", j.Repo, j.Number, j.By)
@@ -306,20 +341,153 @@ func authFromEnv(addr string) web.Auth {
 	return a
 }
 
+// githubApp sets up GitHub App mode: it loads saved app credentials (or
+// GITHUB_APP_ID + GITHUB_APP_PRIVATE_KEY_FILE), or prepares the setup page.
+// It returns the webhook secret to use.
+func githubApp(a *app.App, gh *forge.GitHub, secret string) (string, error) {
+	api := os.Getenv("FORGE_URL")
+	webBase := "https://github.com"
+	if api != "" {
+		webBase = strings.TrimSuffix(strings.TrimRight(api, "/"), "/api/v3")
+	}
+	path := filepath.Join(filepath.Dir(env("DATA", "data/cowboy.json")), "github-app.json")
+	creds, ok, err := forge.LoadAppCreds(path)
+	if err != nil {
+		return "", err
+	}
+	if !ok && os.Getenv("GITHUB_APP_ID") != "" {
+		id, err := strconv.ParseInt(os.Getenv("GITHUB_APP_ID"), 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("GITHUB_APP_ID %q isn't a number", os.Getenv("GITHUB_APP_ID"))
+		}
+		key, err := os.ReadFile(os.Getenv("GITHUB_APP_PRIVATE_KEY_FILE"))
+		if err != nil {
+			return "", fmt.Errorf("GITHUB_APP_ID needs GITHUB_APP_PRIVATE_KEY_FILE: %v", err)
+		}
+		creds, ok = forge.AppCreds{ID: id, PEM: string(key), Name: "app " + os.Getenv("GITHUB_APP_ID")}, true
+	}
+	use := func(c forge.AppCreds) error {
+		auth, err := forge.NewAppAuth(api, c)
+		if err != nil {
+			return err
+		}
+		gh.UseApp(auth)
+		return nil
+	}
+	if ok {
+		if err := use(creds); err != nil {
+			return "", fmt.Errorf("%s: %v", path, err)
+		}
+		if secret == "" {
+			secret = creds.WebhookSecret
+		}
+		log.Printf("github: signed in as the GitHub App %q", creds.Name)
+	} else {
+		dash := strings.TrimRight(os.Getenv("PUBLIC_URL"), "/")
+		if dash == "" {
+			addr := env("ADDR", ":8080")
+			if strings.HasPrefix(addr, ":") {
+				addr = "localhost" + addr
+			}
+			dash = "http://" + addr
+		}
+		log.Printf("github: not connected yet. Open %s/setup and press \"create the github app\"", dash)
+	}
+	ghSetup = &web.GitHubSetup{
+		WebBase:   webBase,
+		PublicURL: os.Getenv("PUBLIC_URL"),
+		Status: func() web.SetupStatus {
+			app := gh.App()
+			if app == nil {
+				return web.SetupStatus{}
+			}
+			c := app.Creds
+			return web.SetupStatus{Connected: true, AppName: c.Name, AppURL: c.HTMLURL, InstallURL: c.InstallURL(), Repos: a.Store.Repos()}
+		},
+		Finish: func(code string) (forge.AppCreds, error) {
+			c, err := forge.ConvertManifest(strings.TrimRight(firstNonEmpty(api, "https://api.github.com"), "/"), code)
+			if err != nil {
+				return c, err
+			}
+			if err := forge.SaveAppCreds(path, c); err != nil {
+				return c, fmt.Errorf("saving the app's credentials: %v", err)
+			}
+			if err := use(c); err != nil {
+				return c, err
+			}
+			if hooks != nil && os.Getenv("WEBHOOK_SECRET") == "" {
+				hooks.SetSecret(c.WebhookSecret)
+			}
+			return c, nil
+		},
+		Sync: func() (int, error) { return syncAppRepos(a, gh), nil },
+	}
+	return secret, nil
+}
+
+// syncAppRepos tracks the repos the GitHub App is installed on, stops
+// tracking ones it was removed from, and sorts what's open.
+func syncAppRepos(a *app.App, gh *forge.GitHub) int {
+	repos, err := gh.App().Repos()
+	if err != nil {
+		log.Printf("github: can't list the app's repos: %v", err)
+		return 0
+	}
+	have, tracked := map[string]bool{}, map[string]bool{}
+	for _, r := range repos {
+		have[strings.ToLower(r)] = true
+	}
+	var added, gone []string
+	for _, r := range a.Store.Repos() {
+		tracked[strings.ToLower(r)] = true
+		if !have[strings.ToLower(r)] {
+			gone = append(gone, r)
+		}
+	}
+	for _, r := range repos {
+		if !tracked[strings.ToLower(r)] {
+			added = append(added, r)
+		}
+	}
+	trackRepos(a, added, gone)
+	if len(repos) == 0 {
+		log.Printf("github: the app isn't installed on any repos yet; pick some at %s", gh.App().Creds.InstallURL())
+	}
+	return len(repos)
+}
+
+func firstNonEmpty(xs ...string) string {
+	for _, x := range xs {
+		if x != "" {
+			return x
+		}
+	}
+	return ""
+}
+
 func serve() {
 	f, err := forge.New(env("FORGE", "github"), os.Getenv("FORGE_URL"), os.Getenv("FORGE_TOKEN"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	secret := os.Getenv("WEBHOOK_SECRET")
-	if secret == "" {
-		log.Fatal("WEBHOOK_SECRET is required")
-	}
 	st, err := store.Open(env("DATA", "data/cowboy.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	a := app.New(f, st, parsePaths(os.Getenv("REPO_PATHS")))
+	// GitHub with no token: sign in as a GitHub App, made with one click on /setup.
+	gh, _ := f.(*forge.GitHub)
+	appMode := gh != nil && os.Getenv("FORGE_TOKEN") == ""
+	if appMode {
+		if s, err := githubApp(a, gh, secret); err != nil {
+			log.Fatal(err)
+		} else {
+			secret = s
+		}
+	} else if secret == "" {
+		log.Fatal("WEBHOOK_SECRET is required")
+	}
 	a.DryRun = os.Getenv("DRY_RUN") == "1"
 	bpath := filepath.Join(filepath.Dir(env("DATA", "data/cowboy.json")), "baselines.json")
 	if bs, err := detect.OpenBaselines(bpath, 90); err == nil {
@@ -351,10 +519,15 @@ func serve() {
 	} else {
 		tallyNote = "Not sent anywhere yet. Set TALLY_SLACK_WEBHOOK or TALLY_EMAIL_TO to get it every week."
 	}
-	checkAccess(f, repos)
+	if !appMode {
+		checkAccess(f, repos)
+	}
 	run(a, addr, secret, catchUp, auth, func(chan<- webhook.Job) {
 		for _, repo := range repos {
 			st.AddRepo(repo)
+		}
+		if appMode && gh.App() != nil {
+			syncAppRepos(a, gh)
 		}
 		for _, m := range a.Reconcile() { // sorts everything already open
 			log.Print(m)

@@ -104,3 +104,7 @@ h2{font-size:15px;margin:0 0 12px;font-weight:800;letter-spacing:.5px}
 .login h1{display:flex;align-items:center;gap:10px;margin-bottom:18px}
 .login label{display:block;font-weight:800;margin-bottom:6px}
 .login input{display:block;width:100%;font:inherit;padding:10px;border:3px solid var(--k);background:var(--w);margin-bottom:14px;text-transform:none}
+.setup-banner{background:var(--k);color:var(--y);padding:12px 20px;font-weight:600}
+.setup-banner a{color:var(--y);text-decoration:underline}
+form.setup input{font:inherit;padding:8px 10px;border:2px solid #111;border-radius:6px;min-width:280px;max-width:100%;background:#fff;color:#111}
+.muted{opacity:.7;font-size:.92em}
