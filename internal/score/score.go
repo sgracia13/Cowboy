@@ -116,7 +116,7 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 	// With fitted rules, they decide careful; the default triggers become
 	// notes so the PR page still shows them.
 	fitted := len(cfg.Fitted.Rules) > 0
-	if fitted {
+	if fitted || len(cfg.Learned) > 0 {
 		have := map[string]bool{}
 		for _, f := range Facts(s, cfg) {
 			have[f] = true
@@ -124,6 +124,13 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		for _, r := range cfg.Fitted.Rules {
 			if have[r.Fact] {
 				add("fitted", r.Label, "careful")
+				careful = true
+			}
+		}
+		// learned rules a person approved add to the defaults
+		for _, r := range cfg.Learned {
+			if have[r.Fact] {
+				add("learned", r.Label, "careful")
 				careful = true
 			}
 		}

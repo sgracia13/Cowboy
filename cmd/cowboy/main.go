@@ -40,6 +40,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/detect"
 	"github.com/sgracia13/Cowboy/internal/diff"
 	"github.com/sgracia13/Cowboy/internal/evaluate"
+	"github.com/sgracia13/Cowboy/internal/fit"
 	"github.com/sgracia13/Cowboy/internal/forge"
 	"github.com/sgracia13/Cowboy/internal/model"
 	"github.com/sgracia13/Cowboy/internal/outcome"
@@ -537,6 +538,11 @@ func setupOutcomes(a *app.App, f forge.Forge) {
 		log.Fatalf("outcomes: %v", err)
 	}
 	a.Outcomes = st
+	book, err := fit.OpenBook(filepath.Join(dir, "learned.json"))
+	if err != nil {
+		log.Fatalf("learned rules: %v", err)
+	}
+	a.Learned = book
 	window := outcomeWindow()
 	w := &outcome.Watcher{Forge: f, Decisions: a.Store, State: st, OnEvent: a.OnOutcome}
 	a.OnMerged = func(repo string, n int) { safely("record merge", func() { w.RecordMerge(repo, n) }) }
@@ -564,7 +570,7 @@ func setupOutcomes(a *app.App, f forge.Forge) {
 	}
 	sort.Strings(sources)
 	outcomeUI = &web.OutcomeSettings{State: st, Window: window, Audit: al, Version: version, Sources: strings.Join(sources, ", "),
-		MinFanIn: func(repo string) int { return a.Config(repo).Careful.MinFanIn }}
+		MinFanIn: func(repo string) int { return a.Config(repo).Careful.MinFanIn }, Learned: book}
 	var fillMu sync.Mutex
 	fillStatus := ""
 	outcomeUI.BackfillStatus = func() string { fillMu.Lock(); defer fillMu.Unlock(); return fillStatus }
@@ -1026,7 +1032,11 @@ func demoHistory(td string) (*web.OutcomeSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &web.OutcomeSettings{State: st, Window: 30 * 24 * time.Hour, Version: version, Note: h.Note,
+	// learned rules live in memory: the demo's are thrown away on exit. The
+	// replay is a sample, too thin for the usual 90 days, so the demo learns
+	// from the whole replayed year.
+	book, _ := fit.OpenBook("")
+	return &web.OutcomeSettings{State: st, Window: 30 * 24 * time.Hour, Version: version, Note: h.Note, Learned: book, FitDays: 365,
 		History: func() []pipeline.Decision { return h.Decisions }, Now: func() time.Time { return h.Now }}, nil
 }
 

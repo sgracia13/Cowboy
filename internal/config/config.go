@@ -64,6 +64,12 @@ type Config struct {
 	// Cowboy fills it from fits.json.
 	Fitted Fitted `json:"-"`
 
+	// Learned holds careful rules learned from this repo's history that a
+	// person approved after a shadow trial. Unlike Fitted they add to the
+	// default triggers instead of replacing them. Not read from
+	// cowboy.json: Cowboy fills it from learned.json.
+	Learned []FittedRule `json:"-"`
+
 	// People controls how loud Cowboy is on PRs from people (no agent).
 	// They get a pen label either way; Comment is "careful" (default: a
 	// comment only when the PR lands in careful), "always" or "never".
