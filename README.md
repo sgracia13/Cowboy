@@ -131,9 +131,23 @@ histories live in `baselines.json` next to the store and grow as prs close. a ne
 
 ## live, and nothing slips through
 
-- **live corral.** the dashboard keeps a connection open to cowboy (server-sent events). when a pr is sorted, moved, closed or gets model notes, its pen redraws in place and the card flashes. the yellow dot in the header means it's connected.
+- **live corral.** the dashboard keeps a connection open to cowboy (server-sent events). when a pr is sorted, moved, closed or gets model notes, its pen redraws in place. the yellow dot in the header means it's connected.
 - **catch-up sweep.** webhooks get lost (restarts, network blips). every 5 minutes cowboy lists each repo's open prs and sorts any pr it missed or whose code changed, and marks prs that were merged or closed. when nothing changed it costs one api call per repo. (with `sort_all` off, prs that aren't agent work are remembered by commit, so they aren't fetched again.)
 - **trail.** the trail page lists everything cowboy did, newest first.
+
+## the weekly tally in slack or email
+
+every week cowboy can post the tally (prs per agent and for people, by pen, plus doubles, strays and how often your team moved one) to a chat channel, by email, or both. nothing is sent unless you set one of these:
+
+```sh
+TALLY_SLACK_WEBHOOK=https://hooks.slack.com/services/...   # a slack incoming webhook; mattermost works too
+TALLY_EMAIL_TO=team@your-co.com,lead@your-co.com
+SMTP_HOST=smtp.your-co.com SMTP_PORT=587 SMTP_USER=... SMTP_PASSWORD=... SMTP_FROM=cowboy@your-co.com
+TALLY_DAY=monday TALLY_HOUR=9 TZ=America/New_York          # the defaults are monday 09:00 server time
+PUBLIC_URL=https://cowboy.your-co.com                        # optional: links the post to your dashboard
+```
+
+it covers the 7 days before the send time. cowboy remembers what it sent (`tally-sent.json` next to the data file), so a restart never posts twice; a failed send is retried every 30 minutes, and a post more than a day late is skipped rather than sent stale. the first post goes out at the next scheduled time. to try it now: `cowboy tally --send`.
 
 ## safe to run on a server
 
@@ -175,6 +189,7 @@ same input, same pen, every time (tested 100× per sample pr).
 ```sh
 cowboy score --diff my.diff --meta meta.json --repo ./checkout   # sort one pr offline, print the comment
 cowboy tally                                                     # this week's per-agent table as markdown
+cowboy tally --send                                              # send the last 7 days to slack/email now
 cowboy sign --secret s body.json                                 # signature header for testing webhooks
 cowboy check-model                                               # is the model server answering?
 ```
@@ -207,7 +222,7 @@ testdata/           sample repo + 10 sample prs with expected pens
 - imports are found with patterns, not tree-sitter; blast radius needs a local checkout via `REPO_PATHS`
 - review requests skip teams (`@org/team`); users only
 - gitea/forgejo label changes aren't read back as corrections yet (github's are); use the corral's move buttons
-- the monday tally is a page + `cowboy tally`; posting to slack/email is next
+- the weekly tally goes to a slack-style webhook or email; teams/discord-native formats aren't built
 - model notes are tested against a stand-in server; try them with your own model before trusting the wording
 - the model's "off task" note is advice only; an opt-in rule to send off-task prs to careful isn't built
 - the agent check's weights are hand-set (v0) and untested on real repos; spotting a removed co-author line needs pr edit history (not read yet); backfilling baselines from a repo's past prs isn't built, so histories start from the first close
