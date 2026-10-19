@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 // Config is the rule book for one repo.
@@ -56,6 +57,12 @@ type Config struct {
 	// FanInIgnore lists module paths never counted for blast radius
 	// (e.g. a shared "utils" everyone imports).
 	FanInIgnore []string `json:"fan_in_ignore"`
+
+	// Fitted holds careful rules fitted to this repo's own history (cowboy
+	// fit). When it has rules, they replace the default careful triggers;
+	// the defaults are still shown as notes. Not read from cowboy.json:
+	// Cowboy fills it from fits.json.
+	Fitted Fitted `json:"-"`
 
 	// People controls how loud Cowboy is on PRs from people (no agent).
 	// They get a pen label either way; Comment is "careful" (default: a
@@ -240,4 +247,17 @@ func MatchGlob(glob, p string) bool {
 	}
 	ok, _ := path.Match(glob, p)
 	return ok
+}
+
+// Fitted is a set of careful rules fitted to one repo.
+type Fitted struct {
+	At    time.Time    `json:"at"`
+	Rules []FittedRule `json:"rules"`
+}
+
+// FittedRule is one fitted rule: a fact (see score.Facts) and the plain
+// words shown with it.
+type FittedRule struct {
+	Fact  string `json:"fact"`
+	Label string `json:"label"`
 }
