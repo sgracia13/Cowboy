@@ -5,5 +5,5 @@
 <section class="box"><h2>agent check</h2><p>runs on every pr that doesn't declare an agent. it compares the pr to its author's own history and labels it <b>agent:likely</b> only when the low end of its range clears the line. it never changes the pen.</p>
 <table class="sig">{{range .Data.Detect}}<tr><td>{{.Repo}}</td><td>{{if .On}}on · label at {{.LabelAt}} · expected share {{printf "%.0f" (mulf .Prior 100)}}% · {{if .SortAll}}sorting every pr{{else}}sorting agent prs only{{end}}{{else}}off{{end}}</td></tr>{{end}}</table>
 <p class="small">set <code>"detect": {"sort_all": true}</code> in cowboy.json to put every pr in a pen, agent or not.</p></section>
-{{range .Data.Repos}}<section class="box"><h2>{{.Repo}}</h2><pre class="comment">{{.JSON}}</pre></section>{{else}}<p>no repos yet.</p>{{end}}
+{{range .Data.Repos}}<section class="box"><h2>{{.Repo}}</h2><p><b>blast radius</b> · {{.Blast}}</p><pre class="comment">{{.JSON}}</pre></section>{{else}}<p>no repos yet.</p>{{end}}
 {{template "foot" .}}

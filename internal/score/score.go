@@ -147,7 +147,7 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		add("blast_radius", fmt.Sprintf("%s is used by %d files", s.FanInFile, s.FanIn), "info")
 	}
 	if !s.FanInKnown {
-		add("blast_radius", "not measured (no local checkout for this repo)", "info")
+		add("blast_radius", "not measured: the import graph for this repo isn't available (see the rules page)", "info")
 	}
 	add("file_class", classSummary(s.Classes), "info")
 

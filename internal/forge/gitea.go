@@ -1,7 +1,10 @@
 package forge
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,6 +19,30 @@ type Gitea struct {
 }
 
 func (g *Gitea) Name() string { return g.kind }
+
+// Head is the latest commit on the default branch.
+func (g *Gitea) Head(repo string) (string, error) {
+	var r struct {
+		DefaultBranch string `json:"default_branch"`
+	}
+	if _, err := g.do("GET", "/repos/"+repo, nil, "", &r); err != nil {
+		return "", err
+	}
+	var b struct {
+		Commit struct {
+			ID string `json:"id"`
+		} `json:"commit"`
+	}
+	if _, err := g.do("GET", fmt.Sprintf("/repos/%s/branches/%s", repo, esc(r.DefaultBranch)), nil, "", &b); err != nil {
+		return "", err
+	}
+	return b.Commit.ID, nil
+}
+
+// Archive streams the repo at sha as a .tar.gz.
+func (g *Gitea) Archive(ctx context.Context, repo, sha string) (io.ReadCloser, error) {
+	return g.stream(ctx, fmt.Sprintf("/repos/%s/archive/%s.tar.gz", repo, url.PathEscape(sha)))
+}
 
 func (g *Gitea) GetPR(repo string, n int) (analyze.PRMeta, string, error) {
 	var pr struct {
