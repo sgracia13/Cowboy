@@ -163,6 +163,8 @@ func main() {
 	sortedPath := flag.String("sorted", "full_sorted_v2.jsonl", "sorted PRs (pens and reasons from the current rules)")
 	patchPath := flag.String("patches", "full.jsonl", "the same PRs with their patches")
 	out := flag.String("out", "replay", "where to write data files and pages")
+	var logs multi
+	flag.Var(&logs, "collectlog", "collect_sort.py log (repeat): how many PRs each repo had, to weight the sample")
 	var gits multi
 	flag.Var(&gits, "git", "owner/repo=/path/to/clone (repeat)")
 	flag.Parse()
@@ -185,6 +187,17 @@ func main() {
 			patches[fmt.Sprintf("%s#%d", p.Repo, p.Number)] = p.Patch
 		}
 	})
+	window := map[string][2]int{}
+	logLine := regexp.MustCompile(`(\S+/\S+): (\d+) PRs in window, (\d+) later reverted`)
+	for _, p := range logs {
+		b, _ := os.ReadFile(p)
+		for _, m := range logLine.FindAllStringSubmatch(string(b), -1) {
+			var t, r int
+			fmt.Sscan(m[2], &t)
+			fmt.Sscan(m[3], &r)
+			window[m[1]] = [2]int{t, r}
+		}
+	}
 	agents := config.Default().Agents
 	var pages []page
 	for _, g := range gits {
@@ -284,11 +297,45 @@ func main() {
 		log.Printf("%s reverts: both %d, only the earlier study %d, only the engine %d", repo, both, onlyStudy, onlyEngine)
 
 		rep := outcome.Build(st.List("", ""), oc, head, 30*24*time.Hour, map[string]int{repo: 20})
+		// the sample keeps every PR that was later reverted and a share of the
+		// rest: weight the rest back up to estimate the repo's real rates
+		real := map[score.Pen]float64{}
+		if wnd, ok := window[repo]; ok {
+			others := 0
+			for _, p := range prs {
+				if !p.Reverted {
+					others++
+				}
+			}
+			wt := float64(wnd[0]-wnd[1]) / float64(others)
+			bad := map[int]bool{}
+			for _, o := range oc.Outcomes(repo, 0) {
+				if o.Kind == outcome.Revert && o.Counts() {
+					if m, ok := oc.Merge(repo, o.Number); ok && o.At.Sub(m.MergedAt) <= 30*24*time.Hour {
+						bad[o.Number] = true
+					}
+				}
+			}
+			num, den := map[score.Pen]float64{}, map[score.Pen]float64{}
+			for _, p := range prs {
+				w := wt
+				if p.Reverted {
+					w = 1
+				}
+				den[p.Pen] += w
+				if bad[p.Number] {
+					num[p.Pen] += w
+				}
+			}
+			for pen, d := range den {
+				real[pen] = num[pen] / d
+			}
+		}
 		for _, pr := range rep.ByPen {
 			log.Printf("  %-8s %s", pr.Pen, pr.Rate)
 		}
 		pages = append(pages, page{repo: repo, file: strings.ReplaceAll(repo, "/", "_") + ".html", html: render(a, st, oc, al, head), rep: rep, prs: len(prs) - missing, agents: agentPRs, from: first, to: head,
-			both: both, onlyStudy: onlyStudy, onlyEngine: onlyEngine})
+			both: both, onlyStudy: onlyStudy, onlyEngine: onlyEngine, real: real})
 	}
 	writeSite(*out, pages)
 }
@@ -300,6 +347,7 @@ type page struct {
 	from, to         time.Time
 	both, onlyStudy  int
 	onlyEngine       int
+	real             map[score.Pen]float64
 }
 
 type multi []string
@@ -359,7 +407,7 @@ func static(html, repo string) string {
 	html = navLink.ReplaceAllString(html, `href="index.html"`)
 	// a note at the top, and tables that scroll on a phone
 	html = strings.Replace(html, "</style>", ".sig{display:block;overflow-x:auto;max-width:100%}main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}.replay-note{background:#111;color:#ffd400;padding:10px max(16px,env(safe-area-inset-left,0px));font-weight:600}.replay-note a{color:#ffd400}</style>", 1)
-	html = strings.Replace(html, "<main>", `<div class="replay-note">A replay of `+repo+`'s real history. Buttons are hidden: nobody can confirm anything here. <a href="index.html">All three repos</a></div><main>`, 1)
+	html = strings.Replace(html, "<main>", `<div class="replay-note">A replay of `+repo+`'s real history. The sample keeps every PR that was later reverted but only some of the others, so the rates on this page are several times higher than the repo's real ones; comparisons between pens and rules still hold. Real-world rates are on the <a href="index.html">overview</a>. Buttons are hidden: nobody can confirm anything here.</div><main>`, 1)
 	return html
 }
 
@@ -379,12 +427,13 @@ header.top{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:ma
 <main>
 <section class="hero"><h1>after merge, replayed</h1></section>
 <p class="lead">cowboy's after-merge engine, run on pull requests that really merged into three open-source repos between november 2025 and september 2026. each pr was sorted by cowboy's current rules. then the engine read the real default-branch history and release tags, the same way it does on a live repo, and the dashboard drew the outcomes page as of mid-october 2026.</p>
+<p class="lead">the sample keeps every pr that was later reverted, plus a random sample of the rest (about 1 in 6 for sentry, 1 in 4 for grafana and 1 in 3 for n8n). the real-world column weights the sample back to each repo's real mix; the per-repo pages show the raw sample, so their rates are several times too high, though comparisons between pens still hold.</p>
 <div class="rep">`)
 	for _, p := range pages {
 		os.WriteFile(filepath.Join(out, p.file), []byte(static(p.html, p.repo)), 0o644)
-		fmt.Fprintf(&idx, `<section class="box"><h2><a href="%s">%s</a></h2><p>%d merged prs, %d by agents</p><table class="sig"><tr><th>pen</th><th>had trouble within 30 days</th></tr>`, p.file, p.repo, p.prs, p.agents)
+		fmt.Fprintf(&idx, `<section class="box"><h2><a href="%s">%s</a></h2><p>%d merged prs in the sample, %d by agents</p><table class="sig"><tr><th>pen</th><th>reverted within 30 days, real-world estimate</th><th>in the sample</th></tr>`, p.file, p.repo, p.prs, p.agents)
 		for _, r := range p.rep.ByPen {
-			fmt.Fprintf(&idx, `<tr><td><b>%s</b></td><td>%s</td></tr>`, r.Pen, r.Rate)
+			fmt.Fprintf(&idx, `<tr><td><b>%s</b></td><td>%.2f%%</td><td>%d of %d</td></tr>`, r.Pen, 100*p.real[r.Pen], r.Rate.Bad, r.Rate.N)
 		}
 		fmt.Fprintf(&idx, `</table><p class="small">%d suggested fixes waiting for a person. reverts matched an independent earlier count on %d prs; %d only there, %d only here.</p><p><a href="%s">open the outcomes page</a></p></section>`,
 			p.rep.Pending, p.both, p.onlyStudy, p.onlyEngine, p.file)
@@ -395,7 +444,7 @@ header.top{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:ma
 <li>approvals and incidents, so the review comparison and incident links are empty</li>
 <li>people confirming suggestions, so suggested fixes stay pending and don't count. on a live team someone confirms them; in a sample of 21 judged by title, about 7 in 10 looked right</li>
 <li>file contents, so code survival isn't measured</li>
-<li>every merge: the prs are a random sample of each repo's merges, so some reverts and fixes between unsampled prs are missed</li>
+<li>every merge: fixes between two prs that weren't both sampled are missed</li>
 </ul>
 <p class="small">n8n reverted one pr in ten months. its trouble shows up as follow-up fixes instead, which is why its rates are near zero until someone confirms them.</p></section>
 </main>`)
