@@ -112,7 +112,8 @@ whether it beats chance depends on the repo. The next step is rules that
 travel better, checked on fresh held-out repos again. The first lead: in
 PostHog, the "adds a catch-all that may hide errors" shortcut fired on 391
 of 968 careful PRs (Python `except Exception` is common there), and the
-"warning silencer" shortcut fired on plain `# noqa` imports. Those two
+"warning silencer" shortcut fired on routine `# noqa` and `# type: ignore`
+comments. Those two
 rules alone fill much of the pen.
 
 ## appendix: the unweighted run
