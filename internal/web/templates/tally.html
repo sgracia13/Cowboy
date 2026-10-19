@@ -3,7 +3,7 @@
 <section class="box">
 <table class="tally">
   <tr><th>agent</th><th>prs</th><th>easy</th><th>normal</th><th>careful</th><th>doubles</th><th>strays</th><th>shortcuts</th><th>re-penned</th><th>merged</th></tr>
-  {{range .Rows}}<tr><td><b>{{.Agent}}</b></td><td>{{.Total}}</td><td>{{.Easy}}</td><td>{{.Normal}}</td><td>{{.Careful}}</td><td>{{.Doubles}}</td><td>{{.Strays}}</td><td>{{.Shortcuts}}</td><td>{{.Corrected}}</td><td>{{.Merged}}</td></tr>{{else}}<tr><td colspan="10">nothing yet</td></tr>{{end}}
+  {{range .Rows}}<tr><td><b>{{if .Agent}}{{.Agent}}{{else}}people{{end}}</b></td><td>{{.Total}}</td><td>{{.Easy}}</td><td>{{.Normal}}</td><td>{{.Careful}}</td><td>{{.Doubles}}</td><td>{{.Strays}}</td><td>{{.Shortcuts}}</td><td>{{.Corrected}}</td><td>{{.Merged}}</td></tr>{{else}}<tr><td colspan="10">nothing yet</td></tr>{{end}}
 </table>
 </section>
 {{if .Corrections}}<section class="box"><h2>re-penned by humans</h2><ul class="trail">{{range .Corrections}}<li>{{.Repo}}#{{.Number}}: {{.From}} → {{.To}} by {{.By}} · {{ago .At}}</li>{{end}}</ul></section>{{end}}

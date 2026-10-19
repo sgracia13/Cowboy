@@ -18,7 +18,7 @@ cowboy demo
 
 on windows, download `cowboy-windows-amd64.exe` from [releases](https://github.com/sgracia13/Cowboy/releases) and run `cowboy-windows-amd64.exe demo`. have go? `go run github.com/sgracia13/Cowboy/cmd/cowboy@latest demo`.
 
-open http://localhost:8080 right away. the corral starts empty, then the sample repo's 10 prs arrive one every 4 seconds, as if agents were opening them overnight. each one drops into its pen live, no refresh. the webhook for #521 is dropped on purpose, so you can watch the **catch-up sweep** find it a few seconds later.
+open http://localhost:8080 right away. the corral starts empty, then the sample repo's prs arrive one every 4 seconds, as if agents (and a couple of people) were opening them overnight. each one drops into its pen live, no refresh. the webhook for #521 is dropped on purpose, so you can watch the **catch-up sweep** find it a few seconds later.
 
 want everything at once instead? `demo --drip 0`. just the table in the terminal? `demo --once`.
 
@@ -35,7 +35,7 @@ where they land:
 | #507 move auth to session store | careful | auth path, 39 files depend on it, eslint silencer, removed an assert |
 | #515 rewrite invoice totals | careful | billing path, `except Exception`, "special case for test" comment |
 | #530 speed up ci | careful | loosens ci (`|| true`) |
-| #520 (human) | - | not an agent, left alone |
+| #520 (a person) | easy | sorted quietly: a pen label, no agent label, no comment |
 
 the demo also shows **local model notes** from prewritten answers, so you can see the feature without a model server. look at #506: the rules say normal, but the model notices the agent also changed `send()` for every caller, which the issue never asked for. #530 gets flagged the same way.
 
@@ -115,12 +115,12 @@ it looks at three layers, and compares each person to **their own history**, not
 
 the evidence adds up in log-odds with a ceiling per layer, so **being fast is never enough on its own**. the `agent:likely` label goes on only when the **low end** of the range clears 80, and it never changes the pen. anyone can remove the label (or press **not an agent**): the pr stays as human work and cowboy asks for more evidence on that author's prs from then on.
 
-in the demo: **#540** (codex/ branch, 3 a.m. burst) and **#542** (an ordinary branch name, caught on behaviour and text alone) are caught. **#541** is sam's codemod: 92 lines a minute, but normal for sam, so it scores 19 and is left alone.
+in the demo: **#540** (codex/ branch, 3 a.m. burst) and **#542** (an ordinary branch name, caught on behaviour and text alone) are caught. **#541** is sam's codemod: 92 lines a minute, but normal for sam, so it scores 19 and is sorted as a person's pr, with no agent label.
 
 ```json
 // cowboy.json
 "detect": {
-  "sort_all": true,   // put every pr in a pen, agent or not (default false)
+  "sort_all": true,   // put every pr in a pen, agent or not (default true)
   "label_at": 80,     // the low end of the range must reach this
   "prior": 0.08       // expected share of undisclosed agent prs
 }
@@ -131,7 +131,7 @@ histories live in `baselines.json` next to the store and grow as prs close. a ne
 ## live, and nothing slips through
 
 - **live corral.** the dashboard keeps a connection open to cowboy (server-sent events). when a pr is sorted, moved, closed or gets model notes, its pen redraws in place and the card flashes. the yellow dot in the header means it's connected.
-- **catch-up sweep.** webhooks get lost (restarts, network blips). every 5 minutes cowboy lists each repo's open prs and sorts any agent pr it missed or whose code changed, and marks prs that were merged or closed. when nothing changed it costs one api call per repo. human prs are remembered by commit, so they aren't fetched again.
+- **catch-up sweep.** webhooks get lost (restarts, network blips). every 5 minutes cowboy lists each repo's open prs and sorts any pr it missed or whose code changed, and marks prs that were merged or closed. when nothing changed it costs one api call per repo. (with `sort_all` off, prs that aren't agent work are remembered by commit, so they aren't fetched again.)
 - **trail.** the trail page lists everything cowboy did, newest first.
 
 ## safe to run on a server
@@ -153,6 +153,8 @@ only these, ever:
 - a review request to the CODEOWNERS of careful prs
 
 ## the rules
+
+**every pr is sorted, not just agent prs.** the rules look at the code, not who wrote it, and unmarked agent work can't be spotted reliably, so sorting everything is how nothing risky goes unsorted. prs from people are kept quiet: they get a pen label, no agent label, never a double or stray label, and a comment only when they land in careful. change that with `"people": {"comment": "always"}` or `"never"`, or go back to agent prs only with `"detect": {"sort_all": false}`.
 
 defaults below. override per repo with `cowboy.json` on the default branch (a pr can't loosen its own rules). see `testdata/acme/cowboy.json`.
 

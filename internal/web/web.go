@@ -81,7 +81,7 @@ func New(a *app.App) *Server {
 			case d.Detection != nil && d.Detection.Label == "likely agent" && d.AgentCleared == "":
 				return "likely " + strings.TrimSuffix(d.Agent, "?")
 			case d.Agent == "":
-				return "no agent"
+				return "person"
 			}
 			return d.Agent
 		},
@@ -277,7 +277,7 @@ func (s *Server) rules(w http.ResponseWriter, r *http.Request) {
 	var dets []det
 	for _, repo := range s.App.Store.Repos() {
 		c := s.App.Config(repo)
-		dets = append(dets, det{repo, c.DetectOn() && s.App.Baselines != nil, c.Detect.SortAll, c.Detect.LabelAt, c.Detect.Prior})
+		dets = append(dets, det{repo, c.DetectOn() && s.App.Baselines != nil, c.SortAllOn(), c.Detect.LabelAt, c.Detect.Prior})
 	}
 	s.render(w, "rules.html", "rules", map[string]any{"Repos": out, "Model": s.App.ModelName(), "Detect": dets})
 }

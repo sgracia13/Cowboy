@@ -52,19 +52,43 @@ type Config struct {
 	// (e.g. a shared "utils" everyone imports).
 	FanInIgnore []string `json:"fan_in_ignore"`
 
+	// People controls how loud Cowboy is on PRs from people (no agent).
+	// They get a pen label either way; Comment is "careful" (default: a
+	// comment only when the PR lands in careful), "always" or "never".
+	People struct {
+		Comment string `json:"comment"`
+	} `json:"people"`
+
 	// Detect controls the check for agent PRs that don't say so.
 	Detect struct {
 		// Enabled runs the check on PRs with no disclosed agent (default on).
 		Enabled *bool `json:"enabled"`
-		// SortAll puts every PR in a pen, not just agent PRs. The risk rules
-		// don't care who wrote the code.
-		SortAll bool `json:"sort_all"`
+		// SortAll puts every PR in a pen, not just agent PRs (default on).
+		// The risk rules don't care who wrote the code, and unmarked agent
+		// work can't be spotted reliably, so sorting everything is how
+		// nothing risky goes unsorted.
+		SortAll *bool `json:"sort_all"`
 		// LabelAt is the score the LOW end of the range must reach before a
 		// PR gets the agent:likely label (default 80).
 		LabelAt int `json:"label_at"`
 		// Prior is the expected share of undisclosed agent PRs (default 0.08).
 		Prior float64 `json:"prior"`
 	} `json:"detect"`
+}
+
+// SortAllOn reports whether every PR is sorted, not just agent PRs.
+func (c Config) SortAllOn() bool { return c.Detect.SortAll == nil || *c.Detect.SortAll }
+
+// CommentOnPerson reports whether Cowboy should start a comment on a PR
+// from a person (not an agent) that landed in pen.
+func (c Config) CommentOnPerson(careful bool) bool {
+	switch c.People.Comment {
+	case "always":
+		return true
+	case "never":
+		return false
+	}
+	return careful
 }
 
 // DetectOn reports whether the undisclosed-agent check is enabled.
@@ -111,6 +135,7 @@ func Default() Config {
 	c.Strays.ArchiveAfterDays = 7
 	c.Detect.LabelAt = 80
 	c.Detect.Prior = 0.08
+	c.People.Comment = "careful"
 	return c
 }
 
@@ -176,8 +201,12 @@ func Merge(c *Config, b []byte) error {
 	if over.Detect.Enabled != nil {
 		c.Detect.Enabled = over.Detect.Enabled
 	}
-	if over.Detect.SortAll {
-		c.Detect.SortAll = true
+	if over.Detect.SortAll != nil {
+		c.Detect.SortAll = over.Detect.SortAll
+	}
+	switch over.People.Comment {
+	case "careful", "always", "never":
+		c.People.Comment = over.People.Comment
 	}
 	if over.Detect.LabelAt > 0 {
 		c.Detect.LabelAt = over.Detect.LabelAt

@@ -207,7 +207,7 @@ func (a *App) addNotes(d pipeline.Decision, files []diff.File) {
 		a.publish("notes", d.Repo, d.Number, "", "#%d local model notes added (on task: %s)", d.Number, onTask(n.OnTask))
 	}
 	if !a.DryRun {
-		a.Forge.UpsertComment(d.Repo, d.Number, marker, pipeline.FullComment(cur))
+		a.Forge.UpsertComment(d.Repo, d.Number, marker, pipeline.FullComment(cur), a.startComment(cur, cur.CurrentPen()))
 	}
 }
 
@@ -241,7 +241,7 @@ func (a *App) classify(meta analyze.PRMeta, patch, owners string, cfg config.Con
 	files := diff.Parse(patch)
 	in := pipeline.Input{Meta: meta, Files: files, Config: cfg,
 		Graph: a.Graph(meta.Repo), Codeowners: owners, OpenPRs: a.Store.List(meta.Repo, "open"), Now: a.Now().UTC(),
-		SortAll: cfg.Detect.SortAll}
+		SortAll: cfg.SortAllOn()}
 	var as *detect.Assessment
 	if agent, _ := analyze.DetectAgent(meta, lowerKeys(cfg.Agents)); agent == "" {
 		old, had := a.Store.Get(meta.Repo, meta.Number)
@@ -331,6 +331,17 @@ func (a *App) sort(meta analyze.PRMeta, patch, owners string) (pipeline.Decision
 	return d, true, nil
 }
 
+// startComment reports whether Cowboy may post a new comment on d. Agent
+// PRs always get one; PRs from people only when the repo's people.comment
+// setting says so (by default, when they land in careful). An existing
+// comment is always kept up to date.
+func (a *App) startComment(d pipeline.Decision, pen score.Pen) bool {
+	if d.Agent != "" {
+		return true
+	}
+	return a.Config(d.Repo).CommentOnPerson(pen == score.Careful)
+}
+
 // write puts labels and the comment on the forge. Cowboy never merges,
 // closes, approves or leaves review comments.
 func (a *App) write(d pipeline.Decision, penChanged bool) error {
@@ -340,12 +351,12 @@ func (a *App) write(d pipeline.Decision, penChanged bool) error {
 	if err := a.Forge.SetLabels(d.Repo, d.Number, d.Labels, minus(ownLabels, d.Labels)); err != nil {
 		return fmt.Errorf("labels: %w", err)
 	}
-	if err := a.Forge.UpsertComment(d.Repo, d.Number, marker, pipeline.FullComment(d)); err != nil {
-		return fmt.Errorf("comment: %w", err)
-	}
 	pen := d.Pen
 	if d.Corrected != "" {
 		pen = d.Corrected
+	}
+	if err := a.Forge.UpsertComment(d.Repo, d.Number, marker, pipeline.FullComment(d), a.startComment(d, pen)); err != nil {
+		return fmt.Errorf("comment: %w", err)
 	}
 	if pen == score.Careful && penChanged && len(d.Signals.Owners) > 0 {
 		if err := a.Forge.RequestReview(d.Repo, d.Number, d.Signals.Owners); err != nil {
@@ -393,6 +404,9 @@ func (a *App) Sweep() (nudged []string) {
 			act, err := a.Forge.Activity(repo, d.Number)
 			if err != nil {
 				continue
+			}
+			if d.Agent == "" {
+				continue // strays are for agents; Cowboy doesn't nag people
 			}
 			was := d.Stray
 			nudge, archive := pipeline.StrayCheck(&d, cfg, act.LastChangesRequested, act.LastCommit, now)
@@ -482,7 +496,11 @@ func TallyMarkdown(rows []AgentTally) string {
 	var b strings.Builder
 	b.WriteString("## cowboy tally\n\n| agent | prs | easy | normal | careful | doubles | strays | shortcuts | re-penned |\n|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %d |\n", r.Agent, r.Total, r.Easy, r.Normal, r.Careful, r.Doubles, r.Strays, r.Shortcuts, r.Corrected)
+		who := r.Agent
+		if who == "" {
+			who = "people"
+		}
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %d |\n", who, r.Total, r.Easy, r.Normal, r.Careful, r.Doubles, r.Strays, r.Shortcuts, r.Corrected)
 	}
 	return b.String()
 }

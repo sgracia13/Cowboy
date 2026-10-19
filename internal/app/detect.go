@@ -123,7 +123,7 @@ func (a *App) ClearAgent(repo string, n int, by string) error {
 	if err := a.Forge.SetLabels(repo, n, d.Labels, []string{"agent:likely"}); err != nil {
 		return err
 	}
-	return a.Forge.UpsertComment(repo, n, marker, pipeline.FullComment(d))
+	return a.Forge.UpsertComment(repo, n, marker, pipeline.FullComment(d), a.startComment(d, d.CurrentPen()))
 }
 
 func lowerKeys(m map[string]string) map[string]string {

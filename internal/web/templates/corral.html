@@ -5,7 +5,7 @@
 {{template "foot" .}}
 {{define "corral-live"}}
 <section class="hero">
-  <h1>{{.Total}} agent prs in the corral</h1>
+  <h1>{{.Total}} prs in the corral</h1>
   <form method="post" action="/sweep"><button class="btn ghost">check for strays</button></form>
 </section>
 {{if gt (len .Repos) 1}}<p class="repos">{{range .Repos}}<a href="/?repo={{.}}">{{.}}</a> {{end}}<a href="/">all</a></p>{{end}}

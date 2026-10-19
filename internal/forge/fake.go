@@ -188,12 +188,14 @@ func (f *Fake) SetLabels(repo string, n int, add, remove []string) error {
 	return nil
 }
 
-func (f *Fake) UpsertComment(repo string, n int, marker, body string) error {
+func (f *Fake) UpsertComment(repo string, n int, marker, body string, create bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	verb := "posted"
 	if _, ok := f.Comments[n]; ok {
 		verb = "updated"
+	} else if !create {
+		return nil
 	}
 	f.Comments[n] = body
 	f.Log = append(f.Log, fmt.Sprintf("#%d comment %s", n, verb))

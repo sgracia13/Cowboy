@@ -40,7 +40,9 @@ type Forge interface {
 	ChecksOK(repo, sha string) (*bool, error)
 	Activity(repo string, n int) (Activity, error)
 	SetLabels(repo string, n int, add, remove []string) error
-	UpsertComment(repo string, n int, marker, body string) error
+	// UpsertComment edits the comment holding marker, or posts a new one if
+	// create is true (with create false and no comment, it does nothing).
+	UpsertComment(repo string, n int, marker, body string, create bool) error
 	RequestReview(repo string, n int, users []string) error
 	// Snapshot gathers what the undisclosed-agent check needs: branch,
 	// commit times, reviews and account facts. Fields the host doesn't
