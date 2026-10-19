@@ -2,12 +2,14 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sgracia13/Cowboy/internal/audit"
+	"github.com/sgracia13/Cowboy/internal/evaluate"
 	"github.com/sgracia13/Cowboy/internal/outcome"
 )
 
@@ -53,8 +55,32 @@ func (s *Server) report() outcome.Report {
 	return outcome.Build(s.App.Store.List("", ""), o.State, o.now(), o.Window, fan)
 }
 
+// check judges the careful and easy pens against simple alternatives with
+// internal/evaluate, the same code the published evidence uses. The
+// bootstrap takes a moment on big histories, so the result is kept until
+// the inputs change.
+func (s *Server) check() evaluate.Result {
+	o := s.Outcomes
+	items := outcome.Items(s.App.Store.List("", ""), o.State, o.now(), o.Window)
+	bad := 0
+	for _, it := range items {
+		if it.Bad {
+			bad++
+		}
+	}
+	k := fmt.Sprintf("%d/%d/%s", len(items), bad, o.now().Format("2006-01-02"))
+	s.checkMu.Lock()
+	defer s.checkMu.Unlock()
+	if s.checkKey == k {
+		return s.checkRes
+	}
+	s.checkRes, s.checkKey = evaluate.Evaluate(items, evaluate.Defaults()), k
+	return s.checkRes
+}
+
 type outcomesPage struct {
 	Report    outcome.Report
+	Check     evaluate.Result
 	Pending   []outcome.Outcome
 	Recent    []outcome.Outcome
 	Incidents []outcome.IncidentRecord
@@ -68,7 +94,7 @@ type outcomesPage struct {
 
 func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 	o := s.Outcomes
-	p := outcomesPage{Report: s.report(), Sources: o.Sources, Error: r.URL.Query().Get("error")}
+	p := outcomesPage{Report: s.report(), Check: s.check(), Sources: o.Sources, Error: r.URL.Query().Get("error")}
 	all := o.State.Outcomes("", 0)
 	for _, x := range all {
 		if x.Status == outcome.Suggested {
