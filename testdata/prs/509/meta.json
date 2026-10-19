@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 509,
+  "title": "add retry to webhook sender",
+  "author": "copilot-swe-agent[bot]",
+  "body": "Fixes #77\n\nAdds exponential backoff.",
+  "commits": [
+    "feat: retry"
+  ],
+  "checks_ok": true
+}

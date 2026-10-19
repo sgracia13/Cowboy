@@ -1,0 +1,26 @@
+# Next to your Forgejo/Gitea, or pointed at GitHub.
+services:
+  cowboy:
+    build: .
+    ports: ["8080:8080"]
+    volumes: ["cowboy-data:/data"]
+    environment:
+      FORGE: forgejo                     # github | gitea | forgejo
+      FORGE_URL: https://git.example.com # not needed for github.com
+      FORGE_TOKEN: ${FORGE_TOKEN}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      REPOS: acme/app                    # sort open PRs on start (optional)
+      UI_PASSWORD: ${UI_PASSWORD}        # dashboard login (or AUTH_PROXY_HEADER behind SSO)
+      # AUTH_PROXY_HEADER: X-Forwarded-User
+      # DRY_RUN: "1"                     # sort and show, write nothing
+      # optional local model (uncomment the ollama service below too)
+      # MODEL_URL: http://ollama:11434
+      # MODEL_NAME: qwen2.5-coder:7b
+
+  # ollama:                              # optional: open-weight model on the same box
+  #   image: ollama/ollama
+  #   volumes: ["ollama-models:/root/.ollama"]
+  #   # then once: docker compose exec ollama ollama pull qwen2.5-coder:7b
+volumes:
+  cowboy-data:
+  # ollama-models:

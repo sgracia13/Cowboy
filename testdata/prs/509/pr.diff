@@ -1,0 +1,50 @@
+diff --git a/src/webhooks/sender.ts b/src/webhooks/sender.ts
+--- a/src/webhooks/sender.ts
++++ b/src/webhooks/sender.ts
+@@ -1,1 +1,38 @@
+-export async function send(url: string, body: string) { return fetch(url, {method: "POST", body}); }
++export async function send(url: string, body: string) {
++  let lastErr: unknown;
++  // retry attempt 0
++  // retry attempt 1
++  // retry attempt 2
++  // retry attempt 3
++  // retry attempt 4
++  // retry attempt 5
++  // retry attempt 6
++  // retry attempt 7
++  // retry attempt 8
++  // retry attempt 9
++  // retry attempt 10
++  // retry attempt 11
++  // retry attempt 12
++  // retry attempt 13
++  // retry attempt 14
++  // retry attempt 15
++  // retry attempt 16
++  // retry attempt 17
++  // retry attempt 18
++  // retry attempt 19
++  // retry attempt 20
++  // retry attempt 21
++  // retry attempt 22
++  // retry attempt 23
++  // retry attempt 24
++  // retry attempt 25
++  // retry attempt 26
++  // retry attempt 27
++  // retry attempt 28
++  // retry attempt 29
++  for (let i = 0; i < 3; i++) {
++    try { return await fetch(url, {method: "POST", body}); }
++    catch (e) { lastErr = e; await sleep(2 ** i * 100); }
++  }
++  throw lastErr;
++}
+diff --git a/src/webhooks/sender.test.ts b/src/webhooks/sender.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/webhooks/sender.test.ts
+@@ -1,0 +1,2 @@
++import { send } from "./sender";
++test("retries", async () => { expect(send).toBeDefined(); });

@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 512,
+  "title": "fix typo in README",
+  "author": "claude[bot]",
+  "body": "Fixes a typo.\n\nGenerated with [Claude Code](https://claude.com/claude-code)",
+  "commits": [
+    "docs: fix typo"
+  ],
+  "checks_ok": true
+}

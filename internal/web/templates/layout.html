@@ -1,0 +1,21 @@
+{{define "head"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>cowboy · {{.Title}}</title>
+<link rel="icon" href="/static/hat.svg">
+<link rel="stylesheet" href="/static/cowboy.css">
+</head><body>
+<header class="top">
+  <a class="brand" href="/"><img src="/static/hat.svg" alt="" width="34" height="22">cowboy</a>
+  <nav>
+    <a href="/" {{if eq .Nav "corral"}}class="on"{{end}}>corral</a>
+    <a href="/tally" {{if eq .Nav "tally"}}class="on"{{end}}>tally</a>
+    <a href="/rules" {{if eq .Nav "rules"}}class="on"{{end}}>rules</a>
+    <a href="/trail" {{if eq .Nav "trail"}}class="on"{{end}}>trail</a>
+  </nav>
+  <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">on your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · dry run{{end}}{{if .SignOut}} · <a href="/logout">sign out</a>{{end}}</span>
+</header>
+<main>
+{{end}}
+{{define "foot"}}</main>
+<footer>rules decide the pen. a local model explains. cowboy never merges, closes or reviews. your code never leaves this server.</footer>
+</body></html>{{end}}

@@ -1,0 +1,6 @@
+{"on_task": false,
+ "outside": ["src/webhooks/sender.ts: adds keepalive: true to every webhook send, which issue #77 (retries) didn't ask for"],
+ "brief": ["Wraps post() in a 3-try retry loop that throws after the last failure.",
+           "Separately changes send() for all callers by adding keepalive.",
+           "No test for the retry path."],
+ "look_first": ["src/webhooks/sender.ts: keepalive change affects every caller of send()"]}

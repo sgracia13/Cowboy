@@ -1,0 +1,6 @@
+diff --git a/src/db/store.ts b/src/db/store.ts
+--- a/src/db/store.ts
++++ b/src/db/store.ts
+@@ -1,1 +1,1 @@
+-export const store = new Map<string, unknown>();
++export const store = new Map<string, unknown>(); // logged

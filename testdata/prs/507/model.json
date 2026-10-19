@@ -1,0 +1,5 @@
+{"on_task": true, "outside": [],
+ "brief": ["getSession now reads the new store first and falls back to the old one.",
+           "Return type loosened to any, with a lint rule silenced to allow it.",
+           "The session test was emptied, so nothing checks getSession any more."],
+ "look_first": ["src/auth/session.test.ts: test body removed", "src/auth/session.ts: any return type"]}

@@ -1,0 +1,5 @@
+{"on_task": true, "outside": [],
+ "brief": ["Adds page and size arguments to listAudit and updates one route to pass the page.",
+           "Also adds 11 unused variables (page0 to page10) that slice the same rows; they do nothing and look like padding.",
+           "The new test only checks page 0 of an empty list."],
+ "look_first": ["src/api/audit.ts: the page0..page10 block is dead code", "src/api/audit.test.ts: test doesn't cover a second page"]}

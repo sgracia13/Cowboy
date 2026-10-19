@@ -1,0 +1,6 @@
+diff --git a/.eslintrc.json b/.eslintrc.json
+--- a/.eslintrc.json
++++ b/.eslintrc.json
+@@ -1,1 +1,1 @@
+-{ "extends": "eslint:recommended" }
++{ "extends": ["eslint:recommended"], "root": true }

@@ -1,0 +1,288 @@
+diff --git a/src/jobs/j0.ts b/src/jobs/j0.ts
+--- a/src/jobs/j0.ts
++++ b/src/jobs/j0.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j0 = () => send("/x", "0");
++import { dispatch } from "../webhooks/sender";
++export const j0 = () => dispatch("/x", "0");
+diff --git a/src/jobs/j1.ts b/src/jobs/j1.ts
+--- a/src/jobs/j1.ts
++++ b/src/jobs/j1.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j1 = () => send("/x", "1");
++import { dispatch } from "../webhooks/sender";
++export const j1 = () => dispatch("/x", "1");
+diff --git a/src/jobs/j2.ts b/src/jobs/j2.ts
+--- a/src/jobs/j2.ts
++++ b/src/jobs/j2.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j2 = () => send("/x", "2");
++import { dispatch } from "../webhooks/sender";
++export const j2 = () => dispatch("/x", "2");
+diff --git a/src/jobs/j3.ts b/src/jobs/j3.ts
+--- a/src/jobs/j3.ts
++++ b/src/jobs/j3.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j3 = () => send("/x", "3");
++import { dispatch } from "../webhooks/sender";
++export const j3 = () => dispatch("/x", "3");
+diff --git a/src/jobs/j4.ts b/src/jobs/j4.ts
+--- a/src/jobs/j4.ts
++++ b/src/jobs/j4.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j4 = () => send("/x", "4");
++import { dispatch } from "../webhooks/sender";
++export const j4 = () => dispatch("/x", "4");
+diff --git a/src/jobs/j5.ts b/src/jobs/j5.ts
+--- a/src/jobs/j5.ts
++++ b/src/jobs/j5.ts
+@@ -1,2 +1,2 @@
+-import { send } from "../webhooks/sender";
+-export const j5 = () => send("/x", "5");
++import { dispatch } from "../webhooks/sender";
++export const j5 = () => dispatch("/x", "5");
+diff --git a/src/webhooks/client.ts b/src/webhooks/client.ts
+--- a/src/webhooks/client.ts
++++ b/src/webhooks/client.ts
+@@ -1,1 +1,1 @@
+-export async function send(url: string, body: string) { return fetch(url, {method: "POST", body}); }
++export async function dispatch(url: string, body: string) { return fetch(url, {method: "POST", body}); }
+diff --git a/src/webhooks/sender.ts b/src/webhooks/sender.ts
+--- a/src/webhooks/sender.ts
++++ b/src/webhooks/sender.ts
+@@ -1,1 +1,1 @@
+-export async function send(url: string, body: string) { return fetch(url, {method: "POST", body}); }
++export async function dispatch(url: string, body: string) { return fetch(url, {method: "POST", body}); }
+diff --git a/src/features/f00/index.ts b/src/features/f00/index.ts
+--- a/src/features/f00/index.ts
++++ b/src/features/f00/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f01/index.ts b/src/features/f01/index.ts
+--- a/src/features/f01/index.ts
++++ b/src/features/f01/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f02/index.ts b/src/features/f02/index.ts
+--- a/src/features/f02/index.ts
++++ b/src/features/f02/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f03/index.ts b/src/features/f03/index.ts
+--- a/src/features/f03/index.ts
++++ b/src/features/f03/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f04/index.ts b/src/features/f04/index.ts
+--- a/src/features/f04/index.ts
++++ b/src/features/f04/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f05/index.ts b/src/features/f05/index.ts
+--- a/src/features/f05/index.ts
++++ b/src/features/f05/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f06/index.ts b/src/features/f06/index.ts
+--- a/src/features/f06/index.ts
++++ b/src/features/f06/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f07/index.ts b/src/features/f07/index.ts
+--- a/src/features/f07/index.ts
++++ b/src/features/f07/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f08/index.ts b/src/features/f08/index.ts
+--- a/src/features/f08/index.ts
++++ b/src/features/f08/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f09/index.ts b/src/features/f09/index.ts
+--- a/src/features/f09/index.ts
++++ b/src/features/f09/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f10/index.ts b/src/features/f10/index.ts
+--- a/src/features/f10/index.ts
++++ b/src/features/f10/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f11/index.ts b/src/features/f11/index.ts
+--- a/src/features/f11/index.ts
++++ b/src/features/f11/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f12/index.ts b/src/features/f12/index.ts
+--- a/src/features/f12/index.ts
++++ b/src/features/f12/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f13/index.ts b/src/features/f13/index.ts
+--- a/src/features/f13/index.ts
++++ b/src/features/f13/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f14/index.ts b/src/features/f14/index.ts
+--- a/src/features/f14/index.ts
++++ b/src/features/f14/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f15/index.ts b/src/features/f15/index.ts
+--- a/src/features/f15/index.ts
++++ b/src/features/f15/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f16/index.ts b/src/features/f16/index.ts
+--- a/src/features/f16/index.ts
++++ b/src/features/f16/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f17/index.ts b/src/features/f17/index.ts
+--- a/src/features/f17/index.ts
++++ b/src/features/f17/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f18/index.ts b/src/features/f18/index.ts
+--- a/src/features/f18/index.ts
++++ b/src/features/f18/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f19/index.ts b/src/features/f19/index.ts
+--- a/src/features/f19/index.ts
++++ b/src/features/f19/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f20/index.ts b/src/features/f20/index.ts
+--- a/src/features/f20/index.ts
++++ b/src/features/f20/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f21/index.ts b/src/features/f21/index.ts
+--- a/src/features/f21/index.ts
++++ b/src/features/f21/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f22/index.ts b/src/features/f22/index.ts
+--- a/src/features/f22/index.ts
++++ b/src/features/f22/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f23/index.ts b/src/features/f23/index.ts
+--- a/src/features/f23/index.ts
++++ b/src/features/f23/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f24/index.ts b/src/features/f24/index.ts
+--- a/src/features/f24/index.ts
++++ b/src/features/f24/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f25/index.ts b/src/features/f25/index.ts
+--- a/src/features/f25/index.ts
++++ b/src/features/f25/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f26/index.ts b/src/features/f26/index.ts
+--- a/src/features/f26/index.ts
++++ b/src/features/f26/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f27/index.ts b/src/features/f27/index.ts
+--- a/src/features/f27/index.ts
++++ b/src/features/f27/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f28/index.ts b/src/features/f28/index.ts
+--- a/src/features/f28/index.ts
++++ b/src/features/f28/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f29/index.ts b/src/features/f29/index.ts
+--- a/src/features/f29/index.ts
++++ b/src/features/f29/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f30/index.ts b/src/features/f30/index.ts
+--- a/src/features/f30/index.ts
++++ b/src/features/f30/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f31/index.ts b/src/features/f31/index.ts
+--- a/src/features/f31/index.ts
++++ b/src/features/f31/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f32/index.ts b/src/features/f32/index.ts
+--- a/src/features/f32/index.ts
++++ b/src/features/f32/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f33/index.ts b/src/features/f33/index.ts
+--- a/src/features/f33/index.ts
++++ b/src/features/f33/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f34/index.ts b/src/features/f34/index.ts
+--- a/src/features/f34/index.ts
++++ b/src/features/f34/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f35/index.ts b/src/features/f35/index.ts
+--- a/src/features/f35/index.ts
++++ b/src/features/f35/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f36/index.ts b/src/features/f36/index.ts
+--- a/src/features/f36/index.ts
++++ b/src/features/f36/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch
+diff --git a/src/features/f37/index.ts b/src/features/f37/index.ts
+--- a/src/features/f37/index.ts
++++ b/src/features/f37/index.ts
+@@ -1,1 +1,1 @@
+-// uses send
++// uses dispatch

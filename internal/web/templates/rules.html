@@ -1,0 +1,9 @@
+{{template "head" .}}
+<section class="hero"><h1>the rule book</h1></section>
+<p class="lead">rules come from <code>cowboy.json</code> on each repo's default branch, on top of the defaults. a pr can't loosen its own rules. same input, same pen, every time.</p>
+<section class="box"><h2>local model</h2><p>{{if .Data.Model}}<b>{{.Data.Model}}</b> on your server. it reads each agent pr and writes notes: did the agent do what it was asked, and what to look at first. it never changes the pen.{{else}}none set up. cowboy is sorting with rules only. set <code>MODEL_URL</code> and <code>MODEL_NAME</code> to add notes from a model on your own server.{{end}}</p></section>
+<section class="box"><h2>agent check</h2><p>runs on every pr that doesn't declare an agent. it compares the pr to its author's own history and labels it <b>agent:likely</b> only when the low end of its range clears the line. it never changes the pen.</p>
+<table class="sig">{{range .Data.Detect}}<tr><td>{{.Repo}}</td><td>{{if .On}}on · label at {{.LabelAt}} · expected share {{printf "%.0f" (mulf .Prior 100)}}% · {{if .SortAll}}sorting every pr{{else}}sorting agent prs only{{end}}{{else}}off{{end}}</td></tr>{{end}}</table>
+<p class="small">set <code>"detect": {"sort_all": true}</code> in cowboy.json to put every pr in a pen, agent or not.</p></section>
+{{range .Data.Repos}}<section class="box"><h2>{{.Repo}}</h2><pre class="comment">{{.JSON}}</pre></section>{{else}}<p>no repos yet.</p>{{end}}
+{{template "foot" .}}

@@ -1,0 +1,92 @@
+diff --git a/src/jobs/retryBudget.ts b/src/jobs/retryBudget.ts
+new file mode 100644
+--- /dev/null
++++ b/src/jobs/retryBudget.ts
+@@ -0,0 +1,44 @@
++// RetryBudget tracks how many times each job has been retried.
++export class RetryBudget {
++  // Map of job id to the number of attempts made so far
++  private attempts: Map<string, number> = new Map();
++
++  constructor(private readonly maxAttempts: number = 3) {
++    // Validate the max attempts value
++    if (maxAttempts === undefined || maxAttempts === null) {
++      throw new Error("maxAttempts is required");
++    }
++    if (maxAttempts <= 0) {
++      throw new Error("maxAttempts must be positive");
++    }
++  }
++
++  // Check whether the job can be retried
++  canRetry(jobId: string): boolean {
++    if (!jobId) {
++      return false;
++    }
++    const used = this.attempts.get(jobId) ?? 0;
++    return used < this.maxAttempts;
++  }
++
++  // Record a retry attempt for the job
++  record(jobId: string): void {
++    if (!jobId) {
++      throw new Error("jobId is required");
++    }
++    const used = this.attempts.get(jobId) ?? 0;
++    this.attempts.set(jobId, used + 1);
++  }
++
++  // Reset the attempts for the job
++  reset(jobId: string): void {
++    if (!jobId) {
++      return;
++    }
++    this.attempts.delete(jobId);
++  }
++}
++
++export const defaultBudget = new RetryBudget();
+diff --git a/src/jobs/j0.ts b/src/jobs/j0.ts
+--- a/src/jobs/j0.ts
++++ b/src/jobs/j0.ts
+@@ -1,2 +1,14 @@
+-import { send } from "../webhooks/sender";
+-export const j0 = () => send("/x", "0");
++import { send } from '../webhooks/sender';
++import { defaultBudget } from './retryBudget';
++
++// Run job 0, retrying while the budget allows
++export const j0 = async () => {
++  try {
++    return await send('/x', '0');
++  } catch (err) {
++    if (defaultBudget.canRetry('j0')) {
++      defaultBudget.record('j0');
++      return j0();
++    }
++    throw err;
++  }
++};
+diff --git a/src/jobs/retryBudget.test.ts b/src/jobs/retryBudget.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/jobs/retryBudget.test.ts
+@@ -0,0 +1,18 @@
++import { RetryBudget } from "./retryBudget";
++
++describe("RetryBudget", () => {
++  it("allows retries up to the limit", () => {
++    const b = new RetryBudget(2);
++    expect(b.canRetry("a")).toBe(true);
++    b.record("a");
++    b.record("a");
++    expect(b.canRetry("a")).toBe(false);
++  });
++
++  it("handles empty job ids", () => {
++    const b = new RetryBudget();
++    expect(b.canRetry("")).toBe(false);
++  });
++
++  it("rejects zero", () => { expect(() => new RetryBudget(0)).toThrow(); });
++});

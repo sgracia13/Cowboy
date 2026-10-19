@@ -1,0 +1,13 @@
+{
+  "agents": {
+    "codex-bot": "codex"
+  },
+  "careful": {
+    "paths": [
+      "auth/**",
+      "billing/**",
+      "migrations/**",
+      ".github/workflows/**"
+    ]
+  }
+}

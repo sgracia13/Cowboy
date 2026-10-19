@@ -1,0 +1,21 @@
+{
+  "branch": "alice/logging",
+  "opened_at": "2026-10-18T15:36:00Z",
+  "first_push_at": "2026-10-18T15:33:00Z",
+  "author_created": "2018-09-01T08:00:00Z",
+  "org_member": true,
+  "force_pushes_known": true,
+  "force_pushes": [],
+  "commits": [
+    {
+      "sha": "0b5e2aa",
+      "message": "chore: logging",
+      "author_date": "2026-10-18T15:02:00Z",
+      "committer_date": "2026-10-18T15:04:00Z",
+      "verified": true,
+      "lines_added": 1,
+      "lines_removed": 1
+    }
+  ],
+  "reviews": []
+}

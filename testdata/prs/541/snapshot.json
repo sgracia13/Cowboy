@@ -1,0 +1,21 @@
+{
+  "branch": "sam/rename-dispatch",
+  "opened_at": "2026-10-18T16:41:35Z",
+  "first_push_at": "2026-10-18T16:41:20Z",
+  "author_created": "2017-04-11T08:00:00Z",
+  "org_member": true,
+  "force_pushes_known": true,
+  "force_pushes": [],
+  "commits": [
+    {
+      "sha": "5a1c0de",
+      "message": "rename send -> dispatch (codemod)\n\nran scripts/rename.sh send dispatch, no behaviour change",
+      "author_date": "2026-10-18T16:40:00Z",
+      "committer_date": "2026-10-18T16:40:50Z",
+      "verified": true,
+      "lines_added": 46,
+      "lines_removed": 46
+    }
+  ],
+  "reviews": []
+}

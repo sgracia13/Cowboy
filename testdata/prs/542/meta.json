@@ -1,0 +1,13 @@
+{
+  "repo": "acme/app",
+  "number": 542,
+  "title": "paginate audit log export",
+  "author": "priya",
+  "body": "## Summary\nThis PR introduces paginated CSV export for the audit log, ensuring that large exports no longer time out.\n\n## Key changes\n- Added `exportAudit` with page-by-page streaming for better readability and maintainability.\n- Updated `listAudit` to accept `page` and `size` arguments.\n- Added tests to cover edge cases such as empty pages.\n\n## Testing\n- All existing and new tests pass locally.",
+  "commits": [
+    "feat(audit): paginate listAudit\n\nAdd page and size arguments with validation.",
+    "feat(audit): add paginated CSV export\n\nStream the audit log page by page to avoid timeouts.",
+    "test(audit): cover export edge cases\n\nAdd tests for empty logs and invalid sizes."
+  ],
+  "checks_ok": true
+}

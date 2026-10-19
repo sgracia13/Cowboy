@@ -1,0 +1,11 @@
+{
+  "repo": "acme/app",
+  "number": 507,
+  "title": "move auth to new session store",
+  "author": "codex-bot",
+  "body": "Moves sessions to the new store.",
+  "commits": [
+    "refactor: session store"
+  ],
+  "checks_ok": true
+}

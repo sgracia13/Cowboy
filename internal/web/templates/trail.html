@@ -1,0 +1,6 @@
+{{template "head" .}}
+<section class="hero"><h1>the trail</h1></section>
+<p class="lead">what cowboy did, newest first. it only ever writes labels, one comment per pr, and review requests to code owners.</p>
+<section class="box"><h2>activity</h2><ul class="trail">{{range .Data.Events}}<li><b>{{.Kind}}</b> · {{.Repo}} · {{.Text}} · {{ago .At}}</li>{{else}}<li>nothing yet. new pull requests show up here as they're sorted.</li>{{end}}</ul></section>
+{{if .Data.Writes}}<section class="box"><h2>writes to the demo git host</h2><ul class="trail">{{range .Data.Writes}}<li>{{.}}</li>{{end}}</ul></section>{{end}}
+{{template "foot" .}}

@@ -1,0 +1,39 @@
+{
+  "branch": "fix/audit-export",
+  "opened_at": "2026-10-18T14:06:04Z",
+  "first_push_at": "2026-10-18T14:05:59Z",
+  "author_created": "2019-06-02T08:00:00Z",
+  "org_member": true,
+  "force_pushes_known": true,
+  "force_pushes": [],
+  "commits": [
+    {
+      "sha": "3e19fc1",
+      "message": "feat(audit): paginate listAudit\n\nAdd page and size arguments with validation.",
+      "author_date": "2026-10-18T14:05:00Z",
+      "committer_date": "2026-10-18T14:05:00Z",
+      "verified": false,
+      "lines_added": 12,
+      "lines_removed": 1
+    },
+    {
+      "sha": "76c3e64",
+      "message": "feat(audit): add paginated CSV export\n\nStream the audit log page by page to avoid timeouts.",
+      "author_date": "2026-10-18T14:05:24Z",
+      "committer_date": "2026-10-18T14:05:24Z",
+      "verified": false,
+      "lines_added": 26,
+      "lines_removed": 0
+    },
+    {
+      "sha": "5e472e2",
+      "message": "test(audit): cover export edge cases\n\nAdd tests for empty logs and invalid sizes.",
+      "author_date": "2026-10-18T14:05:55Z",
+      "committer_date": "2026-10-18T14:05:55Z",
+      "verified": false,
+      "lines_added": 10,
+      "lines_removed": 0
+    }
+  ],
+  "reviews": []
+}
