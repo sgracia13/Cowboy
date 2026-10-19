@@ -28,7 +28,7 @@
     <table class="sig">
       <tr><td>lines changed</td><td>{{.D.Signals.LinesChanged}} ({{.D.Signals.SourceLines}} in source)</td></tr>
       <tr><td>files · folders</td><td>{{.D.Signals.Files}} · {{.D.Signals.Dirs}}</td></tr>
-      <tr><td>blast radius</td><td>{{if .D.Signals.FanInKnown}}{{.D.Signals.FanIn}} files import {{.D.Signals.FanInFile}}{{else}}unknown (no local checkout){{end}}</td></tr>
+      <tr><td>blast radius</td><td>{{if .D.Signals.FanInKnown}}{{.D.Signals.FanIn}} files import {{.D.Signals.FanInFile}}{{else}}not measured (see the rules page){{end}}</td></tr>
       <tr><td>sensitive paths</td><td>{{if .D.Signals.Sensitive}}{{join .D.Signals.Sensitive ", "}}{{else}}none{{end}}</td></tr>
       <tr><td>shortcuts</td><td>{{if .D.Signals.Shortcuts}}{{range .D.Signals.Shortcuts}}<div>{{.Kind}} · {{.File}}{{if .Detail}} · <code>{{short .Detail 60}}</code>{{end}}</div>{{end}}{{else}}none{{end}}</td></tr>
       <tr><td>checks</td><td>{{checks .D.Signals.ChecksOK}}</td></tr>

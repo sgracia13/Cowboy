@@ -1,200 +1,331 @@
 // Package graph builds a per-repo import graph and answers "how many files
 // use this one?" (blast radius as import fan-in).
 //
-// The product plan uses tree-sitter. This prototype extracts imports with
-// line-level patterns for Go, JavaScript/TypeScript, Python and Java, which is
-// enough to show the idea; tree-sitter replaces extractImports later without
-// changing the rest of the package.
+// It works in two steps. Reading: each file's imports are pulled out by a
+// parser or scanner for its language (Go's own parser; scanners for
+// JavaScript/TypeScript, Python and Java/Kotlin that skip comments and
+// strings). Resolving: once every file has been seen, each import is matched
+// to the file it points at, using go.mod, tsconfig/jsconfig paths and
+// baseUrl, workspace package.json names, and Python package roots.
+//
+// Files can come from a local checkout (Build) or straight from a repo
+// archive streamed from the git host (FromTarGz), so no local copy is needed.
 package graph
 
 import (
-	"bufio"
+	"archive/tar"
+	"compress/gzip"
+	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
-// Graph maps a module key to the set of files that import it.
+// Graph maps each file (or Go package directory) to the files that import it.
 type Graph struct {
-	importers map[string]map[string]bool
-	goModule  string
 	files     map[string]bool
+	importers map[string]map[string]bool
+	Stats     Stats
 }
 
-var (
-	jsImport  = regexp.MustCompile(`(?:import\s[^'"]*from\s*|import\s*\(\s*|require\(\s*|import\s+)['"]([^'"]+)['"]`)
-	pyFrom    = regexp.MustCompile(`^\s*from\s+([.\w]+)\s+import\s`)
-	pyImport  = regexp.MustCompile(`^\s*import\s+([\w.]+)`)
-	goImport  = regexp.MustCompile(`^\s*(?:import\s+)?(?:[\w.]+\s+)?"([^"]+)"`)
-	javaImprt = regexp.MustCompile(`^\s*import\s+(?:static\s+)?([\w.]+)\s*;`)
-)
+// Stats describes how a graph was built, for the rules page and the log.
+type Stats struct {
+	Source   string    `json:"source"` // "checkout" or "archive"
+	Ref      string    `json:"ref,omitempty"`
+	BuiltAt  time.Time `json:"built_at"`
+	Files    int       `json:"files"`    // files seen
+	Parsed   int       `json:"parsed"`   // source files read for imports
+	Imports  int       `json:"imports"`  // imports found
+	Resolved int       `json:"resolved"` // imports matched to a file in the repo
+	TooBig   int       `json:"too_big"`  // source files skipped for size
+	Took     string    `json:"took"`
+}
 
-var skipDirs = map[string]bool{".git": true, "node_modules": true, "vendor": true, "dist": true, "build": true, ".venv": true, "venv": true, "__pycache__": true, "target": true}
+// MaxFileBytes: bigger source files (bundles, generated code) are counted as
+// files but not read for imports.
+const MaxFileBytes = 2 << 20
 
-// Build walks a local checkout and records every import it finds.
-func Build(root string) (*Graph, error) {
-	g := &Graph{importers: map[string]map[string]bool{}, files: map[string]bool{}}
-	if b, err := os.ReadFile(filepath.Join(root, "go.mod")); err == nil {
-		for _, l := range strings.Split(string(b), "\n") {
-			if strings.HasPrefix(l, "module ") {
-				g.goModule = strings.TrimSpace(strings.TrimPrefix(l, "module "))
-			}
+var skipDirs = map[string]bool{".git": true, "node_modules": true, "vendor": true, "dist": true, "build": true, ".venv": true, "venv": true, "__pycache__": true, "target": true, ".next": true, "coverage": true, "bower_components": true}
+
+var jsExts = []string{".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
+
+func lang(rel string) string {
+	switch path.Ext(rel) {
+	case ".go":
+		return "go"
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts":
+		return "js"
+	case ".py":
+		return "py"
+	case ".java", ".kt":
+		return "java"
+	}
+	return ""
+}
+
+func isConfig(rel string) bool {
+	b := path.Base(rel)
+	return b == "go.mod" || b == "package.json" || b == "jsconfig.json" || (strings.HasPrefix(b, "tsconfig") && strings.HasSuffix(b, ".json"))
+}
+
+// skip says whether a path is in a directory Cowboy never reads.
+func skip(rel string) bool {
+	for _, part := range strings.Split(rel, "/") {
+		if skipDirs[part] {
+			return true
 		}
 	}
+	return false
+}
+
+// Builder collects files, then resolves imports in Graph.
+type Builder struct {
+	files   map[string]bool
+	configs map[string][]byte
+	goImps  map[string][]string
+	jsImps  map[string][]string
+	pyImps  map[string][]pyImport
+	javas   map[string]javaFile
+	stats   Stats
+}
+
+func NewBuilder() *Builder {
+	return &Builder{files: map[string]bool{}, configs: map[string][]byte{}, goImps: map[string][]string{},
+		jsImps: map[string][]string{}, pyImps: map[string][]pyImport{}, javas: map[string]javaFile{}}
+}
+
+// Wants says whether a file should be read (its contents passed to Add).
+func (b *Builder) Wants(rel string, size int64) bool {
+	if skip(rel) {
+		return false
+	}
+	if isConfig(rel) {
+		return size <= MaxFileBytes
+	}
+	return lang(rel) != "" && size <= MaxFileBytes
+}
+
+// Add records a file. content may be nil for files that aren't read.
+func (b *Builder) Add(rel string, size int64, content []byte) {
+	if skip(rel) {
+		return
+	}
+	b.files[rel] = true
+	if isConfig(rel) {
+		if content != nil {
+			b.configs[rel] = content
+		}
+		return
+	}
+	l := lang(rel)
+	if l == "" {
+		return
+	}
+	if content == nil {
+		if size > MaxFileBytes {
+			b.stats.TooBig++
+		}
+		return
+	}
+	b.stats.Parsed++
+	switch l {
+	case "go":
+		b.goImps[rel] = goImports(rel, content)
+	case "js":
+		b.jsImps[rel] = jsImports(content)
+	case "py":
+		b.pyImps[rel] = pyImports(content)
+	case "java":
+		b.javas[rel] = javaImports(content)
+	}
+}
+
+// Build reads a local checkout.
+func Build(root string) (*Graph, error) {
+	start := time.Now()
+	b := NewBuilder()
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
+		rel, _ := filepath.Rel(root, p)
+		rel = filepath.ToSlash(rel)
 		if d.IsDir() {
-			if skipDirs[d.Name()] {
+			if rel != "." && skipDirs[d.Name()] {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		rel, _ := filepath.Rel(root, p)
-		rel = filepath.ToSlash(rel)
-		g.files[rel] = true
-		for _, key := range g.extractImports(root, rel) {
-			if g.importers[key] == nil {
-				g.importers[key] = map[string]bool{}
-			}
-			g.importers[key][rel] = true
+		if !d.Type().IsRegular() {
+			return nil
 		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		var content []byte
+		if b.Wants(rel, info.Size()) {
+			content, _ = os.ReadFile(p)
+		}
+		b.Add(rel, info.Size(), content)
 		return nil
 	})
-	return g, err
-}
-
-// extractImports returns module keys imported by one file, normalized so they
-// can be compared with ModuleKey of a changed file.
-func (g *Graph) extractImports(root, rel string) []string {
-	ext := path.Ext(rel)
-	switch ext {
-	case ".go", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".java":
-	default:
-		return nil
-	}
-	f, err := os.Open(filepath.Join(root, rel))
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	defer f.Close()
-	var keys []string
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 64*1024), 1024*1024)
-	inGoBlock := false
-	for sc.Scan() {
-		line := sc.Text()
-		switch ext {
-		case ".go":
-			t := strings.TrimSpace(line)
-			if strings.HasPrefix(t, "import (") {
-				inGoBlock = true
-				continue
+	g := b.Graph()
+	g.Stats.Source, g.Stats.BuiltAt, g.Stats.Took = "checkout", time.Now(), time.Since(start).Round(time.Millisecond).String()
+	return g, nil
+}
+
+// ErrTooBig means the repo archive was bigger than the limit.
+var ErrTooBig = errors.New("repo archive is bigger than the limit")
+
+type countingReader struct {
+	r     io.Reader
+	n     int64
+	limit int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	if c.limit > 0 && c.n > c.limit {
+		return n, ErrTooBig
+	}
+	return n, err
+}
+
+// FromTarGz reads a repo archive (.tar.gz, as GitHub, Forgejo and Gitea
+// serve them) as it streams in. Only import lists are kept, never the code.
+// limit caps the compressed bytes read (0 = no cap).
+func FromTarGz(r io.Reader, limit int64) (*Graph, error) {
+	start := time.Now()
+	cr := &countingReader{r: r, limit: limit}
+	zr, err := gzip.NewReader(cr)
+	if err != nil {
+		return nil, fmt.Errorf("not a .tar.gz archive: %w", err)
+	}
+	tr := tar.NewReader(zr)
+	b := NewBuilder()
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if errors.Is(err, ErrTooBig) || errors.Is(cr.lastErr(), ErrTooBig) {
+				return nil, ErrTooBig
 			}
-			if inGoBlock && t == ")" {
-				inGoBlock = false
-				continue
-			}
-			if inGoBlock || strings.HasPrefix(t, "import ") {
-				if m := goImport.FindStringSubmatch(t); m != nil && g.goModule != "" && strings.HasPrefix(m[1], g.goModule+"/") {
-					keys = append(keys, "go:"+strings.TrimPrefix(m[1], g.goModule+"/"))
+			return nil, err
+		}
+		if h.Typeflag != tar.TypeReg {
+			continue
+		}
+		// archives put everything under one top folder (owner-repo-sha/)
+		_, rel, ok := strings.Cut(h.Name, "/")
+		if !ok || rel == "" {
+			continue
+		}
+		var content []byte
+		if b.Wants(rel, h.Size) {
+			content, err = io.ReadAll(tr)
+			if err != nil {
+				if errors.Is(err, ErrTooBig) {
+					return nil, ErrTooBig
 				}
-			}
-		case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs":
-			for _, m := range jsImport.FindAllStringSubmatch(line, -1) {
-				spec := m[1]
-				if strings.HasPrefix(spec, ".") {
-					keys = append(keys, "js:"+stripJSExt(path.Clean(path.Join(path.Dir(rel), spec))))
-				}
-			}
-		case ".py":
-			if m := pyFrom.FindStringSubmatch(line); m != nil {
-				keys = append(keys, pyKey(rel, m[1]))
-			} else if m := pyImport.FindStringSubmatch(line); m != nil {
-				keys = append(keys, "py:"+m[1])
-			}
-		case ".java":
-			if m := javaImprt.FindStringSubmatch(line); m != nil {
-				keys = append(keys, "java:"+m[1])
+				return nil, err
 			}
 		}
+		b.Add(rel, h.Size, content)
 	}
-	return keys
+	g := b.Graph()
+	g.Stats.Source, g.Stats.BuiltAt, g.Stats.Took = "archive", time.Now(), time.Since(start).Round(time.Millisecond).String()
+	return g, nil
 }
 
-func stripJSExt(p string) string {
-	for _, e := range []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"} {
-		p = strings.TrimSuffix(p, e)
-	}
-	return strings.TrimSuffix(p, "/index")
-}
-
-func pyKey(rel, mod string) string {
-	if strings.HasPrefix(mod, ".") {
-		dots := len(mod) - len(strings.TrimLeft(mod, "."))
-		base := path.Dir(rel)
-		for i := 1; i < dots; i++ {
-			base = path.Dir(base)
-		}
-		rest := strings.TrimLeft(mod, ".")
-		p := base
-		if rest != "" {
-			p = path.Join(base, strings.ReplaceAll(rest, ".", "/"))
-		}
-		return "py:" + strings.ReplaceAll(strings.TrimPrefix(p, "./"), "/", ".")
-	}
-	return "py:" + mod
-}
-
-// ModuleKeys returns the keys other files would use to import this file.
-func (g *Graph) ModuleKeys(rel string) []string {
-	ext := path.Ext(rel)
-	switch ext {
-	case ".go":
-		return []string{"go:" + path.Dir(rel)}
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs":
-		return []string{"js:" + stripJSExt(rel)}
-	case ".py":
-		mod := strings.TrimSuffix(rel, ".py")
-		mod = strings.TrimSuffix(mod, "/__init__")
-		dotted := strings.ReplaceAll(mod, "/", ".")
-		keys := []string{"py:" + dotted}
-		// also match when the repo uses a src/ layout
-		if strings.HasPrefix(dotted, "src.") {
-			keys = append(keys, "py:"+strings.TrimPrefix(dotted, "src."))
-		}
-		return keys
-	case ".java":
-		p := rel
-		for _, pre := range []string{"src/main/java/", "src/test/java/", "src/"} {
-			if i := strings.Index(p, pre); i >= 0 {
-				p = p[i+len(pre):]
-				break
-			}
-		}
-		return []string{"java:" + strings.ReplaceAll(strings.TrimSuffix(p, ".java"), "/", ".")}
+func (c *countingReader) lastErr() error {
+	if c.limit > 0 && c.n > c.limit {
+		return ErrTooBig
 	}
 	return nil
 }
 
-// FanIn returns how many distinct files import rel (excluding rel itself and
-// files in the same Go package), plus a few example importers.
+// Graph resolves every import and returns the graph.
+func (b *Builder) Graph() *Graph {
+	g := &Graph{files: b.files, importers: map[string]map[string]bool{}, Stats: b.stats}
+	g.Stats.Files = len(b.files)
+	edge := func(target, from string) {
+		if target == "" || target == from {
+			return
+		}
+		if g.importers[target] == nil {
+			g.importers[target] = map[string]bool{}
+		}
+		g.importers[target][from] = true
+		g.Stats.Resolved++
+	}
+	r := newResolver(b)
+	for rel, imps := range b.goImps {
+		for _, p := range imps {
+			g.Stats.Imports++
+			if d, ok := r.goDir(p); ok {
+				edge("dir:"+d, rel)
+			}
+		}
+	}
+	for rel, specs := range b.jsImps {
+		for _, s := range specs {
+			g.Stats.Imports++
+			edge(r.js(rel, s), rel)
+		}
+	}
+	for rel, imps := range b.pyImps {
+		for _, im := range imps {
+			targets := r.py(rel, im)
+			if len(im.Names) == 0 || len(targets) == 0 {
+				g.Stats.Imports++
+			} else {
+				g.Stats.Imports += len(im.Names)
+			}
+			for _, t := range targets {
+				edge(t, rel)
+			}
+		}
+	}
+	for rel, jf := range b.javas {
+		for _, im := range jf.Imports {
+			g.Stats.Imports++
+			for _, t := range r.java(im) {
+				edge(t, rel)
+			}
+		}
+	}
+	return g
+}
+
+// FanIn returns how many distinct files import rel (excluding rel itself and,
+// for Go, files in the same package), plus their paths.
 func (g *Graph) FanIn(rel string) (int, []string) {
 	set := map[string]bool{}
-	for _, k := range g.ModuleKeys(rel) {
-		for f := range g.importers[k] {
-			if f == rel {
-				continue
+	if lang(rel) == "go" {
+		dir := path.Dir(rel)
+		for f := range g.importers["dir:"+dir] {
+			if path.Dir(f) != dir {
+				set[f] = true
 			}
-			if path.Ext(rel) == ".go" && path.Dir(f) == path.Dir(rel) {
-				continue
+		}
+	} else {
+		for f := range g.importers[rel] {
+			if f != rel {
+				set[f] = true
 			}
-			set[f] = true
 		}
 	}
 	out := make([]string, 0, len(set))
@@ -207,3 +338,18 @@ func (g *Graph) FanIn(rel string) (int, []string) {
 
 // Has reports whether the graph saw this file.
 func (g *Graph) Has(rel string) bool { return g.files[rel] }
+
+// Edges lists every resolved import as importer → target (for tests and the
+// accuracy check). Go targets are package directories, written "dir:<path>".
+func (g *Graph) Edges() map[string][]string {
+	out := map[string][]string{}
+	for target, froms := range g.importers {
+		for f := range froms {
+			out[f] = append(out[f], target)
+		}
+	}
+	for f := range out {
+		sort.Strings(out[f])
+	}
+	return out
+}

@@ -1,7 +1,9 @@
 package forge
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -18,6 +20,26 @@ func (g *GitHub) Name() string { return "github" }
 // UseApp switches this client to sign in as a GitHub App. Safe to call
 // while requests are running (setup finishing with Cowboy already up).
 func (g *GitHub) UseApp(a *AppAuth) { g.app.Store(a) }
+
+// Head is the latest commit on the default branch.
+func (g *GitHub) Head(repo string) (string, error) {
+	var r struct {
+		DefaultBranch string `json:"default_branch"`
+	}
+	if _, err := g.do("GET", "/repos/"+repo, nil, "", &r); err != nil {
+		return "", err
+	}
+	b, err := g.do("GET", fmt.Sprintf("/repos/%s/commits/%s", repo, esc(r.DefaultBranch)), nil, "application/vnd.github.sha", nil)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
+}
+
+// Archive streams the repo at sha as a .tar.gz.
+func (g *GitHub) Archive(ctx context.Context, repo, sha string) (io.ReadCloser, error) {
+	return g.stream(ctx, fmt.Sprintf("/repos/%s/tarball/%s", repo, url.PathEscape(sha)))
+}
 
 // App is the GitHub App in use, or nil when signing in with a token.
 func (g *GitHub) App() *AppAuth { return g.app.Load() }

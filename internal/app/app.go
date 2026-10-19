@@ -4,6 +4,8 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -33,8 +35,13 @@ type App struct {
 	Forge     forge.Forge
 	Store     *store.Store
 	RepoPaths map[string]string // repo -> local checkout, for blast radius
-	DryRun    bool              // sort and store, but write nothing to the forge
-	Now       func() time.Time
+	// ArchiveGraphs builds blast radius from an archive of the default
+	// branch downloaded from the git host, for repos with no local checkout.
+	ArchiveGraphs bool
+	// ArchiveLimit caps the archive download in bytes (0 = no cap).
+	ArchiveLimit int64
+	DryRun       bool // sort and store, but write nothing to the forge
+	Now          func() time.Time
 
 	// Model is the optional local model. nil = rules only.
 	Model model.Model
@@ -46,13 +53,15 @@ type App struct {
 	Baselines *detect.FileBaselines
 	notesQ    chan notesJob
 
-	mu      sync.Mutex
-	graphs  map[string]*graph.Graph
-	graphAt map[string]time.Time
-	locks   map[string]*sync.Mutex
-	events  *hub
-	skipped map[string]bool
-	checks  map[string]checked
+	mu        sync.Mutex
+	graphs    map[string]*graph.Graph
+	graphAt   map[string]time.Time
+	graphFail map[string]graphFailure
+	graphBusy map[string]*sync.Mutex
+	locks     map[string]*sync.Mutex
+	events    *hub
+	skipped   map[string]bool
+	checks    map[string]checked
 }
 
 // New builds an App.
@@ -61,7 +70,8 @@ func New(f forge.Forge, s *store.Store, repoPaths map[string]string) *App {
 		repoPaths = map[string]string{}
 	}
 	return &App{Forge: f, Store: s, RepoPaths: repoPaths, Now: time.Now,
-		graphs: map[string]*graph.Graph{}, graphAt: map[string]time.Time{}, locks: map[string]*sync.Mutex{}}
+		graphs: map[string]*graph.Graph{}, graphAt: map[string]time.Time{}, locks: map[string]*sync.Mutex{},
+		graphFail: map[string]graphFailure{}, graphBusy: map[string]*sync.Mutex{}}
 }
 
 // one PR at a time per repo, so doubles see each other in order
@@ -74,29 +84,155 @@ func (a *App) repoLock(repo string) *sync.Mutex {
 	return a.locks[repo]
 }
 
-// GraphMaxAge is how long an import graph is reused before the checkout is
-// read again, so blast radius follows a checkout kept fresh with git pull.
+// GraphMaxAge is how long an import graph is used before Cowboy checks for
+// a newer one: it rereads a local checkout, or asks the git host whether the
+// default branch moved and downloads it again if so.
 const GraphMaxAge = time.Hour
 
-// Graph returns the import graph for a repo, or nil if no local checkout.
+type graphFailure struct {
+	err   error
+	until time.Time
+}
+
+// Graph returns the import graph for a repo, or nil if blast radius can't
+// run for it. The first call for a repo builds the graph (other repos aren't
+// held up); later, a stale graph keeps being used while a fresh one builds
+// in the background.
 func (a *App) Graph(repo string) *graph.Graph {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if g, ok := a.graphs[repo]; ok && time.Since(a.graphAt[repo]) < GraphMaxAge {
+	g, at, fail := a.graphs[repo], a.graphAt[repo], a.graphFail[repo]
+	path, local := a.RepoPaths[repo]
+	a.mu.Unlock()
+	arch, _ := a.Forge.(forge.Archiver)
+	if !local && (!a.ArchiveGraphs || arch == nil) {
+		return nil
+	}
+	if g != nil && time.Since(at) < GraphMaxAge {
 		return g
 	}
-	path, ok := a.RepoPaths[repo]
-	if !ok {
+	if g == nil && time.Now().Before(fail.until) {
 		return nil
 	}
-	g, err := graph.Build(path)
+	if g != nil {
+		go a.buildGraph(repo, path, local, arch, g.Stats.Ref)
+		return g
+	}
+	a.buildGraph(repo, path, local, arch, "")
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.graphs[repo]
+}
+
+func (a *App) graphLock(repo string) *sync.Mutex {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.graphBusy[repo] == nil {
+		a.graphBusy[repo] = &sync.Mutex{}
+	}
+	return a.graphBusy[repo]
+}
+
+func (a *App) buildGraph(repo, path string, local bool, arch forge.Archiver, have string) {
+	lock := a.graphLock(repo)
+	if !lock.TryLock() {
+		if have != "" {
+			return // a refresh is already running; keep using the old graph
+		}
+		lock.Lock() // first build already running: wait for it
+		lock.Unlock()
+		return
+	}
+	defer lock.Unlock()
+	var g *graph.Graph
+	var err error
+	if local {
+		g, err = graph.Build(path)
+	} else {
+		var sha string
+		sha, err = arch.Head(repo)
+		if err == nil && have != "" && strings.HasPrefix(sha, have) {
+			a.mu.Lock()
+			a.graphAt[repo] = time.Now() // default branch hasn't moved
+			a.mu.Unlock()
+			return
+		}
+		if err == nil {
+			g, err = a.archiveGraph(repo, sha, arch)
+		}
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if err != nil {
-		log.Printf("graph %s: %v", repo, err)
-		return nil
+		wait := time.Hour
+		if errors.Is(err, graph.ErrTooBig) {
+			wait = 24 * time.Hour
+		}
+		a.graphFail[repo] = graphFailure{err, time.Now().Add(wait)}
+		log.Printf("blast radius %s: %v", repo, err)
+		if a.graphs[repo] != nil {
+			a.graphAt[repo] = time.Now() // keep the old one, try again later
+		}
+		return
 	}
+	delete(a.graphFail, repo)
 	a.graphs[repo] = g
 	a.graphAt[repo] = time.Now()
-	return g
+	log.Printf("blast radius %s: %d files read from the %s%s in %s, %d imports", repo, g.Stats.Parsed, g.Stats.Source, refNote(g.Stats.Ref), g.Stats.Took, g.Stats.Imports)
+}
+
+func refNote(ref string) string {
+	if ref == "" {
+		return ""
+	}
+	return " at " + ref
+}
+
+func (a *App) archiveGraph(repo, sha string, arch forge.Archiver) (*graph.Graph, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	rc, err := arch.Archive(ctx, repo, sha)
+	if err != nil {
+		return nil, fmt.Errorf("downloading the default branch: %w", err)
+	}
+	defer rc.Close()
+	g, err := graph.FromTarGz(rc, a.ArchiveLimit)
+	if errors.Is(err, graph.ErrTooBig) {
+		return nil, fmt.Errorf("%w (%d MB); raise BLAST_RADIUS_MAX_MB or point REPO_PATHS at a local copy", graph.ErrTooBig, a.ArchiveLimit>>20)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(sha) > 12 {
+		sha = sha[:12]
+	}
+	g.Stats.Ref = sha
+	return g, nil
+}
+
+// GraphStatus says how blast radius is working for a repo, for the rules page.
+func (a *App) GraphStatus(repo string) string {
+	a.mu.Lock()
+	g, fail := a.graphs[repo], a.graphFail[repo]
+	_, local := a.RepoPaths[repo]
+	a.mu.Unlock()
+	_, canArchive := a.Forge.(forge.Archiver)
+	switch {
+	case g != nil:
+		s := fmt.Sprintf("on: %d source files read from the %s%s, %d imports, built in %s", g.Stats.Parsed, g.Stats.Source, refNote(g.Stats.Ref), g.Stats.Imports, g.Stats.Took)
+		if g.Stats.TooBig > 0 {
+			s += fmt.Sprintf(" (%d files over 2 MB skipped)", g.Stats.TooBig)
+		}
+		return s
+	case fail.err != nil:
+		return "not working: " + fail.err.Error()
+	case local:
+		return "on: reads " + a.RepoPaths[repo] + " (builds with the next pull request)"
+	case a.ArchiveGraphs && canArchive:
+		return "on: builds from the default branch with the next pull request"
+	case !a.ArchiveGraphs && canArchive:
+		return "off (BLAST_RADIUS=off)"
+	}
+	return "off: this git host can't send repo archives; set REPO_PATHS to a local copy"
 }
 
 // RefreshGraph drops the cached graph (call after the default branch moves).

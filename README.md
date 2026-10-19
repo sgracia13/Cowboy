@@ -98,7 +98,9 @@ setting `FORGE_TOKEN` keeps the old way: a token, `REPOS`, and a webhook you add
 | `FORGE_TOKEN` | token that can read prs and write labels + comments (leave empty on github to use the app) |
 | `WEBHOOK_SECRET` | the secret you set on the webhook (the github app brings its own) |
 | `REPOS` | `owner/repo,...` to sort all open prs at start (token mode) |
-| `REPO_PATHS` | `owner/repo=/path/to/checkout` to turn on blast radius (optional) |
+| `BLAST_RADIUS` | `off` = don't download repos for blast radius (default on) |
+| `BLAST_RADIUS_MAX_MB` | biggest repo archive to download (default 300) |
+| `REPO_PATHS` | `owner/repo=/path/to/checkout`: read blast radius from a local copy instead (optional) |
 | `UI_PASSWORD` | password for the dashboard (one shared login for the team) |
 | `AUTH_PROXY_HEADER` | instead of a password: the header your SSO proxy sets, e.g. `X-Forwarded-User` |
 | `UI_OPEN=1` | run the dashboard with no login (only if nothing else can reach it) |
@@ -194,6 +196,16 @@ only these, ever:
 - one comment per pr, edited in place on every push (found by `<!-- cowboy -->`), with the model's notes if you turned it on
 - a review request to the CODEOWNERS of careful prs
 
+## blast radius
+
+"20+ files depend on this" needs to know who imports what. cowboy works that out by itself:
+
+- **no local copy needed.** cowboy downloads the default branch as a `.tar.gz` from your git host (the same api it already uses; the github app's *contents: read* covers it), reads the imports while it streams in, and keeps only the list of who imports what. no code is written to disk. it checks hourly whether the default branch moved and downloads again only if it did. a pull request is sorted with the last graph while a new one builds.
+- **real parsing.** go is read with go's own parser. javascript/typescript and python are read by scanners that handle imports split over many lines and skip comments, strings, template literals and regular expressions. imports are matched to files using `go.mod`, tsconfig/jsconfig `paths` and `baseUrl` (with `extends`), workspace packages (`package.json` names, `exports` maps, `workspace:` aliases), and python package roots like `src/`.
+- **checked against the real tools.** on n8n, grafana and sentry, it found 100.0% of the imports the typescript compiler and python's `ast` find, picked the same file as typescript 99.9–100% of the time, and caught 100% of the files 20+ files import (the old pattern version caught 1–60%). details and scripts: [`scripts/eval/graphcheck`](scripts/eval/graphcheck).
+- **big repos.** archives over 300 MB are skipped (`BLAST_RADIUS_MAX_MB`); n8n, grafana and sentry are 50–55 MB and take 3–7 seconds to read. files over 2 MB (bundles, generated code) aren't read.
+- `REPO_PATHS=owner/repo=/path` still works if you'd rather keep a checkout, and `BLAST_RADIUS=off` turns downloads off. the rules page shows how blast radius is working for each repo.
+
 ## the rules
 
 **every pr is sorted, not just agent prs.** the rules look at the code, not who wrote it, and unmarked agent work can't be spotted reliably, so sorting everything is how nothing risky goes unsorted. prs from people are kept quiet: they get a pen label, no agent label, never a double or stray label, and a comment only when they land in careful. change that with `"people": {"comment": "always"}` or `"never"`, or go back to agent prs only with `"detect": {"sort_all": false}`.
@@ -227,7 +239,7 @@ cowboy check-model                                               # is the model 
 cmd/cowboy          cli: demo, serve, score, tally, sign
 internal/diff       unified diff parser
 internal/analyze    agent detection, file classes, linked issues
-internal/graph      import graph -> blast radius (go, js/ts, python, java)
+internal/graph      import graph -> blast radius (go, js/ts, python, java/kotlin)
 internal/shortcuts  the six shortcut checks
 internal/score      measure + decide (pure functions)
 internal/pipeline   one pr in, one decision out (doubles, strays, comment)
@@ -246,7 +258,7 @@ testdata/           sample repo + 10 sample prs with expected pens
 ## prototype limits (vs. the build plan)
 
 - store is a json file, not sqlite (this build has zero dependencies)
-- imports are found with patterns, not tree-sitter; blast radius needs a local checkout via `REPO_PATHS`
+- blast radius for java and kotlin reads imports only (files in the same package use each other without one), and hasn't been checked against a reference yet
 - review requests skip teams (`@org/team`); users only
 - gitea/forgejo label changes aren't read back as corrections yet (github's are); use the corral's move buttons
 - the weekly tally goes to a slack-style webhook or email; teams/discord-native formats aren't built

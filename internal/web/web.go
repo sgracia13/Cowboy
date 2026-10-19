@@ -275,13 +275,14 @@ func (s *Server) tally(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) rules(w http.ResponseWriter, r *http.Request) {
 	type repoRules struct {
-		Repo string
-		JSON string
+		Repo  string
+		JSON  string
+		Blast string
 	}
 	var out []repoRules
 	for _, repo := range s.App.Store.Repos() {
 		b, _ := json.MarshalIndent(s.App.Config(repo), "", "  ")
-		out = append(out, repoRules{repo, string(b)})
+		out = append(out, repoRules{repo, string(b), s.App.GraphStatus(repo)})
 	}
 	type det struct {
 		Repo    string

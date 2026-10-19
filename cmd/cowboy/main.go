@@ -73,7 +73,10 @@ env for serve:
   FORGE_TOKEN     token with pr read + label/comment write
   WEBHOOK_SECRET  shared secret for webhook signatures
   UI_PASSWORD     dashboard password (or AUTH_PROXY_HEADER behind an SSO proxy)
-  REPO_PATHS      optional "owner/repo=/path/to/checkout,..." for blast radius
+  REPO_PATHS      optional "owner/repo=/path/to/checkout,...": read blast radius from a local copy
+                  (otherwise cowboy downloads the default branch from the git host)
+  BLAST_RADIUS    off = don't download repos for blast radius
+  BLAST_RADIUS_MAX_MB  biggest archive to download (default 300)
   REPOS           optional "owner/repo,..." to sort all open prs at start
   DATA            store file (default ./data/cowboy.json)
   ADDR            listen address (default :8080)
@@ -489,6 +492,14 @@ func serve() {
 		log.Fatal("WEBHOOK_SECRET is required")
 	}
 	a.DryRun = os.Getenv("DRY_RUN") == "1"
+	a.ArchiveGraphs = !strings.EqualFold(os.Getenv("BLAST_RADIUS"), "off")
+	a.ArchiveLimit = 300 << 20
+	if v, err := strconv.Atoi(os.Getenv("BLAST_RADIUS_MAX_MB")); err == nil && v >= 0 {
+		a.ArchiveLimit = int64(v) << 20
+	}
+	if a.ArchiveGraphs {
+		log.Printf("blast radius: on, read from the git host (archives up to %d MB; nothing is kept on disk)", a.ArchiveLimit>>20)
+	}
 	bpath := filepath.Join(filepath.Dir(env("DATA", "data/cowboy.json")), "baselines.json")
 	if bs, err := detect.OpenBaselines(bpath, 90); err == nil {
 		a.Baselines = bs

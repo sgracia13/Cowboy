@@ -5,6 +5,7 @@ package forge
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,6 +50,66 @@ type Forge interface {
 	// commit times, reviews and account facts. Fields the host doesn't
 	// expose are left zero and marked unknown downstream.
 	Snapshot(repo string, n int) (detect.PRSnapshot, error)
+}
+
+// Archiver is a host that can hand over a repo as a .tar.gz, so blast
+// radius works without a local copy. GitHub, Forgejo and Gitea all can.
+type Archiver interface {
+	// Head is the latest commit on the default branch.
+	Head(repo string) (string, error)
+	// Archive streams the repo at that commit as a .tar.gz.
+	Archive(ctx context.Context, repo, sha string) (io.ReadCloser, error)
+}
+
+// archiveClient has no overall timeout (a big archive takes a while); the
+// caller's context limits it instead.
+var archiveClient = &http.Client{
+	Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, ResponseHeaderTimeout: 60 * time.Second, TLSHandshakeTimeout: 15 * time.Second},
+	// never send the token to another host (GitHub redirects to a signed
+	// codeload URL that needs none)
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("too many redirects")
+		}
+		if req.URL.Host != via[0].URL.Host {
+			req.Header.Del("Authorization")
+		}
+		return nil
+	},
+}
+
+// stream GETs path and hands back the body unread. Redirects are followed
+// (GitHub sends archives from codeload.github.com); Go drops the
+// Authorization header when a redirect leaves the host.
+func (c *client) stream(ctx context.Context, path string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", c.base+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	if a := c.app.Load(); a != nil {
+		h, err := a.header(path)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", h)
+	} else if c.token != "" {
+		req.Header.Set("Authorization", c.scheme+" "+c.token)
+	}
+	req.Header.Set("User-Agent", "cowboy")
+	resp, err := archiveClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == 404 {
+		resp.Body.Close()
+		return nil, errNotFound
+	}
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		resp.Body.Close()
+		return nil, fmt.Errorf("GET %s: %d %s", path, resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	return resp.Body, nil
 }
 
 type client struct {
