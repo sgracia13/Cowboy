@@ -85,9 +85,9 @@ jobs:
           case "$loc" in *"/download/$VERSION/install.sh") ;; *) echo "the install link doesn't reach $VERSION"; exit 1 ;; esac
           curl -fsSL "$link" -o /dev/null
           # and the installed binary runs the demo from an empty folder
-          export HOME="$(mktemp -d)"
+          export HOME="$(mktemp -d)" COWBOY_DIR="$(mktemp -d)"
           curl -fsSL "$link" | sh
-          cd "$(mktemp -d)" && "$HOME/.local/bin/cowboy" version && "$HOME/.local/bin/cowboy" demo --once
+          cd "$(mktemp -d)" && "$COWBOY_DIR/cowboy" version | grep -F "$VERSION" && "$COWBOY_DIR/cowboy" demo --once
   docker:
     runs-on: ubuntu-latest
     steps:
