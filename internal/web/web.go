@@ -113,6 +113,7 @@ func New(a *app.App) *Server {
 			}
 			return strings.Replace(v, "-", "−", 1)
 		},
+		"add":   func(a, b int) int { return a + b },
 		"times": func(f float64) string { return strconv.FormatFloat(f, 'f', 2, 64) + "×" },
 		"safeWord": func(v string) string {
 			switch v {
@@ -277,17 +278,27 @@ type prData struct {
 	Moved    bool
 	Merge    *outcome.Merge
 	Outcomes []outcome.Outcome
+	Replay   bool // from a replayed history (the demo): nothing to move
 }
 
 func (s *Server) pr(w http.ResponseWriter, r *http.Request) {
 	repo := r.URL.Query().Get("repo")
 	n, _ := strconv.Atoi(r.URL.Query().Get("n"))
 	d, ok := s.App.Store.Get(repo, n)
+	replay := false
+	if !ok && s.Outcomes != nil && s.Outcomes.History != nil {
+		for _, h := range s.Outcomes.History() {
+			if h.Number == n && strings.EqualFold(h.Repo, repo) {
+				d, ok, replay = h, true, true
+				break
+			}
+		}
+	}
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	pd := prData{D: d, Comment: pipeline.FullComment(d), Pens: []score.Pen{score.Easy, score.Normal, score.Careful}, Moved: r.URL.Query().Get("moved") != ""}
+	pd := prData{D: d, Comment: pipeline.FullComment(d), Pens: []score.Pen{score.Easy, score.Normal, score.Careful}, Moved: r.URL.Query().Get("moved") != "", Replay: replay}
 	if f, ok := s.App.Forge.(*forge.Fake); ok {
 		pd.OnForge = f.Labels[n]
 		pd.Reviews = f.Reviews[n]

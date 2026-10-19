@@ -23,6 +23,8 @@ on windows, download `cowboy-windows-amd64.exe` from [releases](https://github.c
 
 open http://localhost:8080 right away. the corral starts empty, then the sample repo's prs arrive one every 4 seconds, as if agents (and a couple of people) were opening them overnight. each one drops into its pen live, no refresh. the webhook for #521 is dropped on purpose, so you can watch the **catch-up sweep** find it a few seconds later.
 
+then open **outcomes**: it's a replay of real vercel/next.js history (about 2,500 merged prs, author names removed), so you can see what cowboy finds after merge, and whether its pens beat simple alternatives there. they don't, and the page says so.
+
 want everything at once instead? `demo --drip 0`. just the table in the terminal? `demo --once`.
 
 where they land:

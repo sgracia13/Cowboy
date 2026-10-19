@@ -11,6 +11,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/audit"
 	"github.com/sgracia13/Cowboy/internal/evaluate"
 	"github.com/sgracia13/Cowboy/internal/outcome"
+	"github.com/sgracia13/Cowboy/internal/pipeline"
 )
 
 // OutcomeSettings turns on the outcomes page.
@@ -29,6 +30,11 @@ type OutcomeSettings struct {
 	// weight and bootstrap stratum, so the comparison is weighted back to
 	// the repo's real mix. nil on a live install.
 	Weight func(repo string, n int) (float64, string)
+	// History, when set, is where the page reads merged PRs from instead of
+	// the store (the demo shows a replayed real history this way, apart from
+	// its made-up corral). Note is shown at the top of the page.
+	History func() []pipeline.Decision
+	Note    string
 	// Now is the clock for the report (nil = the real time; a replay of
 	// past history sets it to the end of that history).
 	Now func() time.Time
@@ -48,6 +54,14 @@ func actor(r *http.Request) string {
 	return "team"
 }
 
+// history is the merged PRs the outcomes page reads.
+func (s *Server) history() []pipeline.Decision {
+	if s.Outcomes.History != nil {
+		return s.Outcomes.History()
+	}
+	return s.App.Store.List("", "")
+}
+
 func (s *Server) report() outcome.Report {
 	o := s.Outcomes
 	fan := map[string]int{}
@@ -56,7 +70,7 @@ func (s *Server) report() outcome.Report {
 			fan[repo] = o.MinFanIn(repo)
 		}
 	}
-	return outcome.Build(s.App.Store.List("", ""), o.State, o.now(), o.Window, fan)
+	return outcome.Build(s.history(), o.State, o.now(), o.Window, fan)
 }
 
 // check judges the careful and easy pens against simple alternatives with
@@ -65,7 +79,7 @@ func (s *Server) report() outcome.Report {
 // the inputs change.
 func (s *Server) check() evaluate.Result {
 	o := s.Outcomes
-	items := outcome.Items(s.App.Store.List("", ""), o.State, o.now(), o.Window, o.Weight)
+	items := outcome.Items(s.history(), o.State, o.now(), o.Window, o.Weight)
 	bad := 0
 	for _, it := range items {
 		if it.Bad {
@@ -83,22 +97,24 @@ func (s *Server) check() evaluate.Result {
 }
 
 type outcomesPage struct {
-	Report    outcome.Report
-	Check     evaluate.Result
-	Pending   []outcome.Outcome
-	Recent    []outcome.Outcome
-	Incidents []outcome.IncidentRecord
-	AuditN    int
-	AuditFP   string
-	Sources   string
-	Error     string
-	CanFill   bool
-	Filling   string
+	Note        string
+	PendingMore int // suggestions past the first 10, not listed
+	Report      outcome.Report
+	Check       evaluate.Result
+	Pending     []outcome.Outcome
+	Recent      []outcome.Outcome
+	Incidents   []outcome.IncidentRecord
+	AuditN      int
+	AuditFP     string
+	Sources     string
+	Error       string
+	CanFill     bool
+	Filling     string
 }
 
 func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 	o := s.Outcomes
-	p := outcomesPage{Report: s.report(), Check: s.check(), Sources: o.Sources, Error: r.URL.Query().Get("error")}
+	p := outcomesPage{Note: o.Note, Report: s.report(), Check: s.check(), Sources: o.Sources, Error: r.URL.Query().Get("error")}
 	all := o.State.Outcomes("", 0)
 	for _, x := range all {
 		if x.Status == outcome.Suggested {
@@ -106,6 +122,10 @@ func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 		} else if len(p.Recent) < 50 {
 			p.Recent = append(p.Recent, x)
 		}
+	}
+	if len(p.Pending) > 10 {
+		p.PendingMore = len(p.Pending) - 10
+		p.Pending = p.Pending[:10]
 	}
 	p.Incidents = o.State.Incidents()
 	if len(p.Incidents) > 20 {
@@ -172,7 +192,7 @@ func (s *Server) auditCSV(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) benchmark(w http.ResponseWriter, r *http.Request) {
 	o := s.Outcomes
-	b := outcome.Benchmark(s.App.Store.List("", ""), o.State, o.now(), o.Window, o.Version)
+	b := outcome.Benchmark(s.history(), o.State, o.now(), o.Window, o.Version)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", `attachment; filename="cowboy-benchmark.json"`)
 	enc := json.NewEncoder(w)
