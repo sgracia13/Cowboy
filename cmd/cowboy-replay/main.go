@@ -54,6 +54,8 @@ type sorted struct {
 	Reasons   []score.Reason `json:"reasons"`
 	FanIn     int            `json:"fan_in"`
 	FanKnown  bool           `json:"fan_in_known"`
+	Lines     int            `json:"lines"`
+	Files     int            `json:"files"`
 	Agent     bool           `json:"agent_label"`
 	Bot       bool           `json:"bot"`
 	Reverted  bool           `json:"reverted"`
@@ -256,7 +258,7 @@ func main() {
 				}
 				agentPRs++
 			}
-			sig := score.Signals{FanIn: p.FanIn, FanInKnown: p.FanKnown}
+			sig := score.Signals{FanIn: p.FanIn, FanInKnown: p.FanKnown, LinesChanged: p.Lines, Files: p.Files, Paths: paths}
 			for _, s := range p.Shortcuts {
 				sig.Shortcuts = append(sig.Shortcuts, shortcutFlag(s.Kind, s.Detail))
 			}
