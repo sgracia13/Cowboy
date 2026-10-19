@@ -16,9 +16,10 @@ Counted: getsentry/sentry (174 reverted PRs in the sample) and
 grafana/grafana (40). n8n-io/n8n had 1 reverted PR in the sample, so it is
 reported but not counted, as CLAIMS.md said.
 
-What this supports: Cowboy's careful pen is where reverts gather more than
-chance would put them, and its easy pen is at least as safe as simply
-picking the smallest PRs. What it does not support, yet: that the rules do
+What this supports, on the repos the rules were tuned on: Cowboy's careful
+pen is where reverts gather more than chance would put them, and its easy
+pen is at least as safe as simply picking the smallest PRs. On two repos
+the rules never saw, only the easy-pen claim held (see "held-out"). What it does not support, yet: that the rules do
 better than a plain size or file-count cutoff at finding reverts. The
 direction favours Cowboy in both repos, but the ranges include zero.
 
@@ -66,8 +67,8 @@ does not. The weighted run is the right one, and this page reports it.
 ## what this doesn't show
 
 - **In-sample.** The v2 rules were adjusted while looking at these same
-  three repos. A held-out replication on repos the rules never saw is
-  reported below.
+  three repos. On two repos they never saw (below), claims 1–3 did not
+  replicate.
 - **Reverts only.** Breaks, follow-up fixes and incidents need data a public
   repo doesn't keep (check runs on old commits, a team's confirmations, a
   monitoring tool).
@@ -78,10 +79,41 @@ does not. The weighted run is the right one, and this page reports it.
   because it got more scrutiny after merge. Rates describe; they don't
   explain.
 
-## held-out replication
+## held-out replication: it did not replicate
 
-PostHog/posthog and supabase/supabase, collected the same way, never used
-while writing the rules. Pending; results will be added here unchanged.
+PostHog/posthog and supabase/supabase, collected and scored the same way
+(same rules, same scripts, same weighting), never looked at while writing
+the rules. Under the CLAIMS.md threshold only Supabase counts (25 reverted
+PRs in the sample); PostHog has 18 and is reported only.
+
+| claim | supabase/supabase | 95% range | verdict |
+|---|---|---|---|
+| 1. careful vs size | careful holds 12% of reverted PRs, the largest PRs 16% (−4 points) | −24 to +13 points | not shown |
+| 2. careful vs spread | 12% vs 12% (0 points) | −19 to +19 points | not shown |
+| 3. careful vs chance | 1.21× the repo's rate | 0× to 2.59× | not shown |
+| 4. easy vs smallest | −0.05 points | −0.15 to +0.05 points | holds |
+
+Real-world rates per pen (weighted):
+
+| repo | easy | normal | careful | all PRs | share sent to careful |
+|---|---|---|---|---|---|
+| PostHog/posthog (not counted) | 0.05% | 0.13% | 0.08% | 0.10% | 38% |
+| supabase/supabase | 0.48% | 0.46% | 0.58% | 0.48% | 10% |
+
+What this says: on repos the rules were not tuned on, the careful pen did
+not gather reverts better than chance or than a size cutoff. In PostHog the
+careful pen was below the repo average and held 38% of all PRs, which is
+too many to be a useful "look here". The easy pen held up in both: it was
+never worse than the same share of smallest PRs.
+
+The honest reading of everything so far: the easy pen is a safe place to
+skim; the careful pen is not yet shown to beat a plain size rule, and
+whether it beats chance depends on the repo. The next step is rules that
+travel better, checked on fresh held-out repos again. The first lead: in
+PostHog, the "adds a catch-all that may hide errors" shortcut fired on 391
+of 968 careful PRs (Python `except Exception` is common there), and the
+"warning silencer" shortcut fired on plain `# noqa` imports. Those two
+rules alone fill much of the pen.
 
 ## appendix: the unweighted run
 
