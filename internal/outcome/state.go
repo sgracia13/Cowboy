@@ -44,16 +44,18 @@ var KindLabel = map[string]string{Revert: "reverted", Break: "broke main", Fix: 
 
 // Merge is what Cowboy records about a merged pull request.
 type Merge struct {
-	Repo       string    `json:"repo"`
-	Number     int       `json:"number"`
-	SHA        string    `json:"sha"`
-	MergedAt   time.Time `json:"merged_at"`
-	Title      string    `json:"title"`
-	Author     string    `json:"author"`
-	Files      []string  `json:"files"`
-	Approvers  []string  `json:"approvers,omitempty"`
-	Release    string    `json:"release,omitempty"`
-	ReleasedAt time.Time `json:"released_at,omitempty"`
+	Repo      string    `json:"repo"`
+	Number    int       `json:"number"`
+	SHA       string    `json:"sha"`
+	MergedAt  time.Time `json:"merged_at"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	Files     []string  `json:"files"`
+	Approvers []string  `json:"approvers,omitempty"`
+	// ReviewsKnown: the host's reviews were read (Approvers is complete).
+	ReviewsKnown bool      `json:"reviews_known,omitempty"`
+	Release      string    `json:"release,omitempty"`
+	ReleasedAt   time.Time `json:"released_at,omitempty"`
 	// BreakChecked: the merge commit's checks have been looked at.
 	BreakChecked bool `json:"break_checked,omitempty"`
 	// Lines holds short hashes of a sample of added lines per file, to
@@ -61,6 +63,9 @@ type Merge struct {
 	// and the hashes are dropped after the 90-day measurement.
 	Lines    map[string][]uint32 `json:"lines,omitempty"`
 	Survival map[string]float64  `json:"survival,omitempty"` // "30d", "90d" -> share still there
+	// Removed holds short hashes of a sample of the lines this PR removed or
+	// rewrote, to tell when it changed lines an earlier PR added.
+	Removed []uint32 `json:"removed,omitempty"`
 }
 
 // Outcome is one thing that happened to a merged PR.
@@ -351,4 +356,22 @@ func (s *State) setScan(repo string, sc Scan) error {
 	s.d.Scans[strings.ToLower(repo)] = &cp
 	s.dirty = true
 	return nil
+}
+
+// Rewind makes the next check read the default branch and releases from
+// `since` again (after a backfill adds older PRs).
+func (s *State) Rewind(repo string, since time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sc := s.d.Scans[strings.ToLower(repo)]
+	if sc == nil {
+		return
+	}
+	if sc.Commits.After(since) {
+		sc.Commits = since
+	}
+	if sc.Releases.After(since) {
+		sc.Releases = since
+	}
+	s.dirty = true
 }

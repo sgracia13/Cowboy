@@ -2,6 +2,10 @@
 <section class="hero"><h1>after merge</h1></section>
 <p class="lead">what happened to pull requests after they merged, by the pen cowboy gave them. a pr counts as <b>had trouble</b> if, within {{$r.WindowDays}} days, it was reverted, broke main after a green pr, or a person confirmed it needed a fix or caused an incident. only prs merged at least {{$r.WindowDays}} days ago are rated, so recent ones don't look cleaner than they are.</p>
 {{if .Error}}<section class="box"><p><b>{{.Error}}</b></p></section>{{end}}
+{{if .Filling}}<section class="box"><h2>rating past pull requests</h2><p>{{.Filling}}</p><p class="small">reload this page to see progress.</p></section>
+{{else if and .CanFill (not .Report.Matured)}}<section class="box"><h2>don't wait a month</h2>
+<p>cowboy can sort the pull requests that merged in the last 90 days, the way it would have, and check what happened to them. nothing is written to your git host: no labels, no comments. it uses today's rules and today's import graph, and these prs stay out of the tally.</p>
+<form method="post" action="/outcomes/backfill" class="move"><input type="hidden" name="days" value="90"><button class="btn">rate the last 90 days</button></form></section>{{end}}
 
 {{if .Pending}}<section class="box"><h2>needs a person ({{len .Pending}})</h2>
 <p class="small">cowboy's guesses. they count only once someone confirms them.</p>

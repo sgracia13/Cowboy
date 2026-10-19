@@ -16,6 +16,9 @@ type MergeInfo struct {
 	Author    string
 	Files     []string // paths changed
 	Approvers []string // people who approved before the merge (not the author)
+	// ReviewsRead: Approvers came from the host's reviews (so an empty list
+	// means "merged without an approval", not "unknown").
+	ReviewsRead bool
 }
 
 // Commit is one commit on the default branch.
@@ -82,8 +85,8 @@ func (g *GitHub) MergeInfo(repo string, n int) (MergeInfo, error) {
 		User        struct{ Login string } `json:"user"`
 		SubmittedAt time.Time              `json:"submitted_at"`
 	}
-	g.do("GET", fmt.Sprintf("/repos/%s/pulls/%d/reviews?per_page=100", repo, n), nil, "", &reviews)
-	m.Approvers = approvers(reviews, "APPROVED", m.Author, m.MergedAt)
+	_, rerr := g.do("GET", fmt.Sprintf("/repos/%s/pulls/%d/reviews?per_page=100", repo, n), nil, "", &reviews)
+	m.Approvers, m.ReviewsRead = approvers(reviews, "APPROVED", m.Author, m.MergedAt), rerr == nil
 	return m, nil
 }
 
@@ -240,8 +243,8 @@ func (g *Gitea) MergeInfo(repo string, n int) (MergeInfo, error) {
 		User        struct{ Login string } `json:"user"`
 		SubmittedAt time.Time              `json:"submitted_at"`
 	}
-	g.do("GET", fmt.Sprintf("/repos/%s/pulls/%d/reviews", repo, n), nil, "", &reviews)
-	m.Approvers = approvers(reviews, "APPROVED", m.Author, m.MergedAt)
+	_, rerr := g.do("GET", fmt.Sprintf("/repos/%s/pulls/%d/reviews", repo, n), nil, "", &reviews)
+	m.Approvers, m.ReviewsRead = approvers(reviews, "APPROVED", m.Author, m.MergedAt), rerr == nil
 	return m, nil
 }
 

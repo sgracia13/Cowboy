@@ -138,6 +138,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /outcomes", s.outcomes)
 		mux.HandleFunc("POST /outcomes/decide", s.decideOutcome)
 		mux.HandleFunc("POST /outcomes/link", s.linkIncident)
+		mux.HandleFunc("POST /outcomes/backfill", s.startBackfill)
 		mux.HandleFunc("GET /audit.csv", s.auditCSV)
 		mux.HandleFunc("GET /benchmark.json", s.benchmark)
 	}

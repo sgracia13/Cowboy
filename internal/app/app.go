@@ -608,6 +608,9 @@ func (a *App) Tally(since time.Time) []AgentTally {
 func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 	rows := map[string]*AgentTally{}
 	for _, d := range a.Store.List("", "") {
+		if d.Backfilled {
+			continue
+		}
 		if d.DecidedAt.Before(from) || (!to.IsZero() && !d.DecidedAt.Before(to)) {
 			continue
 		}
@@ -650,8 +653,8 @@ func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 				continue
 			}
 			d, ok := a.Store.Get(o.Repo, o.Number)
-			if !ok {
-				continue
+			if !ok || d.Backfilled {
+				continue // past PRs rated by a backfill aren't this week's news
 			}
 			r := rows[d.Agent]
 			if r == nil {

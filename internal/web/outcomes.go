@@ -19,6 +19,20 @@ type OutcomeSettings struct {
 	Version  string
 	MinFanIn func(repo string) int
 	Sources  string // which incident tools are connected, for the page
+	// Backfill starts rating the last few days of merged PRs in the
+	// background; BackfillStatus says how it's going ("" = not running).
+	Backfill       func(days int)
+	BackfillStatus func() string
+	// Now is the clock for the report (nil = the real time; a replay of
+	// past history sets it to the end of that history).
+	Now func() time.Time
+}
+
+func (o *OutcomeSettings) now() time.Time {
+	if o.Now != nil {
+		return o.Now().UTC()
+	}
+	return time.Now().UTC()
 }
 
 func actor(r *http.Request) string {
@@ -36,7 +50,7 @@ func (s *Server) report() outcome.Report {
 			fan[repo] = o.MinFanIn(repo)
 		}
 	}
-	return outcome.Build(s.App.Store.List("", ""), o.State, time.Now().UTC(), o.Window, fan)
+	return outcome.Build(s.App.Store.List("", ""), o.State, o.now(), o.Window, fan)
 }
 
 type outcomesPage struct {
@@ -48,6 +62,8 @@ type outcomesPage struct {
 	AuditFP   string
 	Sources   string
 	Error     string
+	CanFill   bool
+	Filling   string
 }
 
 func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +82,10 @@ func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 		p.Incidents = p.Incidents[:20]
 	}
 	p.AuditN, p.AuditFP = o.Audit.Fingerprint()
+	p.CanFill = o.Backfill != nil
+	if o.BackfillStatus != nil {
+		p.Filling = o.BackfillStatus()
+	}
 	s.render(w, "outcomes.html", "outcomes", p)
 }
 
@@ -122,10 +142,29 @@ func (s *Server) auditCSV(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) benchmark(w http.ResponseWriter, r *http.Request) {
 	o := s.Outcomes
-	b := outcome.Benchmark(s.App.Store.List("", ""), o.State, time.Now().UTC(), o.Window, o.Version)
+	b := outcome.Benchmark(s.App.Store.List("", ""), o.State, o.now(), o.Window, o.Version)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", `attachment; filename="cowboy-benchmark.json"`)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(b)
+}
+
+// CSS is the dashboard's stylesheet (for pages rendered outside the server).
+func CSS() string {
+	b, _ := files.ReadFile("static/cowboy.css")
+	return string(b)
+}
+
+func (s *Server) startBackfill(w http.ResponseWriter, r *http.Request) {
+	if s.Outcomes.Backfill == nil {
+		http.Error(w, "backfill isn't available here", 400)
+		return
+	}
+	days, _ := strconv.Atoi(r.FormValue("days"))
+	if days <= 0 || days > 365 {
+		days = 90
+	}
+	s.Outcomes.Backfill(days)
+	http.Redirect(w, r, "/outcomes", http.StatusSeeOther)
 }
