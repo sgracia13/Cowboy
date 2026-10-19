@@ -57,6 +57,8 @@ var tallyNote string
 // outcomeUI and incidents turn on the outcomes page and incident webhooks.
 var (
 	outcomeUI *web.OutcomeSettings
+	// connectUI is the setup page's token route (GitHub only).
+	connectUI *web.Connect
 	incidents *outcome.IncidentHooks
 )
 
@@ -72,8 +74,9 @@ var version = "dev"
 
 const usage = `cowboy: finds out what breaks your repo, and sorts new pull requests into easy, normal and careful.
 
+  cowboy                           start here and open the browser: connect GitHub and pick repos on the page
   cowboy demo                      run a sample ranch on http://localhost:8080
-  cowboy serve                     run for real (see env below)
+  cowboy serve                     run for a team server, set up with the env below
   cowboy score --diff F --meta M   sort one pr from files and print why
   cowboy tally [--send]            print this week's tally, or send it now
   cowboy outcomes [--check]        what happened after merge, by pen (--check reads the git host now)
@@ -127,10 +130,14 @@ optional local model (any OpenAI-compatible server: ollama, vllm, llama.cpp, lm 
 func main() {
 	log.SetFlags(log.Ltime)
 	if len(os.Args) < 2 {
-		fmt.Print(usage)
-		os.Exit(2)
+		start() // no arguments: run here and open the browser
+		return
 	}
 	switch os.Args[1] {
+	case "start":
+		start()
+	case "help", "-h", "--help":
+		fmt.Print(usage)
 	case "demo":
 		demo(os.Args[2:])
 	case "serve":
@@ -241,6 +248,7 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 	ui.SignOut = auth.Password != "" && auth.ProxyHeader == ""
 	ui.TallyNote = tallyNote
 	ui.Setup = ghSetup
+	ui.Connect = connectUI
 	ui.Outcomes = outcomeUI
 	ui.Routes(mux)
 	base, cancelBase := context.WithCancel(context.Background())
@@ -438,7 +446,7 @@ func githubApp(a *app.App, gh *forge.GitHub, secret string) (string, error) {
 			}
 			dash = "http://" + addr
 		}
-		log.Printf("github: not connected yet. Open %s/setup and press \"create the github app\"", dash)
+		log.Printf("github: not connected yet. Open %s/setup to connect GitHub and pick repos", dash)
 	}
 	ghSetup = &web.GitHubSetup{
 		WebBase:   webBase,
@@ -727,7 +735,7 @@ func backfillCmd(args []string) {
 	}
 	st, oc := openForReport()
 	a := app.New(f, st, parsePaths(os.Getenv("REPO_PATHS")))
-	a.DryRun = true // never write to the git host from here
+	a.SetDryRun(true) // never write to the git host from here
 	a.ArchiveGraphs = !strings.EqualFold(os.Getenv("BLAST_RADIUS"), "off")
 	a.ArchiveLimit = 300 << 20
 	if gh, ok := f.(*forge.GitHub); ok && os.Getenv("FORGE_TOKEN") == "" {
@@ -860,19 +868,51 @@ func serve() {
 		log.Fatal(err)
 	}
 	a := app.New(f, st, parsePaths(os.Getenv("REPO_PATHS")))
-	// GitHub with no token: sign in as a GitHub App, made with one click on /setup.
 	gh, _ := f.(*forge.GitHub)
-	appMode := gh != nil && os.Getenv("FORGE_TOKEN") == ""
+	// the setup page's saved login (settings.json); FORGE_TOKEN wins
+	set := loadSettings()
+	fromSettings := gh != nil && os.Getenv("FORGE_TOKEN") == "" && set.Token != ""
+	if fromSettings {
+		gh.SetToken(set.Token)
+		log.Printf("github: signed in as %s (saved on the setup page)", set.User)
+	}
+	if secret == "" {
+		secret = set.WebhookSecret
+	}
+	// GitHub with no token at all: offer the setup page (a token, the
+	// GitHub CLI's login, or a GitHub App made with one click).
+	appMode := gh != nil && os.Getenv("FORGE_TOKEN") == "" && !fromSettings
 	if appMode {
 		if s, err := githubApp(a, gh, secret); err != nil {
 			log.Fatal(err)
 		} else {
 			secret = s
 		}
-	} else if secret == "" {
-		log.Fatal("WEBHOOK_SECRET is required")
 	}
-	a.DryRun = os.Getenv("DRY_RUN") == "1"
+	if !appMode && secret == "" {
+		set.WebhookSecret = randomSecret()
+		secret = set.WebhookSecret
+		if err := set.save(); err != nil {
+			log.Fatalf("WEBHOOK_SECRET isn't set and one couldn't be saved: %v", err)
+		}
+		log.Printf("webhook secret: made one and saved it in %s (set WEBHOOK_SECRET to choose your own)", settingsPath())
+	}
+	switch {
+	case os.Getenv("DRY_RUN") != "":
+		a.SetDryRun(os.Getenv("DRY_RUN") == "1")
+	case fromSettings:
+		a.SetDryRun(!set.Labelling)
+	case appMode && gh.App() == nil:
+		a.SetDryRun(true) // not connected yet; the setup page decides
+	}
+	if gh != nil {
+		envRepos := map[string]bool{}
+		for _, r := range strings.FieldsFunc(os.Getenv("REPOS"), func(r rune) bool { return r == ',' || r == ' ' }) {
+			envRepos[strings.ToLower(r)] = true
+		}
+		c := &connector{a: a, gh: gh, s: set, env: os.Getenv("FORGE_TOKEN") != "", envRepos: envRepos}
+		connectUI = c.web()
+	}
 	a.ArchiveGraphs = !strings.EqualFold(os.Getenv("BLAST_RADIUS"), "off")
 	a.ArchiveLimit = 300 << 20
 	if v, err := strconv.Atoi(os.Getenv("BLAST_RADIUS_MAX_MB")); err == nil && v >= 0 {
@@ -900,6 +940,9 @@ func serve() {
 		catchUp = time.Duration(v) * time.Minute
 	}
 	repos := strings.FieldsFunc(os.Getenv("REPOS"), func(r rune) bool { return r == ',' || r == ' ' })
+	if fromSettings {
+		repos = append(repos, set.Repos...)
+	}
 	addr := env("ADDR", ":8080")
 	auth := authFromEnv(addr)
 	if rc, ok, err := report.FromEnv(os.Getenv); err != nil {

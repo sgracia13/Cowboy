@@ -113,18 +113,6 @@ func defaultAppName() string {
 	return "cowboy-" + hex.EncodeToString(b[:])
 }
 
-type setupPage struct {
-	SetupStatus
-	Base, DefaultName, Error string
-	Hooks                    bool
-}
-
-func (s *Server) setupHome(w http.ResponseWriter, r *http.Request) {
-	g := s.Setup
-	base, hooks := g.publicBase(r)
-	s.render(w, "setup-home", "setup", setupPage{SetupStatus: g.Status(), Base: base, Hooks: hooks, DefaultName: defaultAppName(), Error: r.URL.Query().Get("error")})
-}
-
 type setupGo struct {
 	Action, Manifest string
 }

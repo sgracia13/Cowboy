@@ -127,3 +127,13 @@ func TestIsLocal(t *testing.T) {
 		}
 	}
 }
+
+// With Referrer-Policy: no-referrer, Chrome sends "Origin: null" on the
+// dashboard's own form posts and every button is refused as cross-site.
+func TestReferrerPolicyKeepsSameSiteOrigin(t *testing.T) {
+	rec := httptest.NewRecorder()
+	securityHeaders(rec)
+	if got := rec.Header().Get("Referrer-Policy"); got == "no-referrer" || got == "" {
+		t.Errorf("Referrer-Policy %q breaks same-site form posts", got)
+	}
+}
