@@ -27,9 +27,14 @@ type Config struct {
 		// MinSourceLines sends PRs this big to careful. Off (0) by default:
 		// on real repos, big PRs were reverted less often, not more. Big PRs
 		// get a "too big to review well" note instead (Notes.BigSourceLines).
-		MinSourceLines int      `json:"min_source_lines"`
-		MinFanIn       int      `json:"min_fan_in"`
-		Paths          []string `json:"paths"`
+		MinSourceLines int `json:"min_source_lines"`
+		MinFanIn       int `json:"min_fan_in"`
+		// TopFanInPercent raises the blast-radius bar to the repo's own most
+		// imported files: a changed file must be in this top share of the
+		// files anything imports, and still have MinFanIn importers. In a big
+		// monorepo 20 importers is ordinary; 100 turns the extra bar off.
+		TopFanInPercent float64  `json:"top_fan_in_percent"`
+		Paths           []string `json:"paths"`
 		// Shortcuts lists the shortcut flags that send a PR to careful. The
 		// others are still found and shown as notes.
 		Shortcuts []string `json:"shortcuts"`
@@ -120,6 +125,7 @@ func Default() Config {
 	c.Easy.MaxFanIn = 3
 	c.Careful.MinSourceLines = 0
 	c.Careful.MinFanIn = 20
+	c.Careful.TopFanInPercent = 1
 	c.Careful.Shortcuts = []string{"tests_removed", "catch_all", "ci_loosened"}
 	c.Notes.BigSourceLines = 400
 	c.Careful.Paths = []string{"auth/**", "billing/**", "payments/**", "migrations/**", ".github/workflows/**", "security/**"}
@@ -176,6 +182,9 @@ func Merge(c *Config, b []byte) error {
 	}
 	if over.Careful.MinFanIn > 0 {
 		c.Careful.MinFanIn = over.Careful.MinFanIn
+	}
+	if over.Careful.TopFanInPercent > 0 {
+		c.Careful.TopFanInPercent = over.Careful.TopFanInPercent
 	}
 	if over.Careful.Paths != nil {
 		c.Careful.Paths = over.Careful.Paths

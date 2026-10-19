@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -252,5 +253,36 @@ func TestExportsPatternsAreDeterministic(t *testing.T) {
 		if t.Failed() {
 			t.Fatalf("run %d", i)
 		}
+	}
+}
+
+func TestTopFanIn(t *testing.T) {
+	files := map[string]string{}
+	// hub.ts imported by 30 files, mid.ts by 10, and 98 leaf files imported once
+	for i := 0; i < 30; i++ {
+		files[fmt.Sprintf("a/f%02d.ts", i)] = "import { h } from '../hub'\n"
+	}
+	for i := 0; i < 10; i++ {
+		files[fmt.Sprintf("b/g%02d.ts", i)] = "import { m } from '../mid'\n"
+	}
+	files["hub.ts"] = "export const h = 1\n"
+	files["mid.ts"] = "export const m = 1\n"
+	for i := 0; i < 98; i++ {
+		files[fmt.Sprintf("c/l%02d.ts", i)] = "export const x = 1\n"
+		files[fmt.Sprintf("d/u%02d.ts", i)] = fmt.Sprintf("import { x } from '../c/l%02d'\n", i)
+	}
+	g := build(files)
+	// 100 imported files: top 1% is the hub, top 2% reaches mid, top 50% a leaf
+	if got := g.TopFanIn(1); got != 10 {
+		t.Errorf("top 1%% = %d, want 10 (index 1 of [30 10 1 ...])", got)
+	}
+	if got := g.TopFanIn(0.5); got != 30 {
+		t.Errorf("top 0.5%% = %d, want 30", got)
+	}
+	if got := g.TopFanIn(50); got != 1 {
+		t.Errorf("top 50%% = %d, want 1", got)
+	}
+	if got := g.TopFanIn(100); got != 1 {
+		t.Errorf("top 100%% = %d, want 1", got)
 	}
 }

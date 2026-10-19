@@ -34,21 +34,25 @@ type Reason struct {
 // Signals are the facts Cowboy measured. Kept separate from the decision so
 // they can be stored, shown and re-scored with new rules.
 type Signals struct {
-	Agent        string           `json:"agent"`
-	AgentHow     string           `json:"agent_how"`
-	Files        int              `json:"files"`
-	LinesChanged int              `json:"lines_changed"`
-	SourceLines  int              `json:"source_lines"`
-	Dirs         int              `json:"dirs"`
-	Classes      map[string]int   `json:"classes"`
-	Sensitive    []string         `json:"sensitive"` // "path (glob)"
-	FanIn        int              `json:"fan_in"`
-	FanInFile    string           `json:"fan_in_file"`
-	FanInKnown   bool             `json:"fan_in_known"`
-	Shortcuts    []shortcuts.Flag `json:"shortcuts"`
-	ChecksOK     *bool            `json:"checks_ok,omitempty"`
-	Paths        []string         `json:"paths"`
-	Owners       []string         `json:"owners,omitempty"`
+	Agent        string         `json:"agent"`
+	AgentHow     string         `json:"agent_how"`
+	Files        int            `json:"files"`
+	LinesChanged int            `json:"lines_changed"`
+	SourceLines  int            `json:"source_lines"`
+	Dirs         int            `json:"dirs"`
+	Classes      map[string]int `json:"classes"`
+	Sensitive    []string       `json:"sensitive"` // "path (glob)"
+	FanIn        int            `json:"fan_in"`
+	FanInFile    string         `json:"fan_in_file"`
+	FanInKnown   bool           `json:"fan_in_known"`
+	// FanInTop is the fan-in of the repo's top TopFanInPercent of files
+	// (0 when not measured; older stored signals have none).
+	FanInTop    int              `json:"fan_in_top,omitempty"`
+	FanInTopPct float64          `json:"fan_in_top_pct,omitempty"`
+	Shortcuts   []shortcuts.Flag `json:"shortcuts"`
+	ChecksOK    *bool            `json:"checks_ok,omitempty"`
+	Paths       []string         `json:"paths"`
+	Owners      []string         `json:"owners,omitempty"`
 }
 
 // Measure computes signals from a diff. g may be nil (blast radius then unknown).
@@ -76,6 +80,9 @@ func Measure(meta analyze.PRMeta, files []diff.File, cfg config.Config, g *graph
 	s.Dirs = len(analyze.Dirs(paths))
 	if g != nil {
 		s.FanInKnown = true
+		if p := cfg.Careful.TopFanInPercent; p > 0 && p < 100 {
+			s.FanInTop, s.FanInTopPct = g.TopFanIn(p), p
+		}
 		ignore := map[string]bool{}
 		for _, p := range cfg.FanInIgnore {
 			ignore[p] = true
@@ -112,8 +119,13 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		add("sensitive", "touches a sensitive path: "+p, "careful")
 		careful = true
 	}
-	if s.FanInKnown && s.FanIn >= cfg.Careful.MinFanIn {
-		add("blast_radius", fmt.Sprintf("changes %s, which %d files use", s.FanInFile, s.FanIn), "careful")
+	bar := blastBar(s, cfg)
+	if s.FanInKnown && s.FanIn >= bar {
+		detail := fmt.Sprintf("changes %s, which %d files use", s.FanInFile, s.FanIn)
+		if bar > cfg.Careful.MinFanIn {
+			detail += fmt.Sprintf(" (among this repo's %s most-used files)", pctWord(s.FanInTopPct))
+		}
+		add("blast_radius", detail, "careful")
 		careful = true
 	}
 	carefulKinds := map[string]bool{}
@@ -143,8 +155,12 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 
 	// context lines, always shown
 	add("size", fmt.Sprintf("%d lines across %d files in %d folders", s.LinesChanged, s.Files, s.Dirs), "info")
-	if s.FanInKnown && s.FanIn < cfg.Careful.MinFanIn && s.FanInFile != "" {
-		add("blast_radius", fmt.Sprintf("%s is used by %d files", s.FanInFile, s.FanIn), "info")
+	if s.FanInKnown && s.FanIn < bar && s.FanInFile != "" {
+		if s.FanIn >= cfg.Careful.MinFanIn {
+			add("blast_radius", fmt.Sprintf("%s is used by %d files; careful starts at %d here (this repo's %s most-used files)", s.FanInFile, s.FanIn, bar, pctWord(s.FanInTopPct)), "info")
+		} else {
+			add("blast_radius", fmt.Sprintf("%s is used by %d files", s.FanInFile, s.FanIn), "info")
+		}
 	}
 	if !s.FanInKnown {
 		add("blast_radius", "not measured: the import graph for this repo isn't available (see the rules page)", "info")
@@ -170,6 +186,21 @@ func Decide(s Signals, cfg config.Config) (Pen, []Reason) {
 		return Easy, reasons
 	}
 	return Normal, reasons
+}
+
+// blastBar is the fan-in that sends a PR to careful: MinFanIn, raised to
+// the repo's own top files when that was measured and is enabled.
+func blastBar(s Signals, cfg config.Config) int {
+	bar := cfg.Careful.MinFanIn
+	p := cfg.Careful.TopFanInPercent
+	if p > 0 && p < 100 && s.FanInTop > bar {
+		bar = s.FanInTop
+	}
+	return bar
+}
+
+func pctWord(p float64) string {
+	return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.1f", p), "0"), ".") + "%"
 }
 
 func classSummary(c map[string]int) string {

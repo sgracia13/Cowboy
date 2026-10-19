@@ -23,10 +23,17 @@ type Flag struct {
 
 var (
 	skipRe = regexp.MustCompile(`@pytest\.mark\.(skip|xfail)|pytest\.skip\(|\b(it|test|describe)\.skip\(|\bx(it|describe|test)\(|@Disabled\b|@Ignore\b|\bt\.Skip(Now|f)?\(|unittest\.skip|\.todo\(`)
-	// broad catches that swallow errors
-	pyBroad   = regexp.MustCompile(`^\s*except\s*(Exception|BaseException)?\s*(as\s+\w+)?\s*:\s*(pass)?\s*$`)
-	emptyCtch = regexp.MustCompile(`catch\s*(\([^)]*\))?\s*\{\s*\}`)
+	// Catches that swallow errors. A broad catch that logs, re-raises or
+	// handles the error is ordinary code; one whose body does nothing is the
+	// shortcut. A bare Python "except:" also catches Ctrl-C and exits, so it
+	// counts whatever its body.
+	pyBare    = regexp.MustCompile(`^\s*except\s*:`)
+	pyBroad   = regexp.MustCompile(`^\s*except\s*\(?\s*(Exception|BaseException)\s*\)?\s*(as\s+\w+)?\s*:\s*(.*)$`)
+	pySwallow = regexp.MustCompile(`^\s*(pass|continue|\.\.\.|return(\s+(None|False|True|\[\]|\{\}|""|''|0))?)\s*(#.*)?$`)
+	emptyCtch = regexp.MustCompile(`catch\s*(\([^)]*\))?\s*\{\s*(//.*|/\*.*\*/\s*)?\}`)
+	openCtch  = regexp.MustCompile(`catch\s*(\([^)]*\))?\s*\{\s*$`)
 	javaBroad = regexp.MustCompile(`catch\s*\(\s*(final\s+)?(Exception|Throwable|RuntimeException)\s+\w+\s*\)`)
+	cSwallow  = regexp.MustCompile(`^\s*(\}|//.*|/\*.*\*/|return\s*(null|undefined|false)?\s*;?)\s*$`)
 	goIgnore  = regexp.MustCompile(`_\s*=\s*err\b|if err != nil \{\s*\}`)
 	suppress  = regexp.MustCompile(`#\s*type:\s*ignore|#\s*noqa|#\s*pylint:\s*disable|eslint-disable|@ts-ignore|@ts-nocheck|@ts-expect-error|//\s*nolint|@SuppressWarnings|#\s*nosec|//\s*NOSONAR`)
 	special   = regexp.MustCompile(`(?i)(#|//|/\*|\*).*(special[\s_-]?case|hard[\s_-]?code[d]?|for (the )?tests?\b|make (the )?tests? pass|to pass (the )?tests?)`)
@@ -91,11 +98,8 @@ func Find(files []diff.File, enabled map[string]bool) []Flag {
 		}
 		// 3. new broad catch / swallowed error
 		if on("catch_all") && !isTest {
-			for _, re := range []*regexp.Regexp{pyBroad, emptyCtch, javaBroad, goIgnore} {
-				if l := firstMatch(re, f.Added); l != "" {
-					out = append(out, Flag{"catch_all", f.Path, "adds a catch-all that may hide errors: " + short(l)})
-					break
-				}
+			if l := swallowed(f.Added); l != "" {
+				out = append(out, Flag{"catch_all", f.Path, "adds a catch-all that hides errors: " + short(l)})
 			}
 		}
 		// 4. new suppressions
@@ -129,6 +133,50 @@ func Find(files []diff.File, enabled map[string]bool) []Flag {
 		}
 	}
 	return out
+}
+
+// swallowed returns the first added catch whose body does nothing with the
+// error. Only added lines are seen, so the body must be added too: a catch
+// whose body was already there isn't judged.
+func swallowed(added []string) string {
+	nextAt := func(i int) (int, string, bool) {
+		for j := i + 1; j < len(added); j++ {
+			if strings.TrimSpace(added[j]) != "" {
+				return j, added[j], true
+			}
+		}
+		return 0, "", false
+	}
+	next := func(i int) (string, bool) { _, l, ok := nextAt(i); return l, ok }
+	for i, l := range added {
+		if pyBare.MatchString(l) || emptyCtch.MatchString(l) || goIgnore.MatchString(l) {
+			return strings.TrimSpace(l)
+		}
+		if m := pyBroad.FindStringSubmatch(l); m != nil {
+			body := strings.TrimSpace(m[3])
+			if body == "" {
+				if n, ok := next(i); ok && pySwallow.MatchString(n) {
+					return strings.TrimSpace(l) + " " + strings.TrimSpace(n)
+				}
+			} else if pySwallow.MatchString(body) {
+				return strings.TrimSpace(l)
+			}
+			continue
+		}
+		if openCtch.MatchString(l) || (javaBroad.MatchString(l) && strings.HasSuffix(strings.TrimSpace(l), "{")) {
+			// the block's first line closes it or only returns nothing
+			if j, n, ok := nextAt(i); ok && cSwallow.MatchString(n) {
+				if t := strings.TrimSpace(n); t == "}" || strings.HasPrefix(t, "return") {
+					return strings.TrimSpace(l) + " " + t
+				}
+				// a comment: look one further
+				if n2, ok := next(j); ok && strings.TrimSpace(n2) == "}" {
+					return strings.TrimSpace(l) + " " + strings.TrimSpace(n) + " }"
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // testsRemoved reports lost asserts across the PR's test files.
