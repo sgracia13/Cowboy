@@ -6,7 +6,6 @@ a{color:inherit}
 code{background:var(--k);color:var(--y);padding:1px 5px}
 .top{display:flex;align-items:center;gap:28px;padding:16px 28px;background:var(--k);color:var(--y);flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:24px;text-decoration:none;letter-spacing:-.5px}
-.brand img{filter:invert(78%) sepia(76%) saturate(1300%) hue-rotate(2deg)}
 nav{display:flex;gap:6px}
 nav a{text-decoration:none;padding:6px 12px;border:2px solid transparent;font-weight:700}
 nav a.on,nav a:hover{border-color:var(--y)}
@@ -85,17 +84,12 @@ h2{font-size:15px;margin:0 0 12px;font-weight:800;letter-spacing:.5px}
 .h2small,.model h2 .small{font-weight:400}
 .live-dot{width:10px;height:10px;border-radius:50%;background:#555;margin-left:auto}
 .live-dot + .where{margin-left:0}
-.live-dot.on{background:var(--y);box-shadow:0 0 0 0 rgba(255,212,0,.7);animation:pulse 2s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,212,0,.7)}70%{box-shadow:0 0 0 8px rgba(255,212,0,0)}100%{box-shadow:0 0 0 0 rgba(255,212,0,0)}}
+.live-dot.on{background:var(--y)}
 .ticker{display:flex;align-items:center;gap:10px;background:var(--k);color:var(--y);padding:9px 14px;margin:0 0 18px;font-weight:700;text-transform:none;min-height:40px}
 .ticker .dot{width:8px;height:8px;background:var(--y);flex:none}
-.ticker.flash{animation:tick .9s ease-out}
-@keyframes tick{0%{background:var(--y);color:var(--k)}100%{background:var(--k);color:var(--y)}}
-.card.fresh{animation:arrive 2.4s ease-out}
-@keyframes arrive{0%{transform:translateY(-14px) scale(1.04);box-shadow:8px 8px 0 var(--k);background:var(--y)}40%{background:var(--y)}100%{transform:none;box-shadow:none}}
-.pen-careful .card.fresh{animation-name:arrive-dark}
-@keyframes arrive-dark{0%{transform:translateY(-14px) scale(1.04);box-shadow:8px 8px 0 var(--y);background:var(--y)}40%{background:var(--y)}100%{transform:none;box-shadow:none}}
-@media (prefers-reduced-motion:reduce){.card.fresh,.ticker.flash,.live-dot.on{animation:none}}
+.card.fresh{animation:arrive .6s ease-out}
+@keyframes arrive{0%{transform:translateY(-10px);opacity:.3}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.card.fresh{animation:none}}
 
 .meter{position:relative;height:18px;border:2px solid var(--k);background:var(--w);margin:6px 0 12px}
 .meter .range{position:absolute;top:0;bottom:0;background:var(--y);border-left:2px solid var(--k);border-right:2px solid var(--k)}

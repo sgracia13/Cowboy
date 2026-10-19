@@ -1,11 +1,11 @@
 {{define "head"}}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>cowboy · {{.Title}}</title>
-<link rel="icon" href="/static/hat.svg">
+<link rel="icon" href="/static/icon.svg">
 <link rel="stylesheet" href="/static/cowboy.css">
 </head><body>
 <header class="top">
-  <a class="brand" href="/"><img src="/static/hat.svg" alt="" width="34" height="22">cowboy</a>
+  <a class="brand" href="/">cowboy</a>
   <nav>
     <a href="/" {{if eq .Nav "corral"}}class="on"{{end}}>corral</a>
     <a href="/tally" {{if eq .Nav "tally"}}class="on"{{end}}>tally</a>
