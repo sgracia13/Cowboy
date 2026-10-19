@@ -43,10 +43,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$VERSION" >/dev/null 2>&1; then echo "release $VERSION already exists"; exit 0; fi
-          pre=""
-          case "$VERSION" in *-*) pre="--prerelease" ;; esac
-          gh release create "$VERSION" dist/* $pre --target "$GITHUB_SHA" \
+          # Releases are never marked "pre-release", even with -preview in the
+          # name: GitHub's releases/latest link (which the install command
+          # uses) skips pre-releases and would return 404.
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "release $VERSION already exists; making sure it's the latest"
+            gh release edit "$VERSION" --prerelease=false --latest
+            exit 0
+          fi
+          gh release create "$VERSION" dist/* --latest --target "$GITHUB_SHA" \
             --title "cowboy $VERSION" --notes-file - <<'NOTES'
           ## install
 
@@ -67,6 +72,15 @@ jobs:
 
           Checksums for every file are in `SHA256SUMS`.
           NOTES
+      - name: check the install command works
+        run: |
+          # the one-line install on the website must reach this release
+          for i in 1 2 3 4 5 6; do
+            url=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/sgracia13/Cowboy/releases/latest/download/install.sh) && break
+            sleep 10
+          done
+          echo "install.sh resolves to: $url"
+          case "$url" in *"/download/$VERSION/install.sh") ;; *) echo "the install link doesn't reach $VERSION"; exit 1 ;; esac
   docker:
     runs-on: ubuntu-latest
     steps:
