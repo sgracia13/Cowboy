@@ -32,10 +32,11 @@ where they land:
 | #503 paginate audit log | normal | 79 lines, small blast radius · **stray** (agent went quiet) |
 | #506 retry webhook client | normal | 10 lines, 7 files depend on it |
 | #509 retry webhook sender | normal | **double** of #506 (same issue #77) |
-| #507 move auth to session store | careful | auth path, 39 files depend on it, eslint silencer, removed an assert |
-| #515 rewrite invoice totals | careful | billing path, `except Exception`, "special case for test" comment |
+| #507 move auth to session store | careful | auth path, 39 files depend on it, removed an assert (the eslint silencer is a note) |
+| #515 rewrite invoice totals | careful | billing path, `except Exception` (the "special case for test" comment is a note) |
 | #530 speed up ci | careful | loosens ci (`|| true`) |
-| #520 (a person) | easy | sorted quietly: a pen label, no agent label, no comment |
+| #520, #542 (people) | easy | sorted quietly: a pen label, no agent label, no comment |
+| #540, #541 (people) | normal | the same, in normal |
 
 the demo also shows **local model notes** from prewritten answers, so you can see the feature without a model server. look at #506: the rules say normal, but the model notices the agent also changed `send()` for every caller, which the issue never asked for. #530 gets flagged the same way.
 
@@ -115,7 +116,7 @@ it looks at three layers, and compares each person to **their own history**, not
 
 the evidence adds up in log-odds with a ceiling per layer, so **being fast is never enough on its own**. the `agent:likely` label goes on only when the **low end** of the range clears 80, and it never changes the pen. anyone can remove the label (or press **not an agent**): the pr stays as human work and cowboy asks for more evidence on that author's prs from then on.
 
-in the demo: **#540** (codex/ branch, 3 a.m. burst) and **#542** (an ordinary branch name, caught on behaviour and text alone) are caught. **#541** is sam's codemod: 92 lines a minute, but normal for sam, so it scores 19 and is sorted as a person's pr, with no agent label.
+the check is off in the demo, because its sample authors are made up. to see how it reasons, run `cowboy demo --agent-check`: it flags **#540** (a codex/ branch and a 3 a.m. burst) and **#542**, and leaves **#541** alone, sam's fast codemod, because that pace is normal for sam. that's a demonstration on invented histories, not evidence it works on real repos.
 
 ```json
 // cowboy.json
