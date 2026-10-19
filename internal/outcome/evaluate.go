@@ -11,8 +11,9 @@ import (
 // Items turns merged PRs whose window has passed into evaluation items:
 // trouble is any counted outcome within the window; the rule judged is
 // the pen Cowboy gave (not a person's correction), careful as the flag
-// and easy as the safe call.
-func Items(decisions []pipeline.Decision, st *State, now time.Time, window time.Duration) []evaluate.Item {
+// and easy as the safe call. weight (nil on a live repo, where every PR is
+// counted once) gives a sampled replay's weights and bootstrap strata.
+func Items(decisions []pipeline.Decision, st *State, now time.Time, window time.Duration, weight func(repo string, n int) (float64, string)) []evaluate.Item {
 	merges := map[string]Merge{}
 	for _, m := range st.Merges("") {
 		merges[key(m.Repo, m.Number)] = m
@@ -36,8 +37,12 @@ func Items(decisions []pipeline.Decision, st *State, now time.Time, window time.
 		if !ok || now.Sub(m.MergedAt) < window {
 			continue
 		}
-		items = append(items, evaluate.Item{Repo: d.Repo, Number: d.Number, W: 1, Bad: bad[key(d.Repo, d.Number)],
-			Flag: d.Pen == score.Careful, Safe: d.Pen == score.Easy, Lines: d.Signals.LinesChanged, Files: d.Signals.Files})
+		it := evaluate.Item{Repo: d.Repo, Number: d.Number, W: 1, Bad: bad[key(d.Repo, d.Number)],
+			Flag: d.Pen == score.Careful, Safe: d.Pen == score.Easy, Lines: d.Signals.LinesChanged, Files: d.Signals.Files}
+		if weight != nil {
+			it.W, it.Stratum = weight(d.Repo, d.Number)
+		}
+		items = append(items, it)
 	}
 	return items
 }

@@ -297,6 +297,26 @@ func main() {
 		log.Printf("%s reverts: both %d, only the earlier study %d, only the engine %d", repo, both, onlyStudy, onlyEngine)
 
 		rep := outcome.Build(st.List("", ""), oc, head, 30*24*time.Hour, map[string]int{repo: 20})
+		// the comparison on the page weights the sample like the evidence does
+		var sampleWeight func(string, int) (float64, string)
+		if wnd, ok := window[repo]; ok {
+			others := 0
+			reverted := map[int]bool{}
+			for _, p := range prs {
+				if p.Reverted {
+					reverted[p.Number] = true
+				} else {
+					others++
+				}
+			}
+			wt := float64(wnd[0]-wnd[1]) / float64(others)
+			sampleWeight = func(_ string, n int) (float64, string) {
+				if reverted[n] {
+					return 1, "reverted"
+				}
+				return wt, "sampled"
+			}
+		}
 		// the sample keeps every PR that was later reverted and a share of the
 		// rest: weight the rest back up to estimate the repo's real rates
 		real := map[score.Pen]float64{}
@@ -334,7 +354,7 @@ func main() {
 		for _, pr := range rep.ByPen {
 			log.Printf("  %-8s %s", pr.Pen, pr.Rate)
 		}
-		pages = append(pages, page{repo: repo, file: strings.ReplaceAll(repo, "/", "_") + ".html", html: render(a, st, oc, al, head), rep: rep, prs: len(prs) - missing, agents: agentPRs, from: first, to: head,
+		pages = append(pages, page{repo: repo, file: strings.ReplaceAll(repo, "/", "_") + ".html", html: render(a, st, oc, al, head, sampleWeight), rep: rep, prs: len(prs) - missing, agents: agentPRs, from: first, to: head,
 			both: both, onlyStudy: onlyStudy, onlyEngine: onlyEngine, real: real})
 	}
 	writeSite(*out, pages)
@@ -370,9 +390,9 @@ func readJSONL(path string, f func([]byte)) {
 
 // render asks the real dashboard for the outcomes page, as of the end of
 // the history.
-func render(a *app.App, st *store.Store, oc *outcome.State, al *audit.Log, now time.Time) string {
+func render(a *app.App, st *store.Store, oc *outcome.State, al *audit.Log, now time.Time, weight func(string, int) (float64, string)) string {
 	s := web.New(a)
-	s.Outcomes = &web.OutcomeSettings{State: oc, Window: 30 * 24 * time.Hour, Audit: al, Version: "replay", Now: func() time.Time { return now }}
+	s.Outcomes = &web.OutcomeSettings{State: oc, Window: 30 * 24 * time.Hour, Audit: al, Version: "replay", Now: func() time.Time { return now }, Weight: weight}
 	mux := http.NewServeMux()
 	s.Routes(mux)
 	rec := httptest.NewRecorder()

@@ -25,6 +25,10 @@ type OutcomeSettings struct {
 	// background; BackfillStatus says how it's going ("" = not running).
 	Backfill       func(days int)
 	BackfillStatus func() string
+	// Weight is set by a replay of a sampled history: each PR's sampling
+	// weight and bootstrap stratum, so the comparison is weighted back to
+	// the repo's real mix. nil on a live install.
+	Weight func(repo string, n int) (float64, string)
 	// Now is the clock for the report (nil = the real time; a replay of
 	// past history sets it to the end of that history).
 	Now func() time.Time
@@ -61,7 +65,7 @@ func (s *Server) report() outcome.Report {
 // the inputs change.
 func (s *Server) check() evaluate.Result {
 	o := s.Outcomes
-	items := outcome.Items(s.App.Store.List("", ""), o.State, o.now(), o.Window)
+	items := outcome.Items(s.App.Store.List("", ""), o.State, o.now(), o.Window, o.Weight)
 	bad := 0
 	for _, it := range items {
 		if it.Bad {
