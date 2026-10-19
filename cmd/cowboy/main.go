@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	cowboy "github.com/sgracia13/Cowboy"
 	"io"
 	"log"
 	"net"
@@ -926,7 +927,9 @@ func serve() {
 	})
 }
 
-// findTestdata looks for testdata next to the binary or in the working dir.
+// findTestdata finds the demo's sample repo: a testdata folder in the
+// working dir or next to the binary (handy when changing it), otherwise
+// the copy built into the binary, unpacked once into the user's cache.
 func findTestdata() string {
 	cands := []string{"testdata"}
 	if exe, err := os.Executable(); err == nil {
@@ -937,8 +940,43 @@ func findTestdata() string {
 			return c
 		}
 	}
-	log.Fatal("can't find testdata/ (run from the cowboy folder)")
-	return ""
+	dir, err := unpackDemo()
+	if err != nil {
+		log.Fatalf("can't unpack the demo data: %v", err)
+	}
+	return dir
+}
+
+// unpackDemo writes the built-in sample repo to the cache (once per version).
+func unpackDemo() (string, error) {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		base = os.TempDir()
+	}
+	dir := filepath.Join(base, "cowboy", "demo-"+version)
+	if _, err := os.Stat(filepath.Join(dir, "testdata", "prs")); err == nil {
+		return filepath.Join(dir, "testdata"), nil
+	}
+	tmp, err := os.MkdirTemp(filepath.Join(base), "cowboy-demo-")
+	if err != nil {
+		if err := os.MkdirAll(base, 0o755); err != nil {
+			return "", err
+		}
+		if tmp, err = os.MkdirTemp(base, "cowboy-demo-"); err != nil {
+			return "", err
+		}
+	}
+	if err := os.CopyFS(tmp, cowboy.Demo); err != nil {
+		os.RemoveAll(tmp)
+		return "", err
+	}
+	os.MkdirAll(filepath.Dir(dir), 0o755)
+	os.RemoveAll(dir)
+	if err := os.Rename(tmp, dir); err != nil {
+		// another run got there first, or the cache can't be renamed into: use the copy
+		return filepath.Join(tmp, "testdata"), nil
+	}
+	return filepath.Join(dir, "testdata"), nil
 }
 
 func demo(args []string) {
