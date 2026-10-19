@@ -39,7 +39,7 @@ easy pen's in Sentry and 1.7× in Grafana.
 
 CLAIMS.md says the PRs were "sampled at random". They were not: the
 collection script keeps every PR that was later reverted plus a random
-sample of the rest. Compared naively, this makes reverts look about five
+sample of the rest. Compared naively, this makes reverts look four to five
 times more common than they are and inflates every rate.
 
 Found after the claims were committed and the first (unweighted) run was
