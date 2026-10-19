@@ -131,7 +131,7 @@ type SurvRow struct {
 
 var ruleLabels = map[string]string{
 	"sensitive":    "sensitive path",
-	"blast_radius": "20+ files use it",
+	"blast_radius": "one of the most-imported files",
 	"checks":       "checks failing",
 	"size":         "big change",
 }

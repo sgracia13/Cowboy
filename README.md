@@ -1,7 +1,10 @@
 # cowboy
 
-sorts ai-agent pull requests into **easy**, **normal** and **careful**, with the reasons written down.
-**rules decide the pen. a local model explains.** runs on your server. never merges, closes or reviews. your code never leaves.
+finds out what actually breaks your repo. cowboy traces reverts, broken builds and follow-up fixes back to the pull request that caused them, then shows whether your review rules would have caught them, against simple alternatives (largest first, most files touched, a random pick), with the counts and a likely range.
+
+it also sorts new pull requests into **easy**, **normal** and **careful** by fixed rules, with the reasons written down, and tags agent work. treat the pens as a starting point: in our tests on eight public repos the easy pen mostly held up and the careful pen didn't beat simpler rules ([evidence](scripts/eval/evidence)). the outcomes page checks them on your repo.
+
+**measures first, recommends second, changes nothing without a person.** runs on your server. never merges, closes or reviews. your code never leaves.
 
 **free. all of it. whatever's free today stays free.**
 

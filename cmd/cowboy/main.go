@@ -65,7 +65,7 @@ var (
 // version is set at release time (-ldflags "-X main.version=v0.1.0").
 var version = "dev"
 
-const usage = `cowboy: sorts ai-agent pull requests into easy, normal and careful.
+const usage = `cowboy: finds out what breaks your repo, and sorts new pull requests into easy, normal and careful.
 
   cowboy demo                      run a sample ranch on http://localhost:8080
   cowboy serve                     run for real (see env below)
