@@ -1,0 +1,51 @@
+{{template "head" .}}{{with .Data}}{{$r := .Report}}
+<section class="hero"><h1>after merge</h1></section>
+<p class="lead">what happened to pull requests after they merged, by the pen cowboy gave them. a pr counts as <b>had trouble</b> if, within {{$r.WindowDays}} days, it was reverted, broke main after a green pr, or a person confirmed it needed a fix or caused an incident. only prs merged at least {{$r.WindowDays}} days ago are rated, so recent ones don't look cleaner than they are.</p>
+{{if .Error}}<section class="box"><p><b>{{.Error}}</b></p></section>{{end}}
+
+{{if .Pending}}<section class="box"><h2>needs a person ({{len .Pending}})</h2>
+<p class="small">cowboy's guesses. they count only once someone confirms them.</p>
+<table class="sig">{{range .Pending}}<tr><td><a href="/pr?repo={{.Repo}}&n={{.Number}}">{{.Repo}}#{{.Number}}</a></td><td><b>{{kindLabel .Kind}}?</b> {{.Evidence}}{{if .Link}} · <a href="{{.Link}}">source</a>{{end}}</td>
+<td><form method="post" action="/outcomes/decide" class="move"><input type="hidden" name="id" value="{{.ID}}"><button class="btn" name="confirm" value="yes">yes</button> <button class="btn ghost" name="confirm" value="no">no</button></form></td></tr>{{end}}</table></section>{{end}}
+
+<section class="box"><h2>by pen</h2>
+{{if $r.Matured}}<table class="sig"><tr><th>pen</th><th>had trouble</th><th>severity points</th></tr>
+{{range $r.ByPen}}<tr><td><b>{{.Pen}}</b></td><td>{{.Rate}}</td><td>{{.Rate.Cost}}</td></tr>{{end}}</table>
+<p class="small">{{$r.Matured}} merged prs rated, {{$r.Recent}} still inside the {{$r.WindowDays}}-day window. the range is where the true rate likely sits; with few prs it's wide. careful prs also get more attention, so a pen's rate shows what happened, not what the pen caused.</p>
+{{else}}<p>nothing to rate yet: {{$r.Recent}} merged prs are still inside the {{$r.WindowDays}}-day window. outcomes below appear as they're found.</p>{{end}}
+{{if $r.Survival}}<p class="small">code still there 30 days later (median):{{range $r.Survival}} {{.Pen}} {{pctf .Median}} ({{.N}} prs){{end}}</p>{{end}}
+</section>
+
+{{if $r.Rules}}<section class="box"><h2>rule report card</h2>
+<table class="sig"><tr><th>careful because</th><th>had trouble</th></tr>{{range $r.Rules}}<tr><td>{{.Label}}</td><td>{{.Rate}}</td></tr>{{end}}</table>
+{{if or $r.Reviewed.N $r.NotReviewed.N}}<p class="small">careful prs approved before merge: {{$r.Reviewed}} · merged without an approval: {{$r.NotReviewed}}</p>{{end}}
+</section>{{end}}
+
+{{if $r.Suggestions}}<section class="box"><h2>suggested rule changes</h2>
+<p class="small">cowboy never changes the rules itself. if you agree, edit <code>cowboy.json</code> on the default branch.</p>
+<ul class="trail">{{range $r.Suggestions}}<li><b>{{if .Repo}}{{.Repo}}: {{end}}{{.Change}}</b>. {{.Why}}</li>{{end}}</ul></section>{{end}}
+
+{{if $r.Missed}}<section class="box"><h2>easy, but had trouble</h2>
+<ul class="trail">{{range $r.Missed}}<li><a href="/pr?repo={{.Repo}}&n={{.Number}}">{{.Repo}}#{{.Number}}</a> {{.Title}} · {{.Agent}} · {{.Area}}/{{range .Outcomes}} · {{kindLabel .Kind}}{{end}}</li>{{end}}</ul></section>{{end}}
+
+{{if $r.Agents}}<section class="box"><h2>scorecards</h2>
+<table class="sig"><tr><th>author</th><th>area</th><th>had trouble</th></tr>{{range $r.Agents}}<tr><td><b>{{.Agent}}</b></td><td>{{.Area}}/</td><td>{{.Rate}}</td></tr>{{end}}</table>
+{{if $r.Months}}<p class="small">by month:{{range $r.Months}} {{.Agent}} {{.Month}}: {{.Rate.Bad}}/{{.Rate.N}} ·{{end}}</p>{{end}}
+</section>{{end}}
+
+<section class="box"><h2>found so far</h2>
+{{if .Recent}}<ul class="trail">{{range .Recent}}<li><a href="/pr?repo={{.Repo}}&n={{.Number}}">{{.Repo}}#{{.Number}}</a> <b>{{kindLabel .Kind}}</b> · {{.Evidence}} · {{day .At}}{{if eq .Status "rejected"}} · <i>rejected by {{.By}}</i>{{else if eq .Status "confirmed"}} · confirmed{{if .By}} by {{.By}}{{end}}{{end}}{{if eq .Status "auto"}} <form method="post" action="/outcomes/decide" class="move" style="display:inline"><input type="hidden" name="id" value="{{.ID}}"><button class="btn ghost" name="confirm" value="no">not a problem</button></form>{{end}}</li>{{end}}</ul>
+{{else}}<p>nothing yet. cowboy checks merged prs and the default branch every hour.</p>{{end}}
+</section>
+
+<section class="box"><h2>incidents</h2>
+<p class="small">{{if .Sources}}receiving from {{.Sources}}.{{else}}no incident tool connected. see the docs to connect sentry, pagerduty or any tool that can send a webhook.{{end}}</p>
+{{if .Incidents}}<table class="sig">{{range .Incidents}}<tr><td>{{day .Started}}</td><td><b>{{.Title}}</b> · {{.Source}}{{if .Release}} · {{.Release}}{{end}}{{if .URL}} · <a href="{{.URL}}">open</a>{{end}}</td>
+<td><form method="post" action="/outcomes/link" class="move"><input type="hidden" name="incident" value="{{.ID}}"><input type="hidden" name="repo" value="{{.Repo}}"><input name="pr" placeholder="{{if .Repo}}{{.Repo}}{{else}}owner/repo{{end}}#12" size="16"> <button class="btn ghost">link</button></form></td></tr>{{end}}</table>{{end}}
+</section>
+
+<section class="box"><h2>records</h2>
+<p>audit record: <b>{{.AuditN}}</b> entries{{if .AuditFP}}, fingerprint <code>{{.AuditFP}}</code>{{end}}. every entry carries the hash of the one before, so a changed or deleted entry shows up when you run <code>cowboy audit verify</code>. <a href="/audit.csv">download as csv</a> · <a href="/audit.csv?format=json">json</a></p>
+<p>benchmark: counts only (no repo names, paths, titles or people). <a href="/benchmark.json">download</a>, read it, and share it only if you want to.</p>
+</section>
+{{end}}{{template "foot" .}}

@@ -117,6 +117,7 @@ func (a *App) ClearAgent(repo string, n int, by string) error {
 	d.Labels = minus(d.Labels, []string{"agent:likely"})
 	a.Store.Put(d)
 	a.publish("cleared", repo, n, "", "#%d marked as not an agent by %s", n, by)
+	a.record("not-agent", repo, n, by, nil)
 	if a.DryRun {
 		return nil
 	}

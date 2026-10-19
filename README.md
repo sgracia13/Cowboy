@@ -188,6 +188,53 @@ it covers the 7 days before the send time. cowboy remembers what it sent (`tally
 - **clean shutdown.** on stop, cowboy finishes queued work first. the store is written to disk safely, so a crash never leaves it half-written.
 - **startup check.** cowboy checks the token can read each repo in `REPOS` and says so in the log.
 
+## after merge: did the pens get it right?
+
+cowboy follows every merged pr for 30 days (`OUTCOME_WINDOW_DAYS`) and ties what happened back to the pen it gave. the **outcomes** page shows it.
+
+what counts as trouble:
+
+| outcome | how cowboy knows | counts |
+|---|---|---|
+| reverted | a revert commit on the default branch names the pr (github's revert button, `git revert`, a revert branch, or the pr's title) | straight away |
+| broke main | checks failed on the merge commit after the pr itself was green | straight away |
+| needed a fix | a later pr says it fixes something and names this one, or changes mostly the same files within a week | once a person confirms |
+| incident | an alert from sentry, pagerduty or any tool, matched by release and by files in the error | once a person confirms |
+
+anything that counts can be marked "not a problem". cowboy also records which release each pr shipped in, who approved it, and how much of its code is still there after 30 and 90 days (from fingerprints of a sample of its added lines; no code is kept).
+
+the outcomes page has:
+
+- **by pen**: how often easy, normal and careful prs had trouble, with a range, so 2 of 10 doesn't look like a fact. only prs merged at least 30 days ago are rated.
+- **rule report card**: for each careful rule, how often its prs had trouble; and careful prs approved before merge vs not.
+- **suggested rule changes**: only when the numbers clearly point somewhere (a folder whose easy prs keep breaking, a blast-radius line that splits better, a rule that catches nothing). cowboy never changes rules itself; you edit `cowboy.json`.
+- **scorecards**: each agent (and people) by area of the code, and by month.
+- **easy, but had trouble**: what slipped through.
+
+connect incidents (each is optional):
+
+```sh
+SENTRY_CLIENT_SECRET=...   # a sentry internal integration with an issue alert action -> https://cowboy.your-co.com/webhook/sentry
+PAGERDUTY_SECRET=...       # a pagerduty v3 webhook subscription (incident.triggered) -> /webhook/pagerduty
+INCIDENT_SECRET=...        # anything else: POST json to /webhook/incident, signed (X-Cowboy-Signature: sha256=…) or with Authorization: Bearer <secret>
+INCIDENT_REPOS=web-frontend=acme/web   # when a tool's project or service name isn't the repo (one repo needs nothing)
+```
+
+```json
+{"id": "INC-12", "title": "Checkout errors", "severity": "sev2", "started_at": "2026-10-19T14:02:00Z",
+ "url": "https://…", "repo": "acme/web", "release": "v2.3.0", "files": ["src/pay/api.ts"]}
+```
+
+cowboy suggests up to three likely causes per incident (shipped in that release, or just before it started; and changed files that show up in the error) and someone on the team confirms or rejects them. it never uses the pen to pick a cause, so the pens are judged fairly.
+
+**the audit record.** every sort, move, merge, approval, outcome and confirmation is appended to `audit.jsonl` next to the data file. each entry carries the hash of the one before, so `cowboy audit verify` finds any entry that was changed or removed. the weekly tally post includes the latest fingerprint: a copy outside the server to check against. export it with `cowboy audit export --format csv` or from the outcomes page.
+
+**the benchmark.** `cowboy benchmark export` writes counts only (pens, agents, rules, outcome kinds; no repo names, paths, titles or people). read it, and share it only if you want to. `cowboy benchmark report a.json b.json …` pools several teams' files into one report. nothing is ever sent anywhere by cowboy.
+
+**how well revert detection works**: on two years of n8n, grafana and sentry history it traced 70%, 87% and 98.8% of reverts to the pr they undid; the rest name no pr, title or commit. details: [`scripts/eval/outcomes`](scripts/eval/outcomes).
+
+`OUTCOMES=off` turns this off. it needs a host that reports history (github, forgejo, gitea).
+
 ## what it writes
 
 only these, ever:
@@ -229,6 +276,10 @@ same input, same pen, every time (tested 100× per sample pr).
 cowboy score --diff my.diff --meta meta.json --repo ./checkout   # sort one pr offline, print the comment
 cowboy tally                                                     # this week's per-agent table as markdown
 cowboy tally --send                                              # send the last 7 days to slack/email now
+cowboy outcomes [--check]                                        # after merge, by pen (--check reads the git host now)
+cowboy audit verify                                              # was the audit record changed?
+cowboy audit export --format csv --since 2026-01-01              # the record, for an auditor
+cowboy benchmark export > ours.json                              # counts only, to share if you want
 cowboy sign --secret s body.json                                 # signature header for testing webhooks
 cowboy check-model                                               # is the model server answering?
 ```
@@ -249,6 +300,8 @@ internal/forge      github + gitea/forgejo clients, and a demo forge
 internal/app        the loop: fetch -> sort -> store -> label; live events; catch-up sweep
 internal/webhook    signed webhook receivers
 internal/store      decisions + corrections
+internal/outcome    after merge: reverts, broken main, fixes, incidents, survival; report card, scorecards, benchmark
+internal/audit      the hash-chained audit record
 internal/web        the corral ui
 testdata/           sample repo + 10 sample prs with expected pens
 ```
@@ -260,6 +313,8 @@ testdata/           sample repo + 10 sample prs with expected pens
 - store is a json file, not sqlite (this build has zero dependencies)
 - blast radius for java and kotlin reads imports only (files in the same package use each other without one), and hasn't been checked against a reference yet
 - review requests skip teams (`@org/team`); users only
+- after-merge tracking has been run against a stand-in for github, sentry and pagerduty, and revert detection against real history; not yet on a live repo for 30 days
+- releases are matched to prs by time (merged before the release was published), not by walking the git history
 - gitea/forgejo label changes aren't read back as corrections yet (github's are); use the corral's move buttons
 - the weekly tally goes to a slack-style webhook or email; teams/discord-native formats aren't built
 - model notes are tested against a stand-in server; try them with your own model before trusting the wording
