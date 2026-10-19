@@ -172,7 +172,7 @@ func (g *Gitea) SetLabels(repo string, n int, add, remove []string) error {
 	return err
 }
 
-func (g *Gitea) UpsertComment(repo string, n int, marker, body string) error {
+func (g *Gitea) UpsertComment(repo string, n int, marker, body string, create bool) error {
 	var cs []struct {
 		ID   int64  `json:"id"`
 		Body string `json:"body"`
@@ -183,6 +183,9 @@ func (g *Gitea) UpsertComment(repo string, n int, marker, body string) error {
 			_, err := g.do("PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", repo, c.ID), map[string]string{"body": body}, "", nil)
 			return err
 		}
+	}
+	if !create {
+		return nil
 	}
 	_, err := g.do("POST", fmt.Sprintf("/repos/%s/issues/%d/comments", repo, n), map[string]string{"body": body}, "", nil)
 	return err

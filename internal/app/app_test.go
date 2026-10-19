@@ -31,8 +31,12 @@ func TestLoop(t *testing.T) {
 	if got := f.Reviews[507]; !reflect.DeepEqual(got, []string{"maria"}) {
 		t.Errorf("507 review = %v, want maria (CODEOWNERS src/auth/)", got)
 	}
-	if _, ok := f.Labels[520]; ok {
-		t.Errorf("human PR 520 should be untouched")
+	// a person's PR is sorted quietly: a pen label, no agent label, no comment
+	if got := f.Labels[520]; !reflect.DeepEqual(got, []string{"cowboy:easy"}) {
+		t.Errorf("human PR 520 labels = %v, want [cowboy:easy]", got)
+	}
+	if _, ok := f.Comments[520]; ok {
+		t.Errorf("human PR 520 is easy: it should get no comment")
 	}
 	if _, ok := f.Comments[498]; !ok {
 		t.Errorf("498 should have a comment")
@@ -68,7 +72,7 @@ func TestLoop(t *testing.T) {
 	for _, r := range rows {
 		total += r.Total
 	}
-	if total != 9 || len(st.Corrections()) != 1 {
+	if total != 13 || len(st.Corrections()) != 1 {
 		t.Errorf("tally total %d corrections %d", total, len(st.Corrections()))
 	}
 }
@@ -88,7 +92,7 @@ func TestModelNeverChangesThePen(t *testing.T) {
 		for _, n := range nums {
 			if d, ok, _ := a.HandlePR("acme/app", n); ok {
 				pens[n] = string(d.Pen)
-				if withModel && (d.Notes == nil || !strings.Contains(f.Comments[n], "local model notes")) {
+				if withModel && d.Agent != "" && (d.Notes == nil || !strings.Contains(f.Comments[n], "local model notes")) {
 					t.Errorf("#%d: notes missing from comment", n)
 				}
 			}
@@ -118,11 +122,11 @@ func TestCatchUp(t *testing.T) {
 
 	// no webhooks at all: the sweep finds every agent PR
 	caught := a.Reconcile()
-	if len(caught) != 9 || len(st.List("acme/app", "open")) != 9 {
+	if len(caught) != 13 || len(st.List("acme/app", "open")) != 13 {
 		t.Fatalf("caught %d: %v", len(caught), caught)
 	}
-	if _, ok := st.Get("acme/app", 520); ok {
-		t.Fatal("human PR 520 should not be stored")
+	if d, ok := st.Get("acme/app", 520); !ok || d.Agent != "" {
+		t.Fatal("human PR 520 should be sorted, with no agent")
 	}
 	// nothing changed: a second sweep does nothing and writes nothing
 	writes := len(f.Log)
@@ -140,7 +144,7 @@ func TestCatchUp(t *testing.T) {
 	for len(events) > 0 {
 		kinds[(<-events).Kind]++
 	}
-	if kinds["sorted"] != 9 || kinds["caught-up"] != 9 || kinds["closed"] != 1 {
+	if kinds["sorted"] != 13 || kinds["caught-up"] != 13 || kinds["closed"] != 1 {
 		t.Fatalf("events = %v", kinds)
 	}
 }

@@ -96,6 +96,11 @@ func Run(in Input) (Decision, bool) {
 
 	var extra []string
 	for _, o := range in.OpenPRs {
+		// doubles are agent work repeating other work; a person's PR is
+		// never labelled a double
+		if sig.Agent == "" {
+			break
+		}
 		if o.Number == d.Number || o.Repo != d.Repo || o.State != "open" {
 			continue
 		}
@@ -169,4 +174,12 @@ func contains(xs []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// CurrentPen is the pen a person moved the PR to, or else the rules' pen.
+func (d Decision) CurrentPen() score.Pen {
+	if d.Corrected != "" {
+		return d.Corrected
+	}
+	return d.Pen
 }

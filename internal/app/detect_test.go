@@ -50,12 +50,19 @@ func TestUndisclosedAgentCaught(t *testing.T) {
 	if d, _ := st.Get("acme/app", 540); d.Agent != "codex?" {
 		t.Errorf("540 agent guess %q, want codex? (from the codex/ branch)", d.Agent)
 	}
+	// people's PRs are sorted quietly: no agent label, no double, no comment
 	for _, n := range []int{520, 541} {
-		if _, ok := st.Get("acme/app", n); ok {
-			t.Errorf("human #%d should be left alone", n)
+		d, ok := st.Get("acme/app", n)
+		if !ok || d.Agent != "" || d.DoubleOf != 0 {
+			t.Errorf("human #%d: stored=%v agent=%q double_of=%d", n, ok, d.Agent, d.DoubleOf)
 		}
-		if _, ok := f.Labels[n]; ok {
-			t.Errorf("human #%d got labels %v", n, f.Labels[n])
+		for _, l := range f.Labels[n] {
+			if strings.HasPrefix(l, "agent:") || l == "cowboy:double" {
+				t.Errorf("human #%d got label %s", n, l)
+			}
+		}
+		if _, ok := f.Comments[n]; ok && d.CurrentPen() != "careful" {
+			t.Errorf("human #%d got a comment in %s", n, d.CurrentPen())
 		}
 	}
 	// disclosed agents skip the check entirely
