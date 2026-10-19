@@ -75,12 +75,15 @@ jobs:
       - name: check the install command works
         run: |
           # the one-line install on the website must reach this release
+          link=https://github.com/sgracia13/Cowboy/releases/latest/download/install.sh
           for i in 1 2 3 4 5 6; do
-            url=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/sgracia13/Cowboy/releases/latest/download/install.sh) && break
+            # the first redirect names the release the link points at
+            loc=$(curl -fsSI "$link" | tr -d '\r' | awk 'tolower($1)=="location:"{print $2; exit}') && [ -n "$loc" ] && break
             sleep 10
           done
-          echo "install.sh resolves to: $url"
-          case "$url" in *"/download/$VERSION/install.sh") ;; *) echo "the install link doesn't reach $VERSION"; exit 1 ;; esac
+          echo "install link points at: $loc"
+          case "$loc" in *"/download/$VERSION/install.sh") ;; *) echo "the install link doesn't reach $VERSION"; exit 1 ;; esac
+          curl -fsSL "$link" -o /dev/null
   docker:
     runs-on: ubuntu-latest
     steps:
