@@ -48,6 +48,7 @@ type App struct {
 
 	mu      sync.Mutex
 	graphs  map[string]*graph.Graph
+	graphAt map[string]time.Time
 	locks   map[string]*sync.Mutex
 	events  *hub
 	skipped map[string]bool
@@ -60,7 +61,7 @@ func New(f forge.Forge, s *store.Store, repoPaths map[string]string) *App {
 		repoPaths = map[string]string{}
 	}
 	return &App{Forge: f, Store: s, RepoPaths: repoPaths, Now: time.Now,
-		graphs: map[string]*graph.Graph{}, locks: map[string]*sync.Mutex{}}
+		graphs: map[string]*graph.Graph{}, graphAt: map[string]time.Time{}, locks: map[string]*sync.Mutex{}}
 }
 
 // one PR at a time per repo, so doubles see each other in order
@@ -73,11 +74,15 @@ func (a *App) repoLock(repo string) *sync.Mutex {
 	return a.locks[repo]
 }
 
+// GraphMaxAge is how long an import graph is reused before the checkout is
+// read again, so blast radius follows a checkout kept fresh with git pull.
+const GraphMaxAge = time.Hour
+
 // Graph returns the import graph for a repo, or nil if no local checkout.
 func (a *App) Graph(repo string) *graph.Graph {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if g, ok := a.graphs[repo]; ok {
+	if g, ok := a.graphs[repo]; ok && time.Since(a.graphAt[repo]) < GraphMaxAge {
 		return g
 	}
 	path, ok := a.RepoPaths[repo]
@@ -90,6 +95,7 @@ func (a *App) Graph(repo string) *graph.Graph {
 		return nil
 	}
 	a.graphs[repo] = g
+	a.graphAt[repo] = time.Now()
 	return g
 }
 
