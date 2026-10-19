@@ -9,12 +9,16 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	cowboy "github.com/sgracia13/Cowboy"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -947,13 +951,59 @@ func findTestdata() string {
 	return dir
 }
 
+// demoHistory loads the replayed vercel/next.js history built into the
+// demo data (testdata/replay): real merged PRs, sorted by today's rules,
+// with what happened after merge. Author names were removed when it was
+// made (scripts/eval/demo-history.py).
+func demoHistory(td string) (*web.OutcomeSettings, error) {
+	f, err := os.Open(filepath.Join(td, "replay", "nextjs.json.gz"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	var h struct {
+		Now       time.Time           `json:"now"`
+		Note      string              `json:"note"`
+		Decisions []pipeline.Decision `json:"decisions"`
+		Outcomes  json.RawMessage     `json:"outcomes"`
+	}
+	if err := json.NewDecoder(zr).Decode(&h); err != nil {
+		return nil, err
+	}
+	// the outcomes state lives in a temp file, so yes/no buttons work
+	path := filepath.Join(os.TempDir(), "cowboy-demo-outcomes.json")
+	if err := os.WriteFile(path, h.Outcomes, 0o600); err != nil {
+		return nil, err
+	}
+	st, err := outcome.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return &web.OutcomeSettings{State: st, Window: 30 * 24 * time.Hour, Version: version, Note: h.Note,
+		History: func() []pipeline.Decision { return h.Decisions }, Now: func() time.Time { return h.Now }}, nil
+}
+
 // unpackDemo writes the built-in sample repo to the cache (once per version).
 func unpackDemo() (string, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
 		base = os.TempDir()
 	}
-	dir := filepath.Join(base, "cowboy", "demo-"+version)
+	// keyed by the data itself, so a changed sample never reads a stale copy
+	h := sha256.New()
+	fs.WalkDir(cowboy.Demo, ".", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			b, _ := fs.ReadFile(cowboy.Demo, p)
+			h.Write([]byte(p))
+			h.Write(b)
+		}
+		return nil
+	})
+	dir := filepath.Join(base, "cowboy", "demo-"+hex.EncodeToString(h.Sum(nil))[:12])
 	if _, err := os.Stat(filepath.Join(dir, "testdata", "prs")); err == nil {
 		return filepath.Join(dir, "testdata"), nil
 	}
@@ -1015,6 +1065,12 @@ func demo(args []string) {
 	}
 	const repo = "acme/app"
 	st.AddRepo(repo)
+	// the outcomes page shows a replay of real history (the made-up repo has none)
+	if ui, err := demoHistory(td); err != nil {
+		log.Printf("demo outcomes page off: %v", err)
+	} else {
+		outcomeUI = ui
+	}
 	secret := env("WEBHOOK_SECRET", "demo-secret")
 	url := "http://localhost" + portOf(*addr)
 

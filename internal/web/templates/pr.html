@@ -20,12 +20,12 @@
     <p class="small">merged {{day .Merge.MergedAt}}{{if .Merge.Approvers}} · approved by {{range $i, $a := .Merge.Approvers}}{{if $i}}, {{end}}{{$a}}{{end}}{{else}} · no approval before merge{{end}}{{if .Merge.Release}} · shipped in {{.Merge.Release}} ({{day .Merge.ReleasedAt}}){{end}}{{range $k, $v := .Merge.Survival}} · {{pctf $v}} of its code still there after {{$k}}{{end}}</p>
     {{if .Outcomes}}<ul class="reasons">{{range .Outcomes}}<li class="r-{{if .Counts}}careful{{else}}info{{end}}"><span class="chk">{{kindLabel .Kind}}</span>{{.Evidence}} · {{day .At}} · {{.Status}}{{if .By}} by {{.By}}{{end}}{{if .Link}} · <a href="{{.Link}}">source</a>{{end}}{{if eq .Status "suggested"}} <form method="post" action="/outcomes/decide" class="move" style="display:inline"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="back" value="/pr?repo={{$.Data.D.Repo}}&n={{$.Data.D.Number}}"><button class="btn" name="confirm" value="yes">yes</button> <button class="btn ghost" name="confirm" value="no">no</button></form>{{end}}</li>{{end}}</ul>
     {{else}}<p class="small">no trouble found so far.</p>{{end}}{{end}}
-    <h2>move to another pen</h2>
+    {{if .Replay}}<p class="small">this pull request is from a replay of real history, sorted after it merged. nothing was written to its repo.</p>{{else}}<h2>move to another pen</h2>
     <form method="post" action="/pr/move" class="move">
       <input type="hidden" name="repo" value="{{.D.Repo}}"><input type="hidden" name="n" value="{{.D.Number}}">
       {{range .Pens}}<button name="to" value="{{.}}" class="btn {{if eq (print .) $p}}on{{end}}">{{.}}</button>{{end}}
     </form>
-    <p class="small">moving a pr changes its label and is counted. it never changes the rules by itself.</p>
+    <p class="small">moving a pr changes its label and is counted. it never changes the rules by itself.</p>{{end}}
   </div>
   <div class="box">
     <h2>what cowboy measured</h2>
