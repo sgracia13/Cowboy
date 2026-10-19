@@ -10,6 +10,7 @@ import (
 
 	"github.com/sgracia13/Cowboy/internal/audit"
 	"github.com/sgracia13/Cowboy/internal/evaluate"
+	"github.com/sgracia13/Cowboy/internal/fit"
 	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 )
@@ -35,6 +36,12 @@ type OutcomeSettings struct {
 	// its made-up corral). Note is shown at the top of the page.
 	History func() []pipeline.Decision
 	Note    string
+	// Learned is the rule book: rules learned from history, their trials,
+	// and which a person promoted (nil = the section is off).
+	Learned *fit.Book
+	// FitDays is how much history learning reads (0 = the tested 90 days).
+	// The demo's replay is a sample, so it reads the whole replayed year.
+	FitDays int
 	// Now is the clock for the report (nil = the real time; a replay of
 	// past history sets it to the end of that history).
 	Now func() time.Time
@@ -98,6 +105,10 @@ func (s *Server) check() evaluate.Result {
 
 type outcomesPage struct {
 	Note        string
+	Msg         string
+	Learned     []learnedRow
+	CanLearn    bool
+	FitDays     int
 	PendingMore int // suggestions past the first 10, not listed
 	Report      outcome.Report
 	Check       evaluate.Result
@@ -114,7 +125,10 @@ type outcomesPage struct {
 
 func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 	o := s.Outcomes
-	p := outcomesPage{Note: o.Note, Report: s.report(), Check: s.check(), Sources: o.Sources, Error: r.URL.Query().Get("error")}
+	p := outcomesPage{Note: o.Note, Report: s.report(), Check: s.check(), Sources: o.Sources, Error: r.URL.Query().Get("error"), Msg: r.URL.Query().Get("msg")}
+	p.CanLearn = o.Learned != nil
+	p.FitDays = s.fitOptions().Days
+	p.Learned = s.learnedRows()
 	all := o.State.Outcomes("", 0)
 	for _, x := range all {
 		if x.Status == outcome.Suggested {

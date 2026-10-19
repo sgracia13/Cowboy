@@ -168,6 +168,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /outcomes/decide", s.decideOutcome)
 		mux.HandleFunc("POST /outcomes/link", s.linkIncident)
 		mux.HandleFunc("POST /outcomes/backfill", s.startBackfill)
+		mux.HandleFunc("POST /outcomes/learn", s.learnRules)
+		mux.HandleFunc("POST /outcomes/rule", s.moveRule)
 		mux.HandleFunc("GET /audit.csv", s.auditCSV)
 		mux.HandleFunc("GET /benchmark.json", s.benchmark)
 	}
@@ -350,14 +352,20 @@ func (s *Server) tally(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) rules(w http.ResponseWriter, r *http.Request) {
 	type repoRules struct {
-		Repo  string
-		JSON  string
-		Blast string
+		Repo    string
+		JSON    string
+		Blast   string
+		Learned []string // learned rules in use, in plain words
 	}
 	var out []repoRules
 	for _, repo := range s.App.Store.Repos() {
-		b, _ := json.MarshalIndent(s.App.Config(repo), "", "  ")
-		out = append(out, repoRules{repo, string(b), s.App.GraphStatus(repo)})
+		cfg := s.App.Config(repo)
+		b, _ := json.MarshalIndent(cfg, "", "  ")
+		var learned []string
+		for _, l := range cfg.Learned {
+			learned = append(learned, l.Label)
+		}
+		out = append(out, repoRules{repo, string(b), s.App.GraphStatus(repo), learned})
 	}
 	type det struct {
 		Repo    string

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/sgracia13/Cowboy/internal/fit"
 	"log"
 	"sort"
 	"strings"
@@ -52,6 +53,10 @@ type App struct {
 	Outcomes *outcome.State
 	// OnMerged runs when a PR is marked merged (records the merge).
 	OnMerged func(repo string, n int)
+
+	// Learned is the rule book of rules learned from each repo's history;
+	// the ones a person promoted add to the repo's careful rules.
+	Learned *fit.Book
 
 	// Model is the optional local model. nil = rules only.
 	Model model.Model
@@ -265,6 +270,7 @@ func (a *App) Config(repo string) config.Config {
 			break
 		}
 	}
+	cfg.Learned = a.Learned.Active(repo)
 	return cfg
 }
 

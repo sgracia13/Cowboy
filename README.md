@@ -229,6 +229,7 @@ the outcomes page has:
 
 - **by pen**: how often easy, normal and careful prs had trouble, with a range, so 2 of 10 doesn't look like a fact. only prs merged at least 30 days ago are rated.
 - **rule report card**: for each careful rule, how often its prs had trouble; and careful prs approved before merge vs not.
+- **rules learned from this repo**: suggestions, trials and promoted rules (below).
 - **suggested rule changes**: only when the numbers clearly point somewhere (a folder whose easy prs keep breaking, a blast-radius line that splits better, a rule that catches nothing). cowboy never changes rules itself; you edit `cowboy.json`.
 - **scorecards**: each agent (and people) by area of the code, and by month.
 - **easy, but had trouble**: what slipped through.
@@ -254,6 +255,14 @@ cowboy suggests up to three likely causes per incident (shipped in that release,
 **the benchmark.** `cowboy benchmark export` writes counts only (pens, agents, rules, outcome kinds; no repo names, paths, titles or people). read it, and share it only if you want to. `cowboy benchmark report a.json b.json …` pools several teams' files into one report. nothing is ever sent anywhere by cowboy.
 
 **how well revert detection works**: on two years of n8n, grafana and sentry history it traced 70%, 87% and 98.8% of reverts to the pr they undid; the rest name no pr, title or commit. details: [`scripts/eval/outcomes`](scripts/eval/outcomes).
+
+**rules learned from your repo (preview).** on the outcomes page, **look for rules now** searches the last 90 days of merged prs for folders, files and triggers that went with trouble more often than chance would explain (the method in [`CLAIMS-fit.md`](scripts/eval/evidence/CLAIMS-fit.md): at least 8 prs with trouble, at least 3 per rule, a cautious lift of 1.5× or more, covering at most 15% of prs). what it finds goes through three steps, and only a person moves a rule:
+
+1. **suggested**: shown with its record in the history it came from (and how much of it the default rules already catch). changes nothing.
+2. **trial**: scored on every pr merged after the trial started, never on the history it was learned from. it sorts nothing. once 10 matching prs are past the 30-day window and 5 prs in all had trouble, it reads **ahead** (matching prs had trouble more often than average, beyond chance) or **not ahead**; until then, **too early**.
+3. **in use**: sends matching prs to careful next to the default rules (it adds to them; it doesn't replace them), with the reason on the pr. **stop using** puts it back on trial with its record kept.
+
+any step can **set aside** a rule; later searches won't suggest it again. every move is in the audit record, and the rules live in `learned.json` next to the data file. be skeptical: suggestions come from searching many paths, so some are luck, and in our published test rules learned this way did not clearly beat the defaults on months they hadn't seen ([`RESULTS-fit.md`](scripts/eval/evidence/RESULTS-fit.md)). the trial is there so your repo can show whether a rule earns its place before it sorts anything.
 
 **don't wait a month.** on a fresh install the outcomes page offers **rate the last 90 days** (or run `cowboy backfill --days 90`): cowboy sorts the prs that already merged, the way it would have, and checks what happened to them. nothing is written to your git host, it uses today's rules and import graph, and these prs stay out of the tally.
 
