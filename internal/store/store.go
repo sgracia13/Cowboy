@@ -1,8 +1,9 @@
 // Package store keeps Cowboy's decisions and corrections.
 //
-// The product plan uses SQLite. This prototype writes one JSON file so it
-// runs on the Go standard library alone; the Store type is the seam where
-// SQLite drops in later.
+// They live in SQLite (internal/db), in a file next to the data path
+// (data/cowboy.json -> data/cowboy.db), and are held in memory for reads.
+// Each change writes only the rows it touched. A cowboy.json from an
+// older version is imported once and kept as cowboy.json.migrated.
 package store
 
 import (
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sgracia13/Cowboy/internal/db"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 	"github.com/sgracia13/Cowboy/internal/score"
 )
@@ -29,64 +31,143 @@ type Correction struct {
 	At     time.Time `json:"at"`
 }
 
+// data is the whole store; also the layout of the legacy JSON file and of
+// ExportJSON.
 type data struct {
 	Decisions   map[string]pipeline.Decision `json:"decisions"`
 	Corrections []Correction                 `json:"corrections"`
 	Repos       []string                     `json:"repos"`
 }
 
+const (
+	kDecision   = "decision"
+	kCorrection = "correction"
+	kRepos      = "repos"
+)
+
 // Store is safe for concurrent use.
 type Store struct {
-	mu   sync.Mutex
-	path string
-	d    data
+	mu sync.Mutex
+	db *db.DB // nil: memory only
+	d  data
 }
 
-// Open loads (or creates) the store file.
+// Open loads (or creates) the store for a data path like data/cowboy.json.
+// An empty path keeps everything in memory.
 func Open(path string) (*Store, error) {
-	s := &Store{path: path, d: data{Decisions: map[string]pipeline.Decision{}}}
-	b, err := os.ReadFile(path)
-	if err == nil {
-		if err := json.Unmarshal(b, &s.d); err != nil {
-			return nil, fmt.Errorf("reading %s: %w", path, err)
-		}
-		if s.d.Decisions == nil {
-			s.d.Decisions = map[string]pipeline.Decision{}
-		}
-	} else if !os.IsNotExist(err) {
+	s := &Store{d: data{Decisions: map[string]pipeline.Decision{}}}
+	if path == "" {
+		return s, nil
+	}
+	d, err := db.Open(db.PathFor(path))
+	if err != nil {
 		return nil, err
 	}
-	return s, nil
+	s.db = d
+	if err := s.importJSON(path); err != nil {
+		return nil, err
+	}
+	return s, s.load()
+}
+
+// importJSON moves a store file from before SQLite into the database, once.
+func (s *Store) importJSON(path string) error {
+	if s.db.Meta("imported:store") != "" {
+		return nil
+	}
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return s.db.SetMeta("imported:store", "none")
+	}
+	if err != nil {
+		return err
+	}
+	var old data
+	if err := json.Unmarshal(b, &old); err != nil {
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+	var ops []db.Op
+	for k, d := range old.Decisions {
+		ops = append(ops, op(kDecision, k, d))
+	}
+	for i, c := range old.Corrections {
+		ops = append(ops, op(kCorrection, fmt.Sprintf("%012d", i), c))
+	}
+	ops = append(ops, op(kRepos, "all", old.Repos))
+	if err := s.db.Write(ops...); err != nil {
+		return fmt.Errorf("importing %s: %w", path, err)
+	}
+	if err := s.db.SetMeta("imported:store", time.Now().UTC().Format(time.RFC3339)); err != nil {
+		return err
+	}
+	return os.Rename(path, path+".migrated")
+}
+
+func op(kind, key string, v any) db.Op {
+	b, _ := json.Marshal(v)
+	return db.Op{Kind: kind, Key: key, Body: b}
+}
+
+func (s *Store) load() error {
+	m, err := s.db.Load(kDecision)
+	if err != nil {
+		return err
+	}
+	for k, b := range m {
+		var d pipeline.Decision
+		if err := json.Unmarshal(b, &d); err != nil {
+			return fmt.Errorf("decision %s: %w", k, err)
+		}
+		s.d.Decisions[k] = d
+	}
+	cs, err := s.db.Load(kCorrection)
+	if err != nil {
+		return err
+	}
+	keys := make([]string, 0, len(cs))
+	for k := range cs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		var c Correction
+		if err := json.Unmarshal(cs[k], &c); err != nil {
+			return err
+		}
+		s.d.Corrections = append(s.d.Corrections, c)
+	}
+	if r, err := s.db.Load(kRepos); err != nil {
+		return err
+	} else if b, ok := r["all"]; ok {
+		json.Unmarshal(b, &s.d.Repos)
+	}
+	return nil
+}
+
+// write saves changed rows (nothing to do in memory).
+func (s *Store) write(ops ...db.Op) error {
+	if s.db == nil {
+		return nil
+	}
+	return s.db.Write(ops...)
+}
+
+func (s *Store) reposOp() db.Op { return op(kRepos, "all", s.d.Repos) }
+
+// ExportJSON writes the whole store in the legacy cowboy.json layout (for
+// the evaluation scripts, which read that file).
+func (s *Store) ExportJSON(path string) error {
+	s.mu.Lock()
+	b, err := json.MarshalIndent(s.d, "", " ")
+	s.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	return os.WriteFile(path, b, 0o600)
 }
 
 func key(repo string, n int) string { return fmt.Sprintf("%s#%d", repo, n) }
-
-func (s *Store) save() error {
-	b, err := json.MarshalIndent(s.d, "", " ")
-	if err != nil {
-		return err
-	}
-	os.MkdirAll(filepath.Dir(s.path), 0o755)
-	// write, flush to disk, then swap in: a crash mid-write never leaves a
-	// half-written store behind
-	tmp := s.path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(b); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp, s.path)
-}
 
 // Put saves a decision.
 func (s *Store) Put(d pipeline.Decision) error {
@@ -102,25 +183,32 @@ func (s *Store) Put(d pipeline.Decision) error {
 		d.Notes = old.Notes // model notes are per head SHA
 	}
 	s.d.Decisions[key(d.Repo, d.Number)] = d
-	s.trackRepo(d.Repo)
-	return s.save()
+	ops := []db.Op{op(kDecision, key(d.Repo, d.Number), d)}
+	if s.trackRepo(d.Repo) {
+		ops = append(ops, s.reposOp())
+	}
+	return s.write(ops...)
 }
 
-func (s *Store) trackRepo(repo string) {
+// trackRepo adds a repo to the list and reports whether it was new.
+func (s *Store) trackRepo(repo string) bool {
 	for _, r := range s.d.Repos {
 		if r == repo {
-			return
+			return false
 		}
 	}
 	s.d.Repos = append(s.d.Repos, repo)
+	return true
 }
 
 // AddRepo remembers a repo to sweep.
 func (s *Store) AddRepo(repo string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.trackRepo(repo)
-	return s.save()
+	if !s.trackRepo(repo) {
+		return nil
+	}
+	return s.write(s.reposOp())
 }
 
 // RemoveRepo stops sweeping a repo (its decisions stay for the record).
@@ -134,7 +222,7 @@ func (s *Store) RemoveRepo(repo string) error {
 		}
 	}
 	s.d.Repos = kept
-	return s.save()
+	return s.write(s.reposOp())
 }
 
 // Repos lists tracked repos.
@@ -162,7 +250,7 @@ func (s *Store) SetState(repo string, n int, state string) error {
 	}
 	d.State = state
 	s.d.Decisions[key(repo, n)] = d
-	return s.save()
+	return s.write(op(kDecision, key(repo, n), d))
 }
 
 // Correct records a human moving a PR to another pen.
@@ -182,8 +270,9 @@ func (s *Store) Correct(repo string, n int, to score.Pen, by string) (pipeline.D
 	}
 	d.Corrected = to
 	s.d.Decisions[key(repo, n)] = d
-	s.d.Corrections = append(s.d.Corrections, Correction{repo, n, from, to, by, time.Now().UTC()})
-	return d, s.save()
+	c := Correction{repo, n, from, to, by, time.Now().UTC()}
+	s.d.Corrections = append(s.d.Corrections, c)
+	return d, s.write(op(kDecision, key(repo, n), d), op(kCorrection, fmt.Sprintf("%012d", len(s.d.Corrections)-1), c))
 }
 
 // List returns decisions, newest PR number first. state "" means all.
