@@ -28,6 +28,11 @@ var (
 	titleRef = regexp.MustCompile(`\(#(\d+)\)|\bfrom #(\d+)\b`)
 	// the revert PR's own number, at the end of a squash title
 	ownNumber = regexp.MustCompile(`\(#(\d+)\)\s*$`)
+	// GitLab's Revert button: "This reverts merge request !123" (also with
+	// the project path before the !)
+	revertsMR = regexp.MustCompile(`(?i)\bThis reverts merge request\s+(?:[\w./-]+)?!(\d+)\b`)
+	// GitLab's merge commit for a revert merge request
+	gitlabRevertMerge = regexp.MustCompile(`(?i)^Merge branch '(?:[^']*/)?revert-[0-9a-f]{6,40}' into `)
 )
 
 // ParseRevert reads a commit message and returns what it reverted. ok is
@@ -59,6 +64,9 @@ func ParseRevert(msg string) (refs []RevertRef, ok bool) {
 		isRevert = true
 		addPR(m[1])
 	}
+	if gitlabRevertMerge.MatchString(title) {
+		isRevert = true
+	}
 	if !isRevert {
 		return nil, false
 	}
@@ -77,6 +85,9 @@ func ParseRevert(msg string) (refs []RevertRef, ok bool) {
 		if n, _ := strconv.Atoi(m[1]); n != own {
 			addPR(m[1])
 		}
+	}
+	for _, m := range revertsMR.FindAllStringSubmatch(body, -1) {
+		addPR(m[1])
 	}
 	for _, m := range revertsCommit.FindAllStringSubmatch(msg, -1) {
 		refs = append(refs, RevertRef{SHA: strings.ToLower(m[1])})

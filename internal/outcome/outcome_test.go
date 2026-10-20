@@ -397,3 +397,39 @@ func TestLineSampleIsCapped(t *testing.T) {
 }
 
 var diffParse = diff.Parse
+
+func TestParseGitLabReverts(t *testing.T) {
+	cases := []struct {
+		msg  string
+		pr   int
+		sha  string
+		want bool
+	}{
+		// the Revert button, committed straight to the branch
+		{"Revert \"Add retry\"\n\nThis reverts merge request !8", 8, "", true},
+		{"Revert \"Add retry\"\n\nThis reverts commit 5a5a5a5a8b8b8b8b.\n\nThis reverts merge request grp/sub/app!8", 8, "5a5a5a5a8b8b8b8b", true},
+		// a revert merge request, merged with a merge commit
+		{"Merge branch 'revert-5a5a5a5a' into 'main'\n\nRevert \"Add retry\"\n\nThis reverts merge request !8\n\nSee merge request grp/sub/app!12", 8, "", true},
+		// an ordinary merge commit mentioning a merge request isn't a revert
+		{"Merge branch 'fix-retry' into 'main'\n\nFix retry\n\nSee merge request grp/sub/app!12", 0, "", false},
+	}
+	for _, c := range cases {
+		refs, ok := ParseRevert(c.msg)
+		if ok != c.want {
+			t.Errorf("%q: revert=%v, want %v", c.msg, ok, c.want)
+			continue
+		}
+		gotPR, gotSHA := 0, ""
+		for _, r := range refs {
+			if r.PR != 0 {
+				gotPR = r.PR
+			}
+			if r.SHA != "" {
+				gotSHA = r.SHA
+			}
+		}
+		if gotPR != c.pr || gotSHA != c.sha {
+			t.Errorf("%q: pr=%d sha=%q, want %d %q", c.msg, gotPR, gotSHA, c.pr, c.sha)
+		}
+	}
+}

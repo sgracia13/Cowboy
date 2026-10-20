@@ -224,7 +224,8 @@ func (s *Server) render(w http.ResponseWriter, name, nav string, data any) {
 	p.Outcomes = s.Outcomes != nil
 	if s.Setup != nil || s.Connect != nil {
 		p.Setup = true
-		p.NeedsSetup = nav != "setup" && !s.connected()
+		// only where the setup page can connect (GitHub); other hosts are set up with settings
+		p.NeedsSetup = nav != "setup" && (s.Setup != nil || s.Connect != nil) && !s.connected()
 	}
 	var buf bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&buf, name, p); err != nil {
