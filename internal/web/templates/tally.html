@@ -1,12 +1,13 @@
 {{template "head" .}}{{with .Data}}
-<section class="hero"><h1>the tally · last 7 days</h1></section>
+<section class="hero"><h1>The tally</h1></section>
+<p class="lead">Each agent's pull requests over the last 7 days: where they were sorted, what a person had to fix, and what went wrong after merge.</p>
 <section class="box">
-<table class="tally">
-  <tr><th>agent</th><th>prs</th><th>easy</th><th>normal</th><th>careful</th><th>doubles</th><th>strays</th><th>shortcuts</th><th>re-penned</th><th>merged</th><th>trouble after merge</th></tr>
-  {{range .Rows}}<tr><td><b>{{if .Agent}}{{.Agent}}{{else}}people{{end}}</b></td><td>{{.Total}}</td><td>{{.Easy}}</td><td>{{.Normal}}</td><td>{{.Careful}}</td><td>{{.Doubles}}</td><td>{{.Strays}}</td><td>{{.Shortcuts}}</td><td>{{.Corrected}}</td><td>{{.Merged}}</td><td>{{.Trouble}}</td></tr>{{else}}<tr><td colspan="11">nothing yet</td></tr>{{end}}
-</table>
+<div class="scroll"><table class="tally">
+  <tr><th>Author</th><th>Pull requests</th><th>Easy</th><th>Normal</th><th>Careful</th><th>Doubles</th><th>Strays</th><th>Shortcuts</th><th>Moved by a person</th><th>Merged</th><th>Trouble after merge</th></tr>
+  {{range .Rows}}<tr><td><b>{{if .Agent}}{{.Agent}}{{else}}People{{end}}</b></td><td>{{.Total}}</td><td>{{.Easy}}</td><td>{{.Normal}}</td><td>{{.Careful}}</td><td>{{.Doubles}}</td><td>{{.Strays}}</td><td>{{.Shortcuts}}</td><td>{{.Corrected}}</td><td>{{.Merged}}</td><td>{{.Trouble}}</td></tr>{{else}}<tr><td colspan="11">Nothing in the last 7 days.</td></tr>{{end}}
+</table></div>
 </section>
-{{if .Corrections}}<section class="box"><h2>re-penned by humans</h2><ul class="trail">{{range .Corrections}}<li>{{.Repo}}#{{.Number}}: {{.From}} → {{.To}} by {{.By}} · {{ago .At}}</li>{{end}}</ul></section>{{end}}
-{{if .TallyNote}}<section class="box"><h2>weekly post</h2><p>{{.TallyNote}}</p></section>{{end}}
-<section class="box"><h2>copy into chat</h2><pre class="comment">{{.Markdown}}</pre></section>
+{{if .Corrections}}<section class="box"><h2>Moved by a person</h2><ul class="trail">{{range .Corrections}}<li>{{.Repo}}#{{.Number}}: {{.From}} → {{.To}} by {{.By}} · {{ago .At}}</li>{{end}}</ul></section>{{end}}
+{{if .TallyNote}}<section class="box"><h2>Weekly post</h2><p>{{.TallyNote}}</p></section>{{end}}
+<section class="box"><h2>Copy into chat</h2><pre class="comment">{{.Markdown}}</pre></section>
 {{end}}{{template "foot" .}}

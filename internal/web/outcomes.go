@@ -97,6 +97,12 @@ func (s *Server) check() evaluate.Result {
 }
 
 type outcomesPage struct {
+	Answer      answerView
+	Bars        barsView
+	PenDots     dotsView
+	RuleDots    dotsView
+	Cards       []outcome.AgentRow // scorecards with enough PRs to read
+	CardsRest   []outcome.AgentRow
 	Note        string
 	PendingMore int // suggestions past the first 10, not listed
 	Report      outcome.Report
@@ -123,9 +129,38 @@ func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 			p.Recent = append(p.Recent, x)
 		}
 	}
-	if len(p.Pending) > 10 {
-		p.PendingMore = len(p.Pending) - 10
-		p.Pending = p.Pending[:10]
+	if len(p.Pending) > 6 {
+		p.PendingMore = len(p.Pending) - 6
+		p.Pending = p.Pending[:6]
+	}
+	p.Answer = makeAnswer(p.Report, p.Check, len(p.Pending)+p.PendingMore)
+	p.Bars = makeBars(p.Check)
+	var labels []string
+	var rates []outcome.Rate
+	bad, n := 0, 0
+	for _, x := range p.Report.ByPen {
+		labels = append(labels, capFirst(string(x.Pen)))
+		rates = append(rates, x.Rate)
+		bad += x.Rate.Bad
+		n += x.Rate.N
+	}
+	avg := 0.0
+	if n > 0 {
+		avg = float64(bad) / float64(n)
+	}
+	p.PenDots = makeDots(labels, rates, avg)
+	labels, rates = nil, nil
+	for _, x := range p.Report.Rules {
+		labels = append(labels, capFirst(x.Label))
+		rates = append(rates, x.Rate)
+	}
+	p.RuleDots = makeDots(labels, rates, avg)
+	for _, x := range p.Report.Agents {
+		if x.Rate.N >= 20 {
+			p.Cards = append(p.Cards, x)
+		} else {
+			p.CardsRest = append(p.CardsRest, x)
+		}
 	}
 	p.Incidents = o.State.Incidents()
 	if len(p.Incidents) > 20 {

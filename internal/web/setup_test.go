@@ -65,7 +65,7 @@ func TestSetupFlow(t *testing.T) {
 		t.Fatal("the corral should show the connect banner")
 	}
 	w := do(rig.h, "GET", "/setup", nil, nil)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "create the github app") {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Create the GitHub App") {
 		t.Fatalf("setup page: %d", w.Code)
 	}
 	if !strings.Contains(w.Body.String(), "webhooks off") {
@@ -114,7 +114,7 @@ func TestSetupFlow(t *testing.T) {
 	if w := do(rig.h, "GET", "/", nil, nil); strings.Contains(w.Body.String(), "isn't connected") {
 		t.Error("banner still showing after connecting")
 	}
-	if w := do(rig.h, "GET", "/setup", nil, nil); !strings.Contains(w.Body.String(), "acme/web") || !strings.Contains(w.Body.String(), "add or remove repos") {
+	if w := do(rig.h, "GET", "/setup", nil, nil); !strings.Contains(w.Body.String(), "acme/web") || !strings.Contains(w.Body.String(), "Add or remove repos") {
 		t.Error("setup page should show the connected app")
 	}
 	if w := do(rig.h, "POST", "/setup/github/start", url.Values{"name": {"x"}}, same); w.Code != http.StatusSeeOther {

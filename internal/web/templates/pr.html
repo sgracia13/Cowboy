@@ -1,75 +1,75 @@
 {{template "head" .}}{{with .Data}}{{$p := pen .D}}
-<a class="back" href="/">← corral</a>
+<a class="back" href="/">← Corral</a>
 <section class="detail">
   <div class="badge badge-{{$p}}">{{$p}}</div>
   <div>
     <h1>#{{.D.Number}} {{.D.Title}}</h1>
-    <p class="sub">{{.D.Repo}} · by <b>{{.D.Agent}}</b> ({{.D.Signals.AgentHow}}) · {{.D.Author}} · head {{short .D.HeadSHA 9}}{{if .D.Issue}} · issue #{{.D.Issue}}{{end}}</p>
-    {{if .D.Corrected}}<p class="note">cowboy said <b>{{.D.Pen}}</b>. a human moved it to <b>{{.D.Corrected}}</b>. that goes in the tally.</p>{{end}}
-    {{if .Moved}}<p class="note">moved. labels updated on the forge.</p>{{end}}
+    <p class="sub">{{.D.Repo}} · {{if .D.Agent}}written by <b>{{.D.Agent}}</b>{{with .D.Signals.AgentHow}} ({{.}}){{end}}{{else}}written by a person{{end}}{{if .D.Author}} · {{.D.Author}}{{end}}{{if .D.HeadSHA}} · <span class="mono">{{short .D.HeadSHA 9}}</span>{{end}}{{if .D.Issue}} · issue #{{.D.Issue}}{{end}}</p>
+    {{if .D.Corrected}}<p class="note">Cowboy said <b>{{.D.Pen}}</b>. A person moved it to <b>{{.D.Corrected}}</b>, and that counts in the tally.</p>{{end}}
+    {{if .Moved}}<p class="note">Moved. The label on the git host is updated.</p>{{end}}
   </div>
 </section>
 
 <section class="grid2">
   <div class="box">
-    <h2>why</h2>
-    <ul class="reasons">{{range .D.Reasons}}<li class="r-{{.Effect}}"><span class="chk">{{.Check}}</span>{{.Detail}}</li>{{end}}</ul>
-    {{if .D.DoubleOf}}<p class="note"><b>double:</b> same work as <a href="/pr?repo={{.D.Repo}}&n={{.D.DoubleOf}}">#{{.D.DoubleOf}}</a>. keep one.</p>{{end}}
-    {{if .D.Stray}}<p class="note"><b>stray:</b> no commits since a reviewer asked for changes.</p>{{end}}
-    {{if .Merge}}<h2>after merge</h2>
-    <p class="small">merged {{day .Merge.MergedAt}}{{if .Merge.Approvers}} · approved by {{range $i, $a := .Merge.Approvers}}{{if $i}}, {{end}}{{$a}}{{end}}{{else}} · no approval before merge{{end}}{{if .Merge.Release}} · shipped in {{.Merge.Release}} ({{day .Merge.ReleasedAt}}){{end}}{{range $k, $v := .Merge.Survival}} · {{pctf $v}} of its code still there after {{$k}}{{end}}</p>
-    {{if .Outcomes}}<ul class="reasons">{{range .Outcomes}}<li class="r-{{if .Counts}}careful{{else}}info{{end}}"><span class="chk">{{kindLabel .Kind}}</span>{{.Evidence}} · {{day .At}} · {{.Status}}{{if .By}} by {{.By}}{{end}}{{if .Link}} · <a href="{{.Link}}">source</a>{{end}}{{if eq .Status "suggested"}} <form method="post" action="/outcomes/decide" class="move" style="display:inline"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="back" value="/pr?repo={{$.Data.D.Repo}}&n={{$.Data.D.Number}}"><button class="btn" name="confirm" value="yes">yes</button> <button class="btn ghost" name="confirm" value="no">no</button></form>{{end}}</li>{{end}}</ul>
-    {{else}}<p class="small">no trouble found so far.</p>{{end}}{{end}}
-    {{if .Replay}}<p class="small">this pull request is from a replay of real history, sorted after it merged. nothing was written to its repo.</p>{{else}}<h2>move to another pen</h2>
+    <h2>Why it’s {{$p}}</h2>
+    <ul class="reasons">{{range .D.Reasons}}<li class="r-{{.Effect}}"><span class="chk">{{checkLabel .Check}}{{if eq .Effect "note"}} · worth a look{{end}}</span><span>{{capFirst .Detail}}</span></li>{{end}}</ul>
+    {{if .D.DoubleOf}}<p class="note"><b>Double:</b> the same work as <a href="/pr?repo={{.D.Repo}}&n={{.D.DoubleOf}}">#{{.D.DoubleOf}}</a>. Keep one.</p>{{end}}
+    {{if .D.Stray}}<p class="note"><b>Stray:</b> no commits since a reviewer asked for changes.</p>{{end}}
+    {{if .Merge}}<h2 style="margin-top:22px">After merge</h2>
+    <p class="small">Merged {{day .Merge.MergedAt}}{{if .Merge.Approvers}} · approved by {{range $i, $a := .Merge.Approvers}}{{if $i}}, {{end}}{{$a}}{{end}}{{else if .Merge.ReviewsKnown}} · no approval before merge{{end}}{{if .Merge.Release}} · shipped in {{.Merge.Release}} ({{day .Merge.ReleasedAt}}){{end}}{{range $k, $v := .Merge.Survival}} · {{pctf $v}} of its code still there after {{$k}}{{end}}</p>
+    {{if .Outcomes}}<ul class="reasons">{{range .Outcomes}}<li class="r-{{if .Counts}}careful{{else}}info{{end}}"><span class="chk">{{capFirst (kindLabel .Kind)}}</span><span>{{.Evidence}} · {{day .At}} · {{.Status}}{{if .By}} by {{.By}}{{end}}{{if .Link}} · <a href="{{.Link}}">source</a>{{end}}{{if eq .Status "suggested"}} <form method="post" action="/outcomes/decide" class="move" style="display:inline"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="back" value="/pr?repo={{$.Data.D.Repo}}&n={{$.Data.D.Number}}"><button class="btn sm" name="confirm" value="yes">Yes</button><button class="btn sm ghost" name="confirm" value="no">No</button></form>{{end}}</span></li>{{end}}</ul>
+    {{else}}<p class="small">No trouble found so far.</p>{{end}}{{end}}
+    {{if .Replay}}<p class="small">This pull request is from a replay of real history, sorted after it merged. Nothing was written to its repo.</p>{{else}}<h2 style="margin-top:22px">Move to another pen</h2>
     <form method="post" action="/pr/move" class="move">
       <input type="hidden" name="repo" value="{{.D.Repo}}"><input type="hidden" name="n" value="{{.D.Number}}">
-      {{range .Pens}}<button name="to" value="{{.}}" class="btn {{if eq (print .) $p}}on{{end}}">{{.}}</button>{{end}}
+      {{range .Pens}}<button name="to" value="{{.}}" class="btn {{if eq (print .) $p}}on{{end}}"{{if eq (print .) $p}} aria-current="true"{{end}}>{{capFirst (print .)}}</button>{{end}}
     </form>
-    <p class="small">moving a pr changes its label and is counted. it never changes the rules by itself.</p>{{end}}
+    <p class="small">Moving a pull request changes its label and counts in the tally. It never changes the rules by itself.</p>{{end}}
   </div>
   <div class="box">
-    <h2>what cowboy measured</h2>
+    <h2>What Cowboy measured</h2>
     <table class="sig">
-      <tr><td>lines changed</td><td>{{.D.Signals.LinesChanged}} ({{.D.Signals.SourceLines}} in source)</td></tr>
-      <tr><td>files · folders</td><td>{{.D.Signals.Files}} · {{.D.Signals.Dirs}}</td></tr>
-      <tr><td>blast radius</td><td>{{if .D.Signals.FanInKnown}}{{.D.Signals.FanIn}} files import {{.D.Signals.FanInFile}}{{else}}not measured (see the rules page){{end}}</td></tr>
-      <tr><td>sensitive paths</td><td>{{if .D.Signals.Sensitive}}{{join .D.Signals.Sensitive ", "}}{{else}}none{{end}}</td></tr>
-      <tr><td>shortcuts</td><td>{{if .D.Signals.Shortcuts}}{{range .D.Signals.Shortcuts}}<div>{{.Kind}} · {{.File}}{{if .Detail}} · <code>{{short .Detail 60}}</code>{{end}}</div>{{end}}{{else}}none{{end}}</td></tr>
-      <tr><td>checks</td><td>{{checks .D.Signals.ChecksOK}}</td></tr>
-      <tr><td>owners</td><td>{{if .D.Signals.Owners}}{{join .D.Signals.Owners " "}}{{else}}none{{end}}</td></tr>
-      {{if .OnForge}}<tr><td>labels on forge</td><td>{{join .OnForge " "}}</td></tr>{{end}}
-      {{if .Reviews}}<tr><td>review asked of</td><td>{{join .Reviews " "}}</td></tr>{{end}}
+      <tr><td>Lines changed</td><td>{{.D.Signals.LinesChanged}} ({{.D.Signals.SourceLines}} in source)</td></tr>
+      <tr><td>Files</td><td>{{.D.Signals.Files}} in {{.D.Signals.Dirs}} {{if eq .D.Signals.Dirs 1}}folder{{else}}folders{{end}}</td></tr>
+      <tr><td>Blast radius</td><td>{{if .D.Signals.FanInKnown}}{{if .D.Signals.FanInFile}}{{.D.Signals.FanIn}} files import <span class="mono">{{.D.Signals.FanInFile}}</span>{{else}}nothing it changes is imported elsewhere{{end}}{{else}}not measured (see the rules page){{end}}</td></tr>
+      <tr><td>Sensitive paths</td><td>{{if .D.Signals.Sensitive}}{{range .D.Signals.Sensitive}}<div class="mono">{{.}}</div>{{end}}{{else}}None{{end}}</td></tr>
+      <tr><td>Shortcuts</td><td>{{if .D.Signals.Shortcuts}}{{range .D.Signals.Shortcuts}}<div style="margin-bottom:6px"><b>{{shortcutLabel .Kind}}</b> in <span class="mono">{{.File}}</span>{{if .Detail}}<br><span class="small">{{short .Detail 90}}</span>{{end}}</div>{{end}}{{else}}None{{end}}</td></tr>
+      <tr><td>Checks</td><td>{{capFirst (checks .D.Signals.ChecksOK)}}</td></tr>
+      <tr><td>Code owners</td><td>{{if .D.Signals.Owners}}{{join .D.Signals.Owners " "}}{{else}}None{{end}}</td></tr>
+      {{if .OnForge}}<tr><td>Labels on the git host</td><td>{{join .OnForge " "}}</td></tr>{{end}}
+      {{if .Reviews}}<tr><td>Review asked of</td><td>{{join .Reviews " "}}</td></tr>{{end}}
     </table>
-    <h2>files</h2>
+    <h2>Files</h2>
     <ul class="files">{{range .D.Signals.Paths}}<li>{{.}}</li>{{end}}</ul>
   </div>
 </section>
 {{if .D.Detection}}{{$a := .D.Detection}}<section class="box detect">
-  <h2>agent check <span class="small">· for prs with no agent label · advice only, never changes the pen</span></h2>
-  {{if .D.AgentCleared}}<p class="ontask">{{.D.AgentCleared}} marked this as not an agent. cowboy will ask for more evidence on this author's prs.</p>
-  {{else if $a.Abstained}}<p class="ontask">not enough to go on for this pr.</p>
+  <h2>Agent check <span class="h2small">for pull requests with no agent label · advice only, never changes the pen</span></h2>
+  {{if .D.AgentCleared}}<p class="ontask">{{.D.AgentCleared}} marked this as not an agent. Cowboy will ask for more evidence on this author's pull requests.</p>
+  {{else if $a.Abstained}}<p class="ontask">Not enough to go on for this pull request.</p>
   {{else}}
   <div class="meter"><div class="range" style="left:{{$a.Low}}%;width:{{isub $a.High $a.Low}}%"></div><div class="mark" style="left:{{$a.Score}}%"></div><div class="line" style="left:80%" title="label line"></div></div>
-  <p class="ontask {{if likely .D}}drift{{end}}">{{if likely .D}}no agent label, but looks agent-written: {{$a.Score}} (range {{$a.Low}}–{{$a.High}}){{else}}looks human-written: {{$a.Score}} (range {{$a.Low}}–{{$a.High}}){{end}}</p>
+  <p class="ontask {{if likely .D}}drift{{end}}">{{if likely .D}}No agent label, but looks agent-written: {{$a.Score}} (range {{$a.Low}}–{{$a.High}}){{else}}Looks human-written: {{$a.Score}} (range {{$a.Low}}–{{$a.High}}){{end}}</p>
   <div class="mods">{{range $a.Modules}}<span>{{modname .Module}} <b>{{printf "%+.1f" .Counted}}</b>{{if ne .Raw .Counted}} <i>of {{printf "%+.1f" .Raw}}, capped</i>{{end}}</span>{{end}}</div>
   <ul class="reasons">{{range $a.Reasons}}<li class="{{if gt .Effect 0.0}}r-careful{{else}}r-easy-ok{{end}}"><span class="chk">{{printf "%+.1f" .Effect}}</span>{{.Detail}}</li>{{end}}</ul>
-  {{if likely .D}}<form method="post" action="/pr/notagent" class="move"><input type="hidden" name="repo" value="{{.D.Repo}}"><input type="hidden" name="n" value="{{.D.Number}}"><button class="btn">not an agent</button></form>
-  <p class="small">removes the agent:likely label and teaches cowboy to ask for more evidence on this author's prs.</p>{{end}}
-  <p class="small">label shows only when the low end of the range clears 80. scorer {{$a.Scorer}}.</p>
+  {{if likely .D}}<form method="post" action="/pr/notagent" class="move"><input type="hidden" name="repo" value="{{.D.Repo}}"><input type="hidden" name="n" value="{{.D.Number}}"><button class="btn">Not an agent</button></form>
+  <p class="small">Removes the agent:likely label and teaches Cowboy to ask for more evidence on this author's pull requests.</p>{{end}}
+  <p class="small">The label shows only when the low end of the range clears 80. Scorer {{$a.Scorer}}.</p>
   {{end}}
 </section>{{end}}
 {{with .D.Notes}}<section class="box model">
-  <h2>local model notes <span class="small">· {{.Model}} · advice only, never changes the pen</span></h2>
-  {{if .Error}}<p>couldn't get notes this time: {{.Error}}</p>{{else}}
-  <p class="ontask {{if .Drift}}drift{{end}}">{{if not .OnTask}}on task: couldn't tell from the description{{else if .Drift}}on task: no. the agent changed things the task didn't ask for{{else}}on task: yes, the changes match what was asked{{end}}</p>
+  <h2>Local model notes <span class="h2small">{{.Model}} · advice only, never changes the pen</span></h2>
+  {{if .Error}}<p>Couldn't get notes this time: {{.Error}}</p>{{else}}
+  <p class="ontask {{if .Drift}}drift{{end}}">{{if not .OnTask}}On task: couldn't tell from the description{{else if .Drift}}On task: no. The agent changed things the task didn't ask for{{else}}On task: yes, the changes match what was asked{{end}}</p>
   {{if .Outside}}<ul class="reasons">{{range .Outside}}<li class="r-careful">{{.}}</li>{{end}}</ul>{{end}}
-  {{if .Brief}}<h2>brief</h2><ul class="brief">{{range .Brief}}<li>{{.}}</li>{{end}}</ul>{{end}}
-  {{if .LookFirst}}<h2>look first</h2><ul class="brief">{{range .LookFirst}}<li>{{.}}</li>{{end}}</ul>{{end}}
-  {{if .Dropped}}<p class="small">{{.Dropped}} note(s) thrown out for naming files that aren't in this pr.</p>{{end}}
+  {{if .Brief}}<h3>Brief</h3><ul class="brief">{{range .Brief}}<li>{{.}}</li>{{end}}</ul>{{end}}
+  {{if .LookFirst}}<h3>Look first</h3><ul class="brief">{{range .LookFirst}}<li>{{.}}</li>{{end}}</ul>{{end}}
+  {{if .Dropped}}<p class="small">{{.Dropped}} note(s) thrown out for naming files that aren't in this pull request.</p>{{end}}
   {{end}}
 </section>{{end}}
 <section class="box">
-  <h2>the one comment cowboy leaves on the pr{{if eq $.Forge "demo"}} <a class="small" href="/demo/host?n={{.D.Number}}">see it on the demo git host →</a>{{end}}</h2>
+  <h2>The one comment Cowboy leaves on the pull request</h2>{{if eq $.Forge "demo"}}<p class="small" style="margin:-4px 0 12px"><a href="/demo/host?n={{.D.Number}}">See it on the demo git host</a></p>{{end}}
   <pre class="comment">{{.Comment}}</pre>
 </section>
 {{end}}<script src="/static/live.js" data-pr="{{.Data.D.Repo}}#{{.Data.D.Number}}"></script>

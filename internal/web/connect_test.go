@@ -86,7 +86,7 @@ func TestConnectFlow(t *testing.T) {
 		t.Error("corral doesn't point to setup")
 	}
 	b := call(h, "GET", "/setup", nil).Body.String()
-	for _, want := range []string{"use my gh login", "open github's token page", "personal-access-tokens/new"} {
+	for _, want := range []string{"Use my gh login", "Open GitHub's token page", "personal-access-tokens/new"} {
 		if !strings.Contains(b, want) {
 			t.Errorf("setup page lacks %q", want)
 		}
@@ -100,7 +100,7 @@ func TestConnectFlow(t *testing.T) {
 		t.Fatalf("gh login: %d %s", w.Code, w.Header().Get("Location"))
 	}
 	b = call(h, "GET", "/setup/repos", nil).Body.String()
-	if !strings.Contains(b, `value="me/a"`) || !strings.Contains(b, "just look") {
+	if !strings.Contains(b, `value="me/a"`) || !strings.Contains(b, "Just look") {
 		t.Error("repo picker missing repos or modes")
 	}
 	// nothing picked is refused; a malformed extra repo is refused
@@ -122,7 +122,7 @@ func TestConnectFlow(t *testing.T) {
 	if call(h, "POST", "/setup/mode", url.Values{"label": {"on"}}); !f.st.Labelling {
 		t.Error("labelling didn't turn on")
 	}
-	if b := call(h, "GET", "/setup", nil).Body.String(); !strings.Contains(b, "labelling is on") || !strings.Contains(b, "me/b") {
+	if b := call(h, "GET", "/setup", nil).Body.String(); !strings.Contains(b, "Labelling is on") || !strings.Contains(b, "me/b") {
 		t.Error("connected page doesn't show the mode and repos")
 	}
 	// posts from another site are refused

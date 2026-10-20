@@ -105,9 +105,13 @@ func New(a *app.App) *Server {
 		"modname": func(m string) string {
 			return map[string]string{"disclosure": "deterministic", "time": "behaviour", "text": "text", "code": "code", "baseline": "history"}[m]
 		},
-		"mulf": func(a, b float64) float64 { return a * b },
-		"pctf": func(f float64) string { return strconv.FormatFloat(f*100, 'f', 0, 64) + "%" },
-		"pct1": func(f float64) string { return strconv.FormatFloat(f*100, 'f', 1, 64) + "%" },
+		"mulf":          func(a, b float64) float64 { return a * b },
+		"pctf":          func(f float64) string { return strconv.FormatFloat(f*100, 'f', 0, 64) + "%" },
+		"pctRate":       pctRate,
+		"capFirst":      capFirst,
+		"checkLabel":    checkLabel,
+		"shortcutLabel": shortcutLabel,
+		"pct1":          func(f float64) string { return strconv.FormatFloat(f*100, 'f', 1, 64) + "%" },
 		"pts": func(f float64) string {
 			v := strconv.FormatFloat(f*100, 'f', 1, 64)
 			if f >= 0 {
@@ -216,7 +220,7 @@ type page struct {
 }
 
 func (s *Server) render(w http.ResponseWriter, name, nav string, data any) {
-	p := page{Title: nav, Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun(), SignOut: s.SignOut, Data: data}
+	p := page{Title: pageTitle(nav), Nav: nav, Forge: s.App.Forge.Name(), Model: s.App.ModelName(), DryRun: s.App.DryRun(), SignOut: s.SignOut, Data: data}
 	p.Outcomes = s.Outcomes != nil
 	if s.Setup != nil || s.Connect != nil {
 		p.Setup = true
@@ -443,4 +447,15 @@ func (s *Server) notAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/pr?repo="+repo+"&n="+strconv.Itoa(n), http.StatusSeeOther)
+}
+
+// pageTitle is the browser tab title for a nav section.
+func pageTitle(nav string) string {
+	switch nav {
+	case "outcomes":
+		return "After merge"
+	case "trail":
+		return "Activity"
+	}
+	return capFirst(nav)
 }

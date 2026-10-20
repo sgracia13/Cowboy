@@ -3,8 +3,8 @@
   <p class="pen-sub">{{.Sub}}</p>
   {{range .Items}}<a class="card" data-pr="{{.Repo}}#{{.Number}}" href="/pr?repo={{.Repo}}&n={{.Number}}">
     <div class="card-top"><span class="num">#{{.Number}}</span><span class="tag">{{agentTag .}}</span>{{if .Corrected}}<span class="tag inv">moved</span>{{end}}{{if .DoubleOf}}<span class="tag inv">double</span>{{end}}{{if .Stray}}<span class="tag inv">stray</span>{{end}}{{if .Notes.Drift}}<span class="tag inv">off task?</span>{{end}}{{if likely .}}<span class="tag inv">no label · {{.Detection.Score}}</span>{{end}}</div>
-    <div class="title">{{short .Title 60}}</div>
-    {{with top .}}<div class="why">{{.}}</div>{{end}}
-    <div class="meta">{{.Signals.LinesChanged}} lines · {{.Signals.Files}} files{{if .Signals.FanInKnown}} · fan-in {{.Signals.FanIn}}{{end}}</div>
-  </a>{{else}}<div class="empty">empty pen</div>{{end}}
+    <div class="title">{{short .Title 80}}</div>
+    {{with top .}}<div class="why">{{capFirst .}}</div>{{end}}
+    <div class="meta">{{.Signals.LinesChanged}} lines · {{.Signals.Files}} {{if eq .Signals.Files 1}}file{{else}}files{{end}}{{if .Signals.FanInKnown}}{{if .Signals.FanIn}} · used by {{.Signals.FanIn}}{{end}}{{end}}</div>
+  </a>{{else}}<div class="empty">Nothing here</div>{{end}}
 </div>{{end}}
