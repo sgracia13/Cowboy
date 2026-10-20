@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cowboy evidence</title>
-<meta name="description" content="We tested Cowboy&#x27;s own rules against simple baselines on real repository history. The pre-registered claims and what the data showed.">
+<meta name="description" content="Our own review rules did not win everywhere, and that is the point: no rule set works for every team. Cowboy tests rules on your history. Every round, including what failed.">
 <meta property="og:title" content="Cowboy evidence">
-<meta property="og:description" content="We tested Cowboy&#x27;s own rules against simple baselines on real repository history. The pre-registered claims and what the data showed.">
+<meta property="og:description" content="Our own review rules did not win everywhere, and that is the point: no rule set works for every team. Cowboy tests rules on your history. Every round, including what failed.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd400'/%3E%3Crect x='3' y='5' width='10' height='6' fill='%23111'/%3E%3Crect x='4' y='11' width='2' height='3' fill='%23111'/%3E%3Crect x='10' y='11' width='2' height='3' fill='%23111'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -102,11 +102,18 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <section id="top" style="background: #ffd400; border-bottom: 3px solid #111111">
 <div class="e-wrap" style="padding-top: 80px; padding-bottom: 80px; display: flex; flex-direction: column; gap: 22px">
 <p class="e-k" style="margin: 0">Evidence · last run October 19, 2026</p>
-<h1 style="margin: 0; font-size: clamp(46px, 8vw, 100px); line-height: 1; font-weight: 800; letter-spacing: -0.055em; max-width: 1050px">Does the sorting work? Here’s what we checked.</h1>
-<p style="margin: 0; font-size: clamp(18px, 2.2vw, 24px); max-width: 780px; line-height: 1.45">Four rounds, eleven public repos, about 28,000 merged pull requests, and the claims written down before each round ran. All of it is below, including what failed.</p>
-<div style="background: #111111; color: #fffdf2; padding: 22px 24px; max-width: 900px; font-size: clamp(17px, 1.9vw, 21px); line-height: 1.5; box-shadow: 10px 10px 0 #fffdf2">
-<b style="color: #ffd400">Short answer.</b> Not proven yet. The careful pen has not beaten chance in any round: not the original rules, not revised ones, and not rules fitted to each repo’s own history. The easy pen held up pooled in every round, but in one repo (Kibana) it didn’t. Round 4 measured effort in lines read instead of pull requests flagged, and the careful pen did <i>worse</i> than random there: a 10-line PR was about as likely to be reverted as a 1,000-line one. What works so far is the measuring: Cowboy can show any repo what actually got reverted, and whether a rule would have caught it. A separate test of common habits found none that went with fewer reverts everywhere, so habits are judged per repo too.
+<h1 style="margin: 0; font-size: clamp(46px, 8vw, 100px); line-height: 1; font-weight: 800; letter-spacing: -0.055em; max-width: 1050px">Our own rules didn’t win everywhere. That’s the point.</h1>
+<p style="margin: 0; font-size: clamp(18px, 2.2vw, 24px); max-width: 800px; line-height: 1.45">We tested Cowboy’s default rules against simple alternatives on about 28,000 merged pull requests from eleven public repos, and wrote the claims down before each round ran. No rule set works for every team, ours included. So Cowboy doesn’t ask you to trust its rules. It tests them on your history.</p>
+<div style="background: #111111; color: #fffdf2; padding: 24px 26px; max-width: 900px; font-size: clamp(17px, 1.9vw, 20px); line-height: 1.5; box-shadow: 10px 10px 0 #fffdf2; display: flex; flex-direction: column; gap: 14px">
+<p style="margin: 0"><b style="color: #ffd400">What held up.</b> Cowboy traced 70–99% of reverts back to the pull request that caused them. The easy pen was as safe as the smallest pull requests in every round, pooled (one repo, Kibana, was the exception). And for the same lines read, going through the smallest pull requests first caught 97% of later-reverted ones, against 18% for the careful pen.</p>
+<p style="margin: 0"><b style="color: #ffd400">What didn’t.</b> Our default careful pen never beat chance on other teams’ repos: not the original rules, not revised ones, not rules fitted to each repo. Counted by lines read, it did worse. Common habits like changing tests with the code didn’t go with fewer reverts everywhere either.</p>
+<p style="margin: 0"><b style="color: #ffd400">What that means for you.</b> Don’t trust default review rules, ours or anyone’s. Cowboy runs this same test on your repo, with your rules, starting with your last 90 days, and says plainly when there isn’t enough history yet to tell. Then you keep the rules that work and drop the ones that don’t.</p>
 </div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px">
+<a href="index.html" style="display: inline-flex; align-items: center; min-height: 54px; padding: 0 24px; background: #111111; color: #ffd400; border-radius: 10px; font-size: 18px; font-weight: 600; text-decoration: none">Test your rules free</a>
+<a href="docs.html#after" style="display: inline-flex; align-items: center; min-height: 54px; padding: 0 24px; background: #fffdf2; color: #111111; border: 2px solid #111111; border-radius: 10px; font-size: 18px; font-weight: 600; text-decoration: none">How the test works</a>
+</div>
+<p style="margin: 0; font-size: 16px">Every round is below, including everything that failed.</p>
 </div>
 </section>
 
