@@ -681,7 +681,7 @@ func (a *App) TallyBetween(from, to time.Time) []AgentTally {
 // TallyMarkdown renders the tally for chat or email.
 func TallyMarkdown(rows []AgentTally) string {
 	var b strings.Builder
-	b.WriteString("## cowboy tally\n\n| agent | prs | easy | normal | careful | doubles | strays | shortcuts | re-penned | trouble after merge |\n|---|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("## Cowboy tally\n\n| agent | prs | easy | normal | careful | doubles | strays | shortcuts | re-penned | trouble after merge |\n|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
 		who := r.Agent
 		if who == "" {

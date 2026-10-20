@@ -390,6 +390,6 @@ func Render(a Assessment) string {
 		}
 		fmt.Fprintf(&b, "- %s %s\n", sign, r.Detail)
 	}
-	b.WriteString("\nadvice only. wrong? remove the `agent:likely` label and cowboy will weigh this author's PRs more carefully.\n")
+	b.WriteString("\nadvice only. wrong? remove the `agent:likely` label and Cowboy will weigh this author's PRs more carefully.\n")
 	return b.String()
 }
