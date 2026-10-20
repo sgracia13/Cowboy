@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/sgracia13/Cowboy/internal/db"
 	"os"
 	"path/filepath"
 	"sort"
@@ -117,37 +118,194 @@ type data struct {
 	Scans     map[string]*Scan  `json:"scans"`
 }
 
-// State is the outcomes file (outcomes.json next to the data file).
+// State is what Cowboy knows after merge: merge records, outcomes,
+// incidents and how far each repo has been read. It lives in SQLite next
+// to the data path (data/outcomes.json -> data/outcomes.db) and in memory
+// for reads; changes are written row by row. An outcomes.json from an
+// older version is imported once and kept as outcomes.json.migrated.
 type State struct {
-	mu    sync.Mutex
-	path  string
-	d     data
-	dirty bool
+	mu      sync.Mutex
+	db      *db.DB // nil: memory only
+	d       data
+	pending map[string]map[string]bool // kind -> keys changed since the last save
+	dirty   bool
 }
+
+const (
+	kMerge    = "merge"
+	kOutcome  = "outcome"
+	kIncident = "incident"
+	kScan     = "scan"
+)
 
 func key(repo string, n int) string { return fmt.Sprintf("%s#%d", strings.ToLower(repo), n) }
 
-// Open loads or creates the outcomes file. An empty path keeps it in memory.
+func newState() *State {
+	return &State{d: data{Merges: map[string]*Merge{}, Scans: map[string]*Scan{}}, pending: map[string]map[string]bool{}}
+}
+
+// Open loads or creates the outcomes store for a path like
+// data/outcomes.json. An empty path keeps it in memory.
 func Open(path string) (*State, error) {
-	s := &State{path: path, d: data{Merges: map[string]*Merge{}, Scans: map[string]*Scan{}}}
+	s := newState()
 	if path == "" {
 		return s, nil
 	}
-	b, err := os.ReadFile(path)
-	if err == nil {
-		if err := json.Unmarshal(b, &s.d); err != nil {
-			return nil, fmt.Errorf("reading %s: %w", path, err)
-		}
-	} else if !os.IsNotExist(err) {
+	d, err := db.Open(db.PathFor(path))
+	if err != nil {
 		return nil, err
 	}
+	s.db = d
+	if err := s.importJSON(path); err != nil {
+		return nil, err
+	}
+	return s, s.load()
+}
+
+// Load builds an in-memory state from the JSON layout (the demo's replayed
+// history ships this way). Nothing is written to disk.
+func Load(b []byte) (*State, error) {
+	s := newState()
+	if err := json.Unmarshal(b, &s.d); err != nil {
+		return nil, err
+	}
+	s.fill()
+	return s, nil
+}
+
+func (s *State) fill() {
 	if s.d.Merges == nil {
 		s.d.Merges = map[string]*Merge{}
 	}
 	if s.d.Scans == nil {
 		s.d.Scans = map[string]*Scan{}
 	}
-	return s, nil
+}
+
+// importJSON moves an outcomes file from before SQLite into the database,
+// once.
+func (s *State) importJSON(path string) error {
+	if s.db.Meta("imported:outcomes") != "" {
+		return nil
+	}
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return s.db.SetMeta("imported:outcomes", "none")
+	}
+	if err != nil {
+		return err
+	}
+	old := newState()
+	if err := json.Unmarshal(b, &old.d); err != nil {
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+	old.fill()
+	if err := s.db.Write(old.allOps()...); err != nil {
+		return fmt.Errorf("importing %s: %w", path, err)
+	}
+	if err := s.db.SetMeta("imported:outcomes", time.Now().UTC().Format(time.RFC3339)); err != nil {
+		return err
+	}
+	return os.Rename(path, path+".migrated")
+}
+
+func rowOp(kind, k string, v any) db.Op {
+	b, _ := json.Marshal(v)
+	return db.Op{Kind: kind, Key: k, Body: b}
+}
+
+func (s *State) allOps() []db.Op {
+	var ops []db.Op
+	for k, m := range s.d.Merges {
+		ops = append(ops, rowOp(kMerge, k, m))
+	}
+	for _, o := range s.d.Outcomes {
+		ops = append(ops, rowOp(kOutcome, o.ID, o))
+	}
+	for _, x := range s.d.Incidents {
+		ops = append(ops, rowOp(kIncident, x.ID, x))
+	}
+	for k, sc := range s.d.Scans {
+		ops = append(ops, rowOp(kScan, k, sc))
+	}
+	return ops
+}
+
+func (s *State) load() error {
+	ms, err := s.db.Load(kMerge)
+	if err != nil {
+		return err
+	}
+	for k, b := range ms {
+		var m Merge
+		if err := json.Unmarshal(b, &m); err != nil {
+			return fmt.Errorf("merge %s: %w", k, err)
+		}
+		s.d.Merges[k] = &m
+	}
+	os_, err := s.db.Load(kOutcome)
+	if err != nil {
+		return err
+	}
+	for _, b := range os_ {
+		var o Outcome
+		if err := json.Unmarshal(b, &o); err != nil {
+			return err
+		}
+		s.d.Outcomes = append(s.d.Outcomes, o)
+	}
+	// a stable order (the file kept insertion order; rows have none)
+	sort.Slice(s.d.Outcomes, func(i, j int) bool {
+		if !s.d.Outcomes[i].Found.Equal(s.d.Outcomes[j].Found) {
+			return s.d.Outcomes[i].Found.Before(s.d.Outcomes[j].Found)
+		}
+		return s.d.Outcomes[i].ID < s.d.Outcomes[j].ID
+	})
+	is, err := s.db.Load(kIncident)
+	if err != nil {
+		return err
+	}
+	for _, b := range is {
+		var x IncidentRecord
+		if err := json.Unmarshal(b, &x); err != nil {
+			return err
+		}
+		s.d.Incidents = append(s.d.Incidents, x)
+	}
+	ss, err := s.db.Load(kScan)
+	if err != nil {
+		return err
+	}
+	for k, b := range ss {
+		var sc Scan
+		if err := json.Unmarshal(b, &sc); err != nil {
+			return err
+		}
+		s.d.Scans[k] = &sc
+	}
+	return nil
+}
+
+// mark notes a changed row (caller holds mu).
+func (s *State) mark(kind, k string) {
+	if s.pending[kind] == nil {
+		s.pending[kind] = map[string]bool{}
+	}
+	s.pending[kind][k] = true
+	s.dirty = true
+}
+
+// ExportJSON writes everything in the legacy outcomes.json layout (the
+// evaluation scripts read that file).
+func (s *State) ExportJSON(path string) error {
+	s.mu.Lock()
+	b, err := json.Marshal(s.d)
+	s.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	return os.WriteFile(path, b, 0o600)
 }
 
 // Flush writes changes made by the watcher (which batches its writes).
@@ -160,33 +318,47 @@ func (s *State) Flush() error {
 	return s.save()
 }
 
+// save writes the changed rows (caller holds mu).
 func (s *State) save() error {
 	s.dirty = false
-	if s.path == "" {
+	pending := s.pending
+	s.pending = map[string]map[string]bool{}
+	if s.db == nil {
 		return nil
 	}
-	b, err := json.Marshal(s.d)
-	if err != nil {
+	var ops []db.Op
+	for k := range pending[kMerge] {
+		if m, ok := s.d.Merges[k]; ok {
+			ops = append(ops, rowOp(kMerge, k, m))
+		} else {
+			ops = append(ops, db.Op{Kind: kMerge, Key: k, Delete: true})
+		}
+	}
+	for i := range s.d.Outcomes {
+		if o := s.d.Outcomes[i]; pending[kOutcome][o.ID] {
+			ops = append(ops, rowOp(kOutcome, o.ID, o))
+		}
+	}
+	for _, x := range s.d.Incidents {
+		if pending[kIncident][x.ID] {
+			ops = append(ops, rowOp(kIncident, x.ID, x))
+		}
+	}
+	for k := range pending[kScan] {
+		if sc, ok := s.d.Scans[k]; ok {
+			ops = append(ops, rowOp(kScan, k, sc))
+		}
+	}
+	if err := s.db.Write(ops...); err != nil {
+		// keep them pending so the next save retries
+		for kind, ks := range pending {
+			for k := range ks {
+				s.mark(kind, k)
+			}
+		}
 		return err
 	}
-	os.MkdirAll(filepath.Dir(s.path), 0o755)
-	tmp := s.path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(b); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp, s.path)
+	return nil
 }
 
 // Merge returns the record for a merged PR.
@@ -206,7 +378,7 @@ func (s *State) PutMerge(m Merge) error {
 	defer s.mu.Unlock()
 	cp := m
 	s.d.Merges[key(m.Repo, m.Number)] = &cp
-	s.dirty = true
+	s.mark(kMerge, key(m.Repo, m.Number))
 	return nil
 }
 
@@ -238,7 +410,7 @@ func (s *State) update(repo string, n int, f func(m *Merge)) error {
 		return fmt.Errorf("no merge record for %s#%d", repo, n)
 	}
 	f(m)
-	s.dirty = true
+	s.mark(kMerge, key(repo, n))
 	return nil
 }
 
@@ -264,6 +436,7 @@ func (s *State) Add(o Outcome) (Outcome, bool, error) {
 		}
 	}
 	s.d.Outcomes = append(s.d.Outcomes, o)
+	s.mark(kOutcome, o.ID)
 	return o, true, s.save()
 }
 
@@ -282,6 +455,7 @@ func (s *State) Decide(id string, confirm bool, by string) (Outcome, error) {
 			o.Status = Rejected
 		}
 		o.By, o.DecidedAt = by, time.Now().UTC()
+		s.mark(kOutcome, o.ID)
 		return *o, s.save()
 	}
 	return Outcome{}, fmt.Errorf("no outcome %q", id)
@@ -316,6 +490,7 @@ func (s *State) AddIncident(inc IncidentRecord) (bool, error) {
 		}
 	}
 	s.d.Incidents = append(s.d.Incidents, inc)
+	s.mark(kIncident, inc.ID)
 	return true, s.save()
 }
 
@@ -354,7 +529,7 @@ func (s *State) setScan(repo string, sc Scan) error {
 	defer s.mu.Unlock()
 	cp := sc
 	s.d.Scans[strings.ToLower(repo)] = &cp
-	s.dirty = true
+	s.mark(kScan, strings.ToLower(repo))
 	return nil
 }
 
@@ -373,5 +548,5 @@ func (s *State) Rewind(repo string, since time.Time) {
 	if sc.Releases.After(since) {
 		sc.Releases = since
 	}
-	s.dirty = true
+	s.mark(kScan, strings.ToLower(repo))
 }

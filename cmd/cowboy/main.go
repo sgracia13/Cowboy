@@ -1017,12 +1017,8 @@ func demoHistory(td string) (*web.OutcomeSettings, error) {
 	if err := json.NewDecoder(zr).Decode(&h); err != nil {
 		return nil, err
 	}
-	// the outcomes state lives in a temp file, so yes/no buttons work
-	path := filepath.Join(os.TempDir(), "cowboy-demo-outcomes.json")
-	if err := os.WriteFile(path, h.Outcomes, 0o600); err != nil {
-		return nil, err
-	}
-	st, err := outcome.Open(path)
+	// held in memory: yes/no buttons work, and nothing is left behind
+	st, err := outcome.Load(h.Outcomes)
 	if err != nil {
 		return nil, err
 	}

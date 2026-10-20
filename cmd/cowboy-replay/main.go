@@ -234,7 +234,9 @@ func main() {
 		dirOut := filepath.Join(*out, strings.ReplaceAll(repo, "/", "_"))
 		os.RemoveAll(dirOut)
 		os.MkdirAll(dirOut, 0o755)
-		st, _ := store.Open(filepath.Join(dirOut, "cowboy.json"))
+		// held in memory and written out as cowboy.json and outcomes.json
+		// (the layout the evaluation scripts read) once the replay is done
+		st, _ := store.Open("")
 		missing, agentPRs := 0, 0
 		for _, p := range prs {
 			sha := prSHA[p.Number]
@@ -265,7 +267,7 @@ func main() {
 			st.Put(pipeline.Decision{Repo: repo, Number: p.Number, Title: p.Title, Body: p.Msg, Agent: agent, Pen: p.Pen, Reasons: p.Reasons,
 				Signals: sig, State: "merged", DecidedAt: p.Merged.UTC(), Labels: []string{"cowboy:" + string(p.Pen)}})
 		}
-		oc, _ := outcome.Open(filepath.Join(dirOut, "outcomes.json"))
+		oc, _ := outcome.Open("")
 		al, _ := audit.Open(filepath.Join(dirOut, "audit.jsonl"))
 		a := app.New(h, st, nil)
 		a.Audit, a.Outcomes = al, oc
@@ -273,6 +275,12 @@ func main() {
 			Lookback: head.Sub(first) + 30*24*time.Hour, MaxPerRun: 1 << 30}
 		start := time.Now()
 		summary := w.Check(repo)
+		if err := st.ExportJSON(filepath.Join(dirOut, "cowboy.json")); err != nil {
+			log.Fatal(err)
+		}
+		if err := oc.ExportJSON(filepath.Join(dirOut, "outcomes.json")); err != nil {
+			log.Fatal(err)
+		}
 		log.Printf("%s: %d PRs (%d agent), %d without a squash commit; %s in %s", repo, len(prs)-missing, agentPRs, missing, summary, time.Since(start).Round(time.Millisecond))
 
 		// cross-check: reverts the engine found vs the earlier study's label
