@@ -111,6 +111,29 @@ alternatives' numbers matched `cowboy evaluate` on the same data exactly
 with trouble). This says the measuring works; it says nothing about any
 real model.
 
+## runs by other people
+
+Anyone can run this test. A run counts as evidence, and goes on the
+Evidence page whichever way it comes out, only if:
+
+1. **It's registered first.** Before scoring anything, open an issue
+   with the "AI experiment: register a run" template naming the model and
+   its exact build, the model's published training cutoff, the prompt
+   version (`cowboy-ailab` prints it), and the repos. The issue's time is
+   the timestamp. Pick repos by the collector's screen (most reverted PRs
+   in the window), not by looking at results.
+2. **The prompt is unchanged.** A run with a changed prompt is a different
+   test: register it as one, with its new prompt version.
+3. **Every run is reported**, including ones that show nothing or fail
+   the practical bar. Report it in the same issue with the output of
+   `cowboy-ailab compare -json`, which holds counts, rates and settings
+   only: no code, diffs or people's names.
+4. **The cutoff is real.** Every PR scored was merged after the model's
+   published training cutoff; `compare` leaves out the rest.
+
+Runs that skip a step are welcome as notes in an issue, but aren't
+counted. If several runs disagree, all of them are published side by side.
+
 ## rerun
 
     python3 scripts/eval/collect_sort.py REPO_DIR owner/name prs.jsonl CHECKOUT   # per repo, as before

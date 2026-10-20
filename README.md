@@ -316,6 +316,8 @@ the section sits between `<!-- cowboy:guide start -->` and `<!-- cowboy:guide en
 
 ## does a local model help? (an experiment, no results yet)
 
+> **untested with a real model.** the pipeline was checked with a stand-in that knows nothing; nobody knows yet whether a local model even returns usable scores, let alone beats the rules. **help us find out:** [register a run](https://github.com/sgracia13/Cowboy/issues/new?template=ai-experiment.yml) before you score, then post the result in the same issue, whichever way it comes out. the rules for a run that counts are in [`CLAIMS-ai.md`](scripts/eval/evidence/CLAIMS-ai.md#runs-by-other-people).
+
 `cmd/cowboy-ailab` tests whether a local model's risk score finds the prs that were later reverted better than Cowboy's rules and simple alternatives, on the same prs and the same review budget, and whether it adds anything on top of the rules. it runs offline on public history; nothing in a live install reads these scores, and the model never picks a pen.
 
 ```sh
