@@ -195,7 +195,7 @@ func (s *Server) setupMode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if on {
-		back(w, r, "/setup", "note", "Labelling is on. New and updated pull requests get a cowboy label from now on.")
+		back(w, r, "/setup", "note", "Labelling is on. New and updated pull requests get a Cowboy label from now on.")
 		return
 	}
 	back(w, r, "/setup", "note", "Labelling is off. Cowboy keeps sorting but writes nothing to GitHub.")

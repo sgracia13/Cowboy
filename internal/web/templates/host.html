@@ -37,12 +37,12 @@ body{overflow-wrap:anywhere}
 <div class="grid">
 <div>
 <div class="c"><div class="ch"><b>{{.Author}}</b> opened this pull request</div><div class="cb"><ul class="files">{{range .Files}}<li>{{.}}</li>{{end}}</ul></div></div>
-{{if .Comment}}<div class="c" id="cowboy-comment"><div class="ch"><b>cowboy</b> <span class="sub">bot</span> commented · edited on every push</div><div class="cb">{{.Comment}}</div></div>{{end}}
+{{if .Comment}}<div class="c" id="cowboy-comment"><div class="ch"><b>Cowboy</b> <span class="sub">bot</span> commented · edited on every push</div><div class="cb">{{.Comment}}</div></div>{{end}}
 </div>
 <aside class="side">
 <div><h3>Reviewers</h3>{{range .Reviewers}}<p style="margin:0">@{{.}} <span class="note">requested by cowboy</span></p>{{else}}<p class="note" style="margin:0">none requested</p>{{end}}</div>
 <div><h3>Labels</h3>{{range .Labels}}<span class="lbl {{trimprefix . "cowboy:"}}">{{.}}</span>{{else}}<p class="note">none yet</p>{{end}}</div>
-<p class="note">cowboy only adds labels, this one comment, and review requests. it never merges, closes or reviews code.</p>
+<p class="note">Cowboy only adds labels, this one comment, and review requests. it never merges, closes or reviews code.</p>
 </aside>
 </div>
 </main></body></html>{{end}}

@@ -38,7 +38,7 @@
 <section class="box">
 <h2>{{if .C.Labelling}}Labelling is on{{else}}Just looking{{end}}</h2>
 {{if .C.Locked}}<p>{{.C.Locked}}</p>
-{{else if .C.Labelling}}<p>New and updated pull requests get a cowboy label, and careful ones one comment.</p>
+{{else if .C.Labelling}}<p>New and updated pull requests get a Cowboy label, and careful ones one comment.</p>
 <form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="off"><button class="btn ghost">Stop labelling</button></form>
 {{else}}<p>Cowboy sorts and checks pull requests but writes nothing to GitHub. When the pens look sensible on your repos, switch labelling on.</p>
 <form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="on"><button class="btn">Start labelling</button></form>

@@ -151,8 +151,8 @@ func (a Auth) login(w http.ResponseWriter, r *http.Request, days int) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>cowboy · sign in</title><link rel="stylesheet" href="/static/cowboy.css"><link rel="icon" href="/static/icon.svg"></head>
-<body><main class="login"><h1>cowboy</h1>
+<title>Cowboy · sign in</title><link rel="stylesheet" href="/static/cowboy.css"><link rel="icon" href="/static/icon.svg"></head>
+<body><main class="login"><h1>Cowboy</h1>
 <form method="post" action="/login"><input type="hidden" name="next" value="%s">
 <label for="pw">password</label><input id="pw" name="password" type="password" autocomplete="current-password" autofocus required>
 <button class="btn" type="submit">sign in</button></form>%s</main></body></html>`, html.EscapeString(next), msg)

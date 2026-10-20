@@ -133,7 +133,7 @@ func FullComment(d Decision) string {
 	var blocks []string
 	switch {
 	case d.AgentCleared != "":
-		blocks = append(blocks, fmt.Sprintf("**agent check** · %s removed the agent:likely label. cowboy will ask for more evidence on this author's PRs from now on.\n", d.AgentCleared))
+		blocks = append(blocks, fmt.Sprintf("**agent check** · %s removed the agent:likely label. Cowboy will ask for more evidence on this author's PRs from now on.\n", d.AgentCleared))
 	case d.Detection != nil:
 		if r := detect.Render(*d.Detection); r != "" {
 			blocks = append(blocks, r)
