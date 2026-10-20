@@ -314,6 +314,20 @@ cowboy guide --repo acme/app --write AGENTS.md   # or CLAUDE.md, .github/copilot
 
 the section sits between `<!-- cowboy:guide start -->` and `<!-- cowboy:guide end -->`, so running it again replaces only that part; the rest of the file is yours. the habits page has the same text with copy and download buttons. Cowboy never commits it for you.
 
+## does a local model help? (an experiment, no results yet)
+
+`cmd/cowboy-ailab` tests whether a local model's risk score finds the prs that were later reverted better than Cowboy's rules and simple alternatives, on the same prs and the same review budget, and whether it adds anything on top of the rules. it runs offline on public history; nothing in a live install reads these scores, and the model never picks a pen.
+
+```sh
+cowboy-ailab score   -in prs.jsonl -out ai.jsonl -model-url http://localhost:11434 -model <model>
+cowboy-ailab compare -sorted sorted.jsonl -replay replay/ -logs a.log,b.log -ai ai.jsonl -model-cutoff YYYY-MM-DD   # the model's published training cutoff
+```
+
+- **score** sends only each pr's title, description and diff (never its repo, number or what happened after merge) and records, per pr: the score, the model asked for and the one that answered, the prompt version, temperature and seed, a hash of the exact input, whether the diff was cut short, the time taken, any error, and when. reruns skip prs already scored.
+- **compare** joins the scores to the replayed reverts and the rules' pens, leaves out prs merged before the model's training cutoff and prs the model failed on (and reports both), and gives the same verdicts as every other test: outperformed, no demonstrated advantage, did worse, or not enough evidence yet.
+
+the claims, written before any real model ran: [`CLAIMS-ai.md`](scripts/eval/evidence/CLAIMS-ai.md). so far only the plumbing has been checked, with a stand-in that knows nothing (it came out no different from chance, as it should).
+
 ## what it writes
 
 only these, ever:
@@ -369,6 +383,7 @@ cowboy check-model                                               # is the model 
 
 ```
 cmd/cowboy          cli: demo, serve, score, tally, sign
+cmd/cowboy-ailab    offline experiment: a local model's risk score vs the rules (no results yet)
 internal/diff       unified diff parser
 internal/analyze    agent detection, file classes, linked issues
 internal/graph      import graph -> blast radius (go, js/ts, python, java/kotlin)
