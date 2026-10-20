@@ -14,7 +14,8 @@
 <style>
 body{margin:0;background:#ffd400}
 a{color:#111111}a:hover{color:#000000}
-.ui{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:13px;line-height:1.45;color:#111111;text-transform:lowercase;text-align:left}
+.ui{font-family:'Geist','Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:1.45;color:#111111;text-align:left}
+.ui-m,.ui-url,.ui-code{font-family:'Geist Mono',ui-monospace,Menlo,monospace}
 .ui-win{border:3px solid #111111;background:#ffd400;box-shadow:10px 10px 0 #111111;overflow:hidden}
 .ui-chrome{display:flex;align-items:center;gap:7px;background:#fffdf2;border-bottom:3px solid #111111;padding:8px 12px}
 .ui-chrome i{display:block;width:10px;height:10px;border:2px solid #111111}
@@ -58,7 +59,7 @@ a{color:#111111}a:hover{color:#000000}
 .ui-box{background:#ffffff;border:3px solid #111111;padding:14px;box-shadow:6px 6px 0 #111111;font-size:12px}
 .ui-box .ui-badge{display:inline-block;background:#111111;color:#ffd400;font-weight:800;font-size:16px;padding:6px 12px;margin-right:8px}
 .ui-r{display:flex;gap:8px;background:#111111;color:#ffd400;padding:6px 8px;margin-top:5px;text-transform:none}
-.ui-r b{flex:none;min-width:74px;text-transform:lowercase}
+.ui-r b{flex:none;min-width:74px}
 .ui-r.lt{background:#ffffff;color:#111111;border:2px solid #111111}
 .ui-meter{position:relative;height:16px;border:2px solid #111111;background:#ffffff;margin:10px 0}
 .ui-meter .rg{position:absolute;top:0;bottom:0;left:96%;width:3%;background:#ffd400;border-left:2px solid #111111;border-right:2px solid #111111}
@@ -166,26 +167,26 @@ a{color:#111111}a:hover{color:#000000}
 </ol>
 <div class="ui ui-win" role="img" aria-label="the cowboy corral: eleven agent pull requests in easy, normal and careful pens, with a double, a stray and an unlabeled agent pull request flagged">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span class="on">corral</span><span>tally</span><span>rules</span><span>trail</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch · model: qwen2.5-coder:7b</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span class="on">Corral</span><span>Tally</span><span>Rules</span><span>Activity</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch · model: qwen2.5-coder:7b</span></span></div>
 <div class="ui-main">
 <div class="ui-ticker"><span class="ui-pin">1</span><b></b>#521 caught up by the sweep: sorted easy (jules)</div>
-<div class="ui-hero"><p class="ui-h1">9 prs in the corral</p><span class="ui-btn">check for strays</span></div>
+<div class="ui-hero"><p class="ui-h1">9 pull requests in the corral</p><span class="ui-btn">Check for strays</span></div>
 <div class="ui-flags"><span class="ui-pin">3</span><span class="ui-flag"><b>double</b>#509 = same work as #506</span><span class="ui-flag"><b>stray</b>#503 went quiet after changes requested</span></div>
 <div class="ui-pens">
-<div class="ui-pen"><div class="ui-ph"><span style="display: inline-flex; align-items: center; gap: 8px">easy<span class="ui-pin">2</span></span><span>3</span></div><p class="ui-ps">skim it. small, safe, checks green.</p>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#498</span><span class="ui-tag">copilot</span></div><div class="ui-t">bump eslint config</div><div class="ui-m">2 lines · 1 file · fan-in 0</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#521</span><span class="ui-tag">jules</span></div><div class="ui-t">add tests for features</div><div class="ui-m">301 lines · 1 file · fan-in 0</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#512</span><span class="ui-tag">claude-code</span></div><div class="ui-t">fix typo in readme</div><div class="ui-m">2 lines · 1 file · fan-in 0</div></div>
+<div class="ui-pen"><div class="ui-ph"><span style="display: inline-flex; align-items: center; gap: 8px">Easy<span class="ui-pin">2</span></span><span>3</span></div><p class="ui-ps">Skim it. Small, safe, checks green.</p>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#498</span><span class="ui-tag">copilot</span></div><div class="ui-t">bump eslint config</div><div class="ui-m">2 lines · 1 file</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#521</span><span class="ui-tag">jules</span></div><div class="ui-t">add tests for features</div><div class="ui-m">301 lines · 1 file</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#512</span><span class="ui-tag">claude-code</span></div><div class="ui-t">fix typo in readme</div><div class="ui-m">2 lines · 1 file</div></div>
 </div>
-<div class="ui-pen n"><div class="ui-ph"><span>normal</span><span>3</span></div><p class="ui-ps">a normal review.</p>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#503</span><span class="ui-tag">cursor</span><span class="ui-tag inv">stray</span></div><div class="ui-t">paginate audit log endpoint</div><div class="ui-m">79 lines · 3 files · fan-in 3</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#509</span><span class="ui-tag">copilot</span><span class="ui-tag inv">double</span></div><div class="ui-t">add retry to webhook sender</div><div class="ui-why">same work as #506</div><div class="ui-m">41 lines · 2 files · fan-in 7</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#506</span><span class="ui-tag">devin</span><span class="ui-tag inv">off task?</span><span class="ui-pin">4</span></div><div class="ui-t">add retry to webhook client</div><div class="ui-m">10 lines · 2 files · fan-in 7</div></div>
+<div class="ui-pen n"><div class="ui-ph"><span>Normal</span><span>3</span></div><p class="ui-ps">A normal review.</p>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#503</span><span class="ui-tag">cursor</span><span class="ui-tag inv">stray</span></div><div class="ui-t">paginate audit log endpoint</div><div class="ui-m">79 lines · 3 files · used by 3</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#509</span><span class="ui-tag">copilot</span><span class="ui-tag inv">double</span></div><div class="ui-t">add retry to webhook sender</div><div class="ui-why">Same work as #506</div><div class="ui-m">41 lines · 2 files · used by 7</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#506</span><span class="ui-tag">devin</span><span class="ui-tag inv">off task?</span><span class="ui-pin">4</span></div><div class="ui-t">add retry to webhook client</div><div class="ui-m">10 lines · 2 files · used by 7</div></div>
 </div>
-<div class="ui-pen c"><div class="ui-ph"><span>careful</span><span>3</span></div><p class="ui-ps">slow down. a code owner should look.</p>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#530</span><span class="ui-tag">copilot</span><span class="ui-tag inv">off task?</span></div><div class="ui-t">speed up ci</div><div class="ui-why">loosens ci: || true in ci.yml</div><div class="ui-m">4 lines · 1 file · fan-in 0</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#515</span><span class="ui-tag">claude-code</span></div><div class="ui-t">rewrite invoice totals</div><div class="ui-why">touches billing/totals.py</div><div class="ui-m">8 lines · 1 file · fan-in 5</div></div>
-<div class="ui-card"><div class="ui-ct"><span class="ui-t">#507</span><span class="ui-tag">codex</span></div><div class="ui-t">move auth to new session store</div><div class="ui-why">touches src/auth/session.ts</div><div class="ui-m">5 lines · 2 files · fan-in 39</div></div>
+<div class="ui-pen c"><div class="ui-ph"><span>Careful</span><span>3</span></div><p class="ui-ps">Slow down. A code owner should look.</p>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#530</span><span class="ui-tag">copilot</span><span class="ui-tag inv">off task?</span></div><div class="ui-t">speed up ci</div><div class="ui-why">Loosens CI: || true in ci.yml</div><div class="ui-m">4 lines · 1 file</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#515</span><span class="ui-tag">claude-code</span></div><div class="ui-t">rewrite invoice totals</div><div class="ui-why">Touches billing/totals.py</div><div class="ui-m">8 lines · 1 file · used by 5</div></div>
+<div class="ui-card"><div class="ui-ct"><span class="ui-t">#507</span><span class="ui-tag">codex</span></div><div class="ui-t">move auth to new session store</div><div class="ui-why">Touches src/auth/session.ts</div><div class="ui-m">5 lines · 2 files · used by 39</div></div>
 </div>
 </div>
 </div>
@@ -208,44 +209,44 @@ a{color:#111111}a:hover{color:#000000}
 </ol>
 <div class="ui ui-win" role="img" aria-label="the cowboy page for pull request 507: careful, with the reasons, the measurements, local model notes and buttons to move it">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/pr?n=507</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span class="on">corral</span><span>tally</span><span>rules</span><span>trail</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch · model: qwen2.5-coder:7b</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span class="on">Corral</span><span>Tally</span><span>Rules</span><span>Activity</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch · model: qwen2.5-coder:7b</span></span></div>
 <div class="ui-main">
-<div class="ui-back">← corral</div>
-<div class="ui-head"><span class="ui-badge c">careful</span><div><div class="ui-ttl">#507 move auth to new session store</div><div class="ui-sub">acme/app · by codex (bot account codex-bot) · labels: agent:codex, cowboy:careful</div></div></div>
+<div class="ui-back">← Corral</div>
+<div class="ui-head"><span class="ui-badge c">Careful</span><div><div class="ui-ttl">#507 move auth to new session store</div><div class="ui-sub">acme/app · written by codex (bot account codex-bot) · labels: agent:codex, cowboy:careful</div></div></div>
 <div class="ui-g2">
 <div style="display: flex; flex-direction: column; gap: 12px">
 <div class="ui-panel" style="margin-top: 0">
-<h4 style="display: flex; align-items: center; gap: 8px">why<span class="ui-pin">1</span></h4>
-<div class="ui-r"><b>sensitive</b><span>touches src/auth/session.ts (auth/**)</span></div>
-<div class="ui-r"><b>blast</b><span>changes src/auth/session.ts, which 39 files use</span></div>
-<div class="ui-r"><b>shortcut</b><span>removes 1 assert overall, from session.test.ts</span></div>
-<div class="ui-r lt" style="border-style: dashed"><b>note</b><span>worth a look: adds a warning silencer</span></div>
-<div class="ui-r lt"><b>size</b><span>5 lines across 2 files in 1 folder</span></div>
+<h4 style="display: flex; align-items: center; gap: 8px">Why it’s careful<span class="ui-pin">1</span></h4>
+<div class="ui-r"><b>Sensitive path</b><span>Touches src/auth/session.ts (auth/**)</span></div>
+<div class="ui-r"><b>Blast radius</b><span>Changes src/auth/session.ts, which 39 files use</span></div>
+<div class="ui-r"><b>Shortcut</b><span>Removes 1 assert overall, from session.test.ts</span></div>
+<div class="ui-r lt" style="border-style: dashed"><b>Note</b><span>Worth a look: adds a warning silencer</span></div>
+<div class="ui-r lt"><b>Size</b><span>5 lines across 2 files in 1 folder</span></div>
 </div>
 <div class="ui-panel" style="margin-top: 0">
-<h4 style="display: flex; align-items: center; gap: 8px">move to another pen<span class="ui-pin">4</span></h4>
-<div style="display: flex; gap: 8px; flex-wrap: wrap"><span class="ui-btn k">easy</span><span class="ui-btn k">normal</span><span class="ui-btn on">careful</span></div>
+<h4 style="display: flex; align-items: center; gap: 8px">Move to another pen<span class="ui-pin">4</span></h4>
+<div style="display: flex; gap: 8px; flex-wrap: wrap"><span class="ui-btn k">Easy</span><span class="ui-btn k">Normal</span><span class="ui-btn on">Careful</span></div>
 </div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 12px">
 <div class="ui-panel" style="margin-top: 0">
-<h4 style="display: flex; align-items: center; gap: 8px">what cowboy measured<span class="ui-pin">2</span></h4>
+<h4 style="display: flex; align-items: center; gap: 8px">What Cowboy measured<span class="ui-pin">2</span></h4>
 <table class="ui-sig"><tbody>
-<tr><td>lines changed</td><td>5 (3 in source)</td></tr>
-<tr><td>blast radius</td><td>39 files import session.ts</td></tr>
-<tr><td>sensitive paths</td><td>auth/**</td></tr>
-<tr><td>checks</td><td>passing</td></tr>
-<tr><td>owners</td><td>@maria</td></tr>
+<tr><td>Lines changed</td><td>5 (3 in source)</td></tr>
+<tr><td>Blast radius</td><td>39 files import session.ts</td></tr>
+<tr><td>Sensitive paths</td><td>auth/**</td></tr>
+<tr><td>Checks</td><td>Passing</td></tr>
+<tr><td>Code owners</td><td>@maria</td></tr>
 </tbody></table>
 </div>
 <div class="ui-panel" style="margin-top: 0">
-<h4 style="display: flex; align-items: center; gap: 8px">local model notes<span class="ui-pin">3</span></h4>
+<h4 style="display: flex; align-items: center; gap: 8px">Local model notes<span class="ui-pin">3</span></h4>
 <ul class="ui-list">
 <li>getSession now reads the new store first and falls back to the old one.</li>
 <li>Return type loosened to any, with a lint rule silenced to allow it.</li>
 <li>The session test was emptied, so nothing checks getSession any more.</li>
 </ul>
-<h4 style="margin-top: 10px">look first</h4>
+<h4 style="margin-top: 10px">Look first</h4>
 <ul class="ui-list"><li>src/auth/session.test.ts: test body removed</li></ul>
 </div>
 </div>
@@ -260,7 +261,7 @@ a{color:#111111}a:hover{color:#000000}
 <div class="f-in">
 <div class="f-text">
 <h2>Works where your PRs already live.</h2>
-<p>On GitHub, Cowboy only adds labels and one comment, edited in place on every push, and asks the code owners of careful pull requests for a review. Forgejo and Gitea work the same way and are in preview.</p>
+<p>On GitHub, Cowboy only adds labels and one comment, edited in place on every push, and asks the code owners of careful pull requests for a review. GitLab (gitlab.com or your own), Forgejo and Gitea work the same way and are in preview.</p>
 <ul>
 <li>On GitHub, connect with one click: Cowboy creates its own private GitHub App, and you pick the repos.</li>
 <li>It never merges, closes or reviews code.</li>
@@ -316,17 +317,17 @@ a{color:#111111}a:hover{color:#000000}
 <div class="f-shot">
 <div class="ui ui-win" role="img" aria-label="the rules page listing the default rules and a sample cowboy.json file">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/rules</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>corral</span><span>tally</span><span class="on">rules</span><span>trail</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>Corral</span><span>Tally</span><span class="on">Rules</span><span>Activity</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch</span></span></div>
 <div class="ui-main">
-<p class="ui-h1" style="margin-bottom: 14px">the rules · acme/app</p>
+<p class="ui-h1" style="margin-bottom: 14px">The rule book · acme/app</p>
 <div class="ui-g2">
 <div class="ui-panel" style="margin-top: 0">
-<h4>careful if any</h4>
-<ul class="ui-list" style="text-transform: lowercase"><li>sensitive path (auth, billing, migrations, ci)</li><li>changes one of the repo's most-imported files</li><li>a catch-all that hides errors</li><li>ci loosened</li><li>test asserts lost</li><li>checks failing</li></ul>
-<h4 style="margin-top: 12px">worth a look (never changes the pen)</h4>
-<ul class="ui-list" style="text-transform: lowercase"><li>warning silencers, skipped tests</li><li>400+ source lines: too big to review well</li></ul>
-<h4 style="margin-top: 12px">easy if all</h4>
-<ul class="ui-list" style="text-transform: lowercase"><li>50 lines or fewer</li><li>2 folders or fewer</li><li>3 importers or fewer, checks ok</li></ul>
+<h4>Careful if any</h4>
+<ul class="ui-list"><li>Sensitive path (auth, billing, migrations, CI)</li><li>Changes one of the repo's most-imported files</li><li>A catch-all that hides errors</li><li>CI loosened</li><li>Test asserts lost</li><li>Checks failing</li></ul>
+<h4 style="margin-top: 12px">Worth a look (never changes the pen)</h4>
+<ul class="ui-list"><li>Warning silencers, skipped tests</li><li>400+ source lines: too big to review well</li></ul>
+<h4 style="margin-top: 12px">Easy if all</h4>
+<ul class="ui-list"><li>50 lines or fewer</li><li>2 folders or fewer</li><li>3 importers or fewer, checks ok</li></ul>
 </div>
 <div class="ui-panel" style="margin-top: 0">
 <h4>cowboy.json on main</h4>
@@ -368,23 +369,24 @@ a{color:#111111}a:hover{color:#000000}
 </ul>
 </div>
 <div class="f-shot">
-<div class="ui ui-win" role="img" aria-label="the outcomes page with example numbers: how often easy, normal and careful pull requests had trouble after merge, and one suggested incident link for a person to confirm">
+<div class="ui ui-win" role="img" aria-label="the After merge page with example numbers: how often easy, normal and careful pull requests had trouble after merge, and one suggested incident link for a person to confirm">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/outcomes</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>corral</span><span>tally</span><span>rules</span><span class="on">outcomes</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>Corral</span><span>Tally</span><span>Rules</span><span class="on">After merge</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch</span></span></div>
 <div class="ui-main">
-<p class="ui-h1" style="margin-bottom: 14px">after merge</p>
+<p class="ui-h1" style="margin-bottom: 14px">After merge</p>
+<div style="background: #111111; color: #fffdf2; padding: 12px 14px; margin-bottom: 12px"><p style="margin: 0 0 8px; font-size: 15px; font-weight: 700; line-height: 1.3">Careful pull requests had trouble 1.6× as often as average. That's not enough to say the rules beat a random pick.</p><p style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; color: #ffd400">297 rated · 12 had trouble · 1 waiting for you</p></div>
 <div class="ui-panel" style="margin-top: 0">
-<p style="margin: 0 0 8px; font-weight: 800">needs a person (1)</p>
-<p style="margin: 0 0 4px">#512 <b>incident?</b> Checkout errors: shipped in v2.3; the errors are in files it changed (src/pay/api.ts)</p>
-<p style="margin: 0"><span class="ui-flag"><b>yes</b></span> <span class="ui-flag">no</span></p>
+<p style="margin: 0 0 8px; font-weight: 800">Waiting for you (1)</p>
+<p style="margin: 0 0 4px">#512 <b>Incident?</b> Checkout errors: shipped in v2.3; the errors are in files it changed (src/pay/api.ts)</p>
+<p style="margin: 0"><span class="ui-flag"><b>Yes</b></span> <span class="ui-flag">No</span></p>
 </div>
 <div class="ui-panel ui-scroll">
 <table class="ui-tbl">
-<thead><tr><th>pen</th><th>had trouble</th></tr></thead>
+<thead><tr><th>Pen</th><th>Had trouble</th></tr></thead>
 <tbody>
-<tr><td>easy</td><td>3 of 140 (2%, likely 1–6%)</td></tr>
-<tr><td>normal</td><td>5 of 96 (5%, likely 2–12%)</td></tr>
-<tr><td>careful</td><td>4 of 61 (7%, likely 3–16%)</td></tr>
+<tr><td>Easy</td><td>3 of 140 (2%, likely 1–6%)</td></tr>
+<tr><td>Normal</td><td>5 of 96 (5%, likely 2–12%)</td></tr>
+<tr><td>Careful</td><td>4 of 61 (7%, likely 3–16%)</td></tr>
 </tbody>
 </table>
 </div>
@@ -404,20 +406,20 @@ a{color:#111111}a:hover{color:#000000}
 <ul>
 <li>Your careful pen against “largest first”, “most files touched first” and a random pick. Your easy pen against the same share of smallest pull requests.</li>
 <li>Counts and a likely range for every result, in words: outperformed, no demonstrated advantage, did worse.</li>
-<li>Fewer than 20 pull requests with trouble in a repo? It says “insufficient evidence” and stops there.</li>
-<li>The same calculation as the <a href="evidence.html">published evidence</a>, on the outcomes page or with <span style="font-family: 'Geist Mono', monospace">cowboy evaluate</span>.</li>
+<li>Fewer than 20 pull requests with trouble in a repo? It says “Not enough evidence yet” and stops there.</li>
+<li>The same calculation as the <a href="evidence.html">published evidence</a>, on the After merge page or with <span style="font-family: 'Geist Mono', monospace">cowboy evaluate</span>.</li>
 </ul>
 </div>
 <div class="f-shot">
-<div class="ui ui-win" role="img" aria-label="the comparison on the outcomes page, with real numbers from a replay of next.js, Airflow and Kibana: Cowboy's careful pen caught 25.7% of later-reverted pull requests, largest-first 20.7%, most files 27.9%, random 22.3%; no demonstrated advantage">
+<div class="ui ui-win" role="img" aria-label="the comparison on the After merge page, with real numbers from a replay of next.js, Airflow and Kibana: Cowboy's careful pen caught 25.7% of later-reverted pull requests, largest-first 20.7%, most files 27.9%, random 22.3%; no demonstrated advantage">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/outcomes#check</span></div>
 <div class="ui-main">
-<p class="ui-h1" style="margin-bottom: 6px">do the pens beat simple alternatives?</p>
-<p style="margin: 0 0 10px; font-size: 11px">same share of prs for each · share of later-reverted prs caught</p>
-<div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>cowboy's careful pen</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 64.2%; background:#111111"></span></span><b style="text-align: right">25.7%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>largest first</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 51.7%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">20.7%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>most files first</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 69.8%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">27.9%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>random</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 55.8%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">22.3%</b></div>
-<div class="ui-r lt" style="margin-top: 12px"><b>vs chance</b><span><b>no demonstrated advantage</b>: 1.08× (likely 0.78× to 1.39×)</span></div>
-<div class="ui-r lt"><b>vs largest</b><span><b>no demonstrated advantage</b>: +5.0 points (likely −3.5 to +13.0)</span></div>
-<div class="ui-r lt"><b>easy pen</b><span><b>no demonstrated difference</b> from the same share of smallest prs</span></div>
+<p class="ui-h1" style="margin-bottom: 6px">Do your rules earn their place?</p>
+<p style="margin: 0 0 10px; font-size: 11px">Same share of pull requests for each · share of later-reverted ones caught</p>
+<div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>Cowboy's careful pen</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 64.2%; background:#111111"></span></span><b style="text-align: right">25.7%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>Largest first</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 51.7%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">20.7%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>Most files first</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 69.8%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">27.9%</b></div><div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 54px; gap: 10px; align-items: center; margin: 7px 0"><span>Picked at random</span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 55.8%; background-image:repeating-linear-gradient(45deg,#111111 0 2px,transparent 2px 7px)"></span></span><b style="text-align: right">22.3%</b></div>
+<div class="ui-r lt" style="margin-top: 12px"><b>Against a random pick</b><span><b>no demonstrated advantage</b>: 1.08× (likely 0.78× to 1.39×)</span></div>
+<div class="ui-r lt"><b>Against largest first</b><span><b>no demonstrated advantage</b>: +5.0 points (likely −3.5 to +13.0)</span></div>
+<div class="ui-r lt"><b>Easy pen</b><span><b>no demonstrated difference</b> from the same share of smallest pull requests</span></div>
 </div></div>
 <p style="margin: 12px 0 0; font-size: 14px">Real numbers, not the demo: Cowboy's own rules, replayed on next.js, Airflow and Kibana history.</p>
 </div>
@@ -438,12 +440,12 @@ a{color:#111111}a:hover{color:#000000}
 <div class="f-shot">
 <div class="ui ui-win" role="img" aria-label="the weekly tally table, per agent: pull requests, pens, doubles, strays, shortcuts and re-penned">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/tally</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>corral</span><span class="on">tally</span><span>rules</span><span>trail</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>Corral</span><span class="on">Tally</span><span>Rules</span><span>Activity</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch</span></span></div>
 <div class="ui-main">
-<p class="ui-h1" style="margin-bottom: 14px">the tally · last 7 days</p>
+<p class="ui-h1" style="margin-bottom: 14px">The tally</p>
 <div class="ui-panel ui-scroll" style="margin-top: 0">
 <table class="ui-tbl">
-<thead><tr><th>agent</th><th>prs</th><th>easy</th><th>normal</th><th>careful</th><th>doubles</th><th>strays</th><th>shortcuts</th><th>re-penned</th></tr></thead>
+<thead><tr><th>Author</th><th>Pull requests</th><th>Easy</th><th>Normal</th><th>Careful</th><th>Doubles</th><th>Strays</th><th>Shortcuts</th><th>Moved by a person</th></tr></thead>
 <tbody>
 <tr><td>copilot</td><td>3</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
 <tr><td>claude-code</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
@@ -465,7 +467,7 @@ a{color:#111111}a:hover{color:#000000}
 <div class="f-in">
 <div class="f-text">
 <h2>Missed webhooks get caught.</h2>
-<p>Webhooks get lost. Every 5 minutes a catch-up sweep finds any pull request Cowboy missed, and the trail lists everything it did, newest first.</p>
+<p>Webhooks get lost. Every 5 minutes a catch-up sweep finds any pull request Cowboy missed, and the Activity page lists everything it did, newest first.</p>
 <ul>
 <li>When nothing changed, it costs about one API call per repo.</li>
 <li>Human pull requests are checked once and left alone.</li>
@@ -474,18 +476,18 @@ a{color:#111111}a:hover{color:#000000}
 <div class="f-shot">
 <div class="ui ui-win" role="img" aria-label="the trail page listing recent cowboy activity, including a pull request found by the catch-up sweep">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/trail</span></div>
-<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>corral</span><span>tally</span><span>rules</span><span class="on">trail</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">on your ranch</span></span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>Corral</span><span>Tally</span><span>Rules</span><span class="on">Activity</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch</span></span></div>
 <div class="ui-main">
-<p class="ui-h1" style="margin-bottom: 14px">the trail</p>
+<p class="ui-h1" style="margin-bottom: 14px">Activity</p>
 <div class="ui-panel" style="margin-top: 0">
 <ul class="ui-trail">
-<li><b>caught-up</b> · #521 found by the catch-up sweep: sorted easy (jules)</li>
-<li><b>stray</b> · #503 no commits since changes were requested</li>
-<li><b>sorted</b> · #541 sorted normal (a person: label only, no comment)</li>
-<li><b>notes</b> · #530 local model notes added (on task: no)</li>
-<li><b>sorted</b> · #530 sorted careful (copilot)</li>
-<li><b>sorted</b> · #515 sorted careful (claude-code)</li>
-<li><b>sorted</b> · #507 sorted careful (codex)</li>
+<li><b>Caught-up</b> · #521 found by the catch-up sweep: sorted easy (jules)</li>
+<li><b>Stray</b> · #503 no commits since changes were requested</li>
+<li><b>Sorted</b> · #541 sorted normal (a person: label only, no comment)</li>
+<li><b>Notes</b> · #530 local model notes added (on task: no)</li>
+<li><b>Sorted</b> · #530 sorted careful (copilot)</li>
+<li><b>Sorted</b> · #515 sorted careful (claude-code)</li>
+<li><b>Sorted</b> · #507 sorted careful (codex)</li>
 </ul>
 </div>
 </div>
@@ -506,9 +508,9 @@ a{color:#111111}a:hover{color:#000000}
 <p style="margin: 0; font-size: 17px">One click if you use GitHub’s command-line tool. Otherwise the page opens GitHub’s token form already filled in with read-only access: tick your repos, generate, paste.</p>
 <div class="ui ui-win" role="img" aria-label="the setup page: use your GitHub CLI login with one click, or open a pre-filled token page and paste the token" style="box-shadow: 8px 8px 0 #111111">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">localhost:8080/setup</span></div>
-<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">connect github</p>
-<div class="ui-box" style="box-shadow: none; padding: 10px; margin-bottom: 10px"><b>use your github cli login</b><br><span class="ui-btn k" style="margin-top: 8px; font-size: 12px">use my gh login</span></div>
-<div class="ui-box" style="box-shadow: none; padding: 10px"><b>or paste a token</b><br><span class="ui-btn" style="margin-top: 8px; font-size: 12px; background: #ffffff">open github's token page</span><div style="margin-top: 8px; border: 2px solid #111111; background: #ffffff; padding: 3px 8px; opacity: .6">github_pat_…</div></div></div></div>
+<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">Connect GitHub</p>
+<div class="ui-box" style="box-shadow: none; padding: 10px; margin-bottom: 10px"><b>Use your GitHub CLI login</b><br><span class="ui-btn k" style="margin-top: 8px; font-size: 12px">Use my gh login</span></div>
+<div class="ui-box" style="box-shadow: none; padding: 10px"><b>Or paste a token</b><br><span class="ui-btn" style="margin-top: 8px; font-size: 12px; background: #ffffff">Open GitHub's token page</span><div style="margin-top: 8px; border: 2px solid #111111; background: #ffffff; padding: 3px 8px; opacity: .6">github_pat_…</div></div></div></div>
 </div>
 <div style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
 <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-weight: 600; font-size: 15px">2</span>
@@ -516,7 +518,7 @@ a{color:#111111}a:hover{color:#000000}
 <p style="margin: 0; font-size: 17px">Choose from the repos your login can see. Cowboy sorts their open pull requests and rates the last 90 days of merged ones.</p>
 <div class="ui ui-win" role="img" aria-label="picking which repos Cowboy sorts, from a checklist" style="box-shadow: 8px 8px 0 #111111">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">localhost:8080/setup/repos</span></div>
-<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">pick repos</p>
+<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">Pick repos</p>
 <div class="ui-box" style="box-shadow: none; padding: 10px; text-transform: none">
 <div style="margin: 3px 0">☑ your-org/shop</div><div style="margin: 3px 0">☑ your-org/api</div><div style="margin: 3px 0">☐ your-org/old-site</div></div></div></div>
 </div>
@@ -526,10 +528,10 @@ a{color:#111111}a:hover{color:#000000}
 <p style="margin: 0; font-size: 17px">Nothing is written to GitHub until you switch labelling on, and Cowboy checks it has permission before it does.</p>
 <div class="ui ui-win" role="img" aria-label="choosing just look, which writes nothing to GitHub, or label pull requests" style="box-shadow: 8px 8px 0 #111111">
 <div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">localhost:8080/setup/repos</span></div>
-<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">what cowboy does</p>
-<div class="ui-r"><b>◉ just look</b><span>sort and check past prs. nothing is written to github.</span></div>
-<div class="ui-r lt"><b>○ label</b><span>add cowboy labels, and one comment on careful prs.</span></div>
-<span class="ui-btn k" style="margin-top: 12px; font-size: 12px">save and start</span></div></div>
+<div class="ui-main" style="padding: 16px"><p class="ui-h1" style="font-size: 20px; margin-bottom: 10px">What Cowboy does</p>
+<div class="ui-r"><b>◉ just look</b><span>Sort and check past pull requests. Nothing is written to GitHub.</span></div>
+<div class="ui-r lt"><b>○ label</b><span>Add Cowboy labels, and one comment on careful pull requests.</span></div>
+<span class="ui-btn k" style="margin-top: 12px; font-size: 12px">Save and start</span></div></div>
 </div>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 14px; font-size: 16px">
@@ -562,7 +564,9 @@ a{color:#111111}a:hover{color:#000000}
 <ul style="margin: 0; padding-left: 20px; line-height: 1.5">
 <li>Setup in the browser: run <code>cowboy</code>, connect with your GitHub CLI login or a token, pick repos, and switch labelling on when ready. Tested against a stand-in for GitHub, not yet github.com.</li>
 <li>The GitHub App route for a team server: tested against a stand-in for GitHub, not yet github.com.</li>
+<li>GitLab, on gitlab.com or your own server: tested against a stand-in for GitLab's API, not yet gitlab.com.</li>
 <li>Forgejo and Gitea.</li>
+<li>Storage in SQLite, saved change by change. An older install's data file is moved over by itself on first start.</li>
 <li>Local model notes and the "off task?" flag.</li>
 <li>Review requests to code owners, and strays: covered by tests, not yet seen on a live repo.</li>
 <li>The experimental check for pull requests with no agent mark.</li>
@@ -574,7 +578,6 @@ a{color:#111111}a:hover{color:#000000}
 <p style="margin: 0 0 10px; font-size: 22px; font-weight: 800; letter-spacing: -0.03em">Not built yet</p>
 <ul style="margin: 0; padding-left: 20px; line-height: 1.5">
 <li>Review requests to teams like @org/team. Today it's individual people.</li>
-<li>A database for large orgs. Today it's a single file, fine for a small team.</li>
 <li>A signed Mac app.</li>
 <li>Rules suggested from your own history, for a person to approve. The fitting is built and tested, but it didn't beat chance on fresh repos, so it isn't switched on.</li>
 </ul>
