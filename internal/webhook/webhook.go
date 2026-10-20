@@ -1,5 +1,6 @@
-// Package webhook receives pull request events from GitHub and from
-// Gitea/Forgejo, checks the signature, and queues the PR for sorting.
+// Package webhook receives pull request events from GitHub, GitLab and
+// Gitea/Forgejo, checks the signature or token, and queues the PR for
+// sorting.
 // It answers fast (202) and does the work in the background.
 package webhook
 
@@ -34,6 +35,9 @@ type Job struct {
 type Handler struct {
 	Secret string
 	Queue  chan<- Job
+	// Self is Cowboy's own account on hosts that don't mark bots in
+	// webhooks (GitLab), so its own label changes aren't read as people's.
+	Self string
 
 	live atomic.Pointer[string] // SetSecret: replaces Secret once set
 
@@ -273,6 +277,114 @@ func (h *Handler) dispatch(w http.ResponseWriter, event string, body []byte) {
 		case h.Queue <- j:
 		default:
 			log.Printf("queue full, dropped %s#%d (the catch-up sweep will get it)", j.Repo, j.Number)
+		}
+	}
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("queued\n"))
+}
+
+// gitlabEvent is the part of a GitLab merge request or pipeline hook
+// Cowboy reads.
+type gitlabEvent struct {
+	ObjectKind string `json:"object_kind"`
+	User       struct {
+		Username string `json:"username"`
+	} `json:"user"`
+	Project struct {
+		PathWithNamespace string `json:"path_with_namespace"`
+	} `json:"project"`
+	ObjectAttributes struct {
+		IID    int    `json:"iid"`
+		Action string `json:"action"`
+		Status string `json:"status"` // pipelines
+	} `json:"object_attributes"`
+	MergeRequest *struct {
+		IID int `json:"iid"`
+	} `json:"merge_request"` // pipelines
+	Changes struct {
+		Labels *struct {
+			Previous []struct{ Title string } `json:"previous"`
+			Current  []struct{ Title string } `json:"current"`
+		} `json:"labels"`
+	} `json:"changes"`
+}
+
+// GitLab handles /webhook/gitlab. GitLab sends the secret token as is in
+// X-Gitlab-Token (no signature); it's compared in constant time. Label
+// changes made by Cowboy's own account (Self) or by GitLab bot users are
+// not corrections.
+func (h *Handler) GitLab(w http.ResponseWriter, r *http.Request) {
+	body, ok := read(w, r)
+	if !ok {
+		return
+	}
+	sec := h.secret()
+	if sec == "" || !hmac.Equal([]byte(r.Header.Get("X-Gitlab-Token")), []byte(sec)) {
+		http.Error(w, "bad token", http.StatusUnauthorized)
+		return
+	}
+	id := r.Header.Get("X-Gitlab-Event-UUID")
+	if id == "" {
+		id = r.Header.Get("X-Gitlab-Webhook-UUID")
+	}
+	if h.duplicate(id) {
+		w.Write([]byte("duplicate delivery, ignored\n"))
+		return
+	}
+	var e gitlabEvent
+	if err := json.Unmarshal(body, &e); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	repo := e.Project.PathWithNamespace
+	by := e.User.Username
+	self := strings.EqualFold(by, h.Self) || strings.Contains(by, "_bot_") || strings.HasPrefix(by, "project_") && strings.HasSuffix(by, "_bot")
+	var jobs []Job
+	switch e.ObjectKind {
+	case "merge_request":
+		n := e.ObjectAttributes.IID
+		switch e.ObjectAttributes.Action {
+		case "open", "reopen":
+			jobs = append(jobs, Job{Repo: repo, Number: n})
+		case "update":
+			if l := e.Changes.Labels; l != nil && !self {
+				prev, cur := map[string]bool{}, map[string]bool{}
+				for _, x := range l.Previous {
+					prev[x.Title] = true
+				}
+				for _, x := range l.Current {
+					cur[x.Title] = true
+				}
+				for t := range cur {
+					if pen, ok := strings.CutPrefix(t, "cowboy:"); ok && !prev[t] && (pen == "easy" || pen == "normal" || pen == "careful") {
+						jobs = append(jobs, Job{Repo: repo, Number: n, Repen: pen, By: by})
+					}
+				}
+				if prev["agent:likely"] && !cur["agent:likely"] {
+					jobs = append(jobs, Job{Repo: repo, Number: n, Unflag: true, By: by})
+				}
+			}
+			if len(jobs) == 0 {
+				jobs = append(jobs, Job{Repo: repo, Number: n}) // new commits or an edit
+			}
+		case "merge":
+			jobs = append(jobs, Job{Repo: repo, Number: n, Closed: true, Merged: true})
+		case "close":
+			jobs = append(jobs, Job{Repo: repo, Number: n, Closed: true})
+		}
+	case "pipeline":
+		if e.MergeRequest != nil && (e.ObjectAttributes.Status == "success" || e.ObjectAttributes.Status == "failed") {
+			jobs = append(jobs, Job{Repo: repo, Number: e.MergeRequest.IID})
+		}
+	}
+	for _, j := range jobs {
+		if j.Repo == "" || j.Number == 0 {
+			continue
+		}
+		select {
+		case h.Queue <- j:
+		default:
+			log.Printf("queue full, dropped %s!%d (the catch-up sweep will get it)", j.Repo, j.Number)
 		}
 	}
 	w.WriteHeader(http.StatusAccepted)

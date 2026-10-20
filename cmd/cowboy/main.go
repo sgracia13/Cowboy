@@ -92,8 +92,9 @@ env for serve:
   on github, leave FORGE_TOKEN empty and open the dashboard: "create the github app"
   sets everything up (PUBLIC_URL = the https address github can reach, for webhooks).
 
-  FORGE           github | gitea | forgejo
-  FORGE_URL       base url (required for gitea/forgejo; github enterprise api url)
+  FORGE           github | gitlab | gitea | forgejo
+  FORGE_URL       base url (required for gitea/forgejo; self-managed gitlab, e.g. https://git.acme.dev;
+                  github enterprise api url)
   FORGE_TOKEN     token with pr read + label/comment write
   WEBHOOK_SECRET  shared secret for webhook signatures
   UI_PASSWORD     dashboard password (or AUTH_PROXY_HEADER behind an SSO proxy)
@@ -101,8 +102,8 @@ env for serve:
                   (otherwise cowboy downloads the default branch from the git host)
   BLAST_RADIUS    off = don't download repos for blast radius
   BLAST_RADIUS_MAX_MB  biggest archive to download (default 300)
-  REPOS           optional "owner/repo,..." to sort all open prs at start
-  DATA            store file (default ./data/cowboy.json)
+  REPOS           optional "owner/repo,..." to sort all open prs at start (gitlab: "group/sub/project")
+  DATA            data path (default ./data/cowboy.json; kept in cowboy.db next to it)
   ADDR            listen address (default :8080)
   DRY_RUN         1 = sort and store, never write to the forge
 
@@ -235,8 +236,18 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 
 	mux := http.NewServeMux()
 	h := &webhook.Handler{Secret: secret, Queue: queue}
+	if gl, ok := a.Forge.(*forge.GitLab); ok {
+		// GitLab doesn't mark bot accounts in webhooks: learn which account
+		// is Cowboy's, so its own label changes aren't read as corrections
+		if me, err := gl.WhoAmI(); err == nil {
+			h.Self = me
+		} else {
+			log.Printf("gitlab: couldn't read the token's account (%v); label changes by Cowboy may look like people's", err)
+		}
+	}
 	hooks = h
 	mux.HandleFunc("/webhook/github", h.GitHub)
+	mux.HandleFunc("/webhook/gitlab", h.GitLab)
 	mux.HandleFunc("/webhook/gitea", h.Gitea)
 	mux.HandleFunc("/webhook/forgejo", h.Gitea)
 	if incidents != nil {

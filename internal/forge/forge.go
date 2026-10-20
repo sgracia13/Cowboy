@@ -1,6 +1,6 @@
 // Package forge talks to git hosts. Every host looks the same to the rest of
-// Cowboy through the Forge interface. Two implementations: GitHub, and Gitea
-// (which also covers Forgejo, since Forgejo keeps Gitea's API).
+// Cowboy through the Forge interface. Implementations: GitHub, GitLab, and
+// Gitea (which also covers Forgejo, since Forgejo keeps Gitea's API).
 package forge
 
 import (
@@ -283,7 +283,7 @@ func cleanUsers(users []string) []string {
 	return out
 }
 
-// New builds a Forge from settings. kind: github, gitea, forgejo.
+// New builds a Forge from settings. kind: github, gitlab, gitea, forgejo.
 func New(kind, baseURL, token string) (Forge, error) {
 	hc := &http.Client{Timeout: 30 * time.Second}
 	switch strings.ToLower(kind) {
@@ -297,6 +297,19 @@ func New(kind, baseURL, token string) (Forge, error) {
 			return nil, fmt.Errorf("FORGE_URL is required for %s", kind)
 		}
 		return &Gitea{client: client{base: strings.TrimRight(baseURL, "/") + "/api/v1", token: token, scheme: "token", http: hc}, kind: kind}, nil
+	case "gitlab":
+		if baseURL == "" {
+			baseURL = "https://gitlab.com"
+		}
+		base := strings.TrimSuffix(strings.TrimRight(baseURL, "/"), "/api/v4")
+		return &GitLab{client: client{base: base + "/api/v4", token: token, scheme: "Bearer", http: hc}}, nil
 	}
-	return nil, fmt.Errorf("unknown forge %q (use github, gitea or forgejo)", kind)
+	return nil, fmt.Errorf("unknown forge %q (use github, gitlab, gitea or forgejo)", kind)
 }
+
+// Every host implements the whole interface, archives and history.
+var (
+	_ Forge    = (*GitLab)(nil)
+	_ Archiver = (*GitLab)(nil)
+	_ History  = (*GitLab)(nil)
+)

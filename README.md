@@ -119,7 +119,7 @@ open the dashboard, press **create the github app**, confirm on github, pick you
 
 this has been tested end to end against a stand-in for github's api, not yet against github.com itself.
 
-### with a token (github, forgejo, gitea)
+### with a token (github, gitlab, forgejo, gitea)
 
 ```sh
 docker run -d -p 8080:8080 -v cowboy-data:/data \
@@ -131,6 +131,21 @@ setting `FORGE_TOKEN` keeps the old way: a token, `REPOS`, and a webhook you add
 
 - github: `https://cowboy.yourhost/webhook/github`, events: pull requests, check suites
 - gitea / forgejo: `https://cowboy.yourhost/webhook/gitea`, events: pull request
+
+### on gitlab (preview)
+
+gitlab.com and self-managed GitLab both work. Merge requests are sorted, labelled and commented on like pull requests, and after-merge tracking reads the default branch, releases and pipelines.
+
+```sh
+FORGE=gitlab FORGE_URL=https://gitlab.com FORGE_TOKEN=glpat-... WEBHOOK_SECRET=... \
+REPOS=your-group/your-project cowboy serve
+```
+
+- **token:** a personal, project or group access token with the `api` scope (or `read_api` with `DRY_RUN=1` to only look). Project and group tokens show up as a bot user, which keeps Cowboy's labels apart from people's.
+- **repos:** the project's full path, subgroups included: `acme/platform/web`.
+- **webhook:** project → settings → webhooks, URL `https://cowboy.yourhost/webhook/gitlab`, secret token = `WEBHOOK_SECRET`, triggers: merge request events and pipeline events.
+- **reverts:** GitLab's Revert button ("This reverts merge request !12"), `git revert`, and revert merge requests are all traced back to the merge request they undid.
+- **limits:** strays (an agent going quiet after a reviewer asked for changes) need a GitLab version that records "requested changes" on reviewers; older ones don't, so strays aren't flagged there. If GitLab refuses several reviewers (multiple reviewers is a paid GitLab feature), Cowboy asks the first code owner only. This adapter is tested against a stand-in for GitLab's API, not yet against gitlab.com itself: tell us what breaks.
 
 ### settings
 
@@ -229,7 +244,7 @@ it covers the 7 days before the send time. cowboy remembers what it sent (`tally
 - **rate limits.** github's rate limits are waited out (up to a minute); longer limits are left to the next catch-up sweep.
 - **repeat webhooks** (same delivery id) are handled once.
 - **one bad pr can't stop it.** a crash while sorting one pr is logged and cowboy carries on; the sweep retries it.
-- **clean shutdown.** on stop, cowboy finishes queued work first. the store is written to disk safely, so a crash never leaves it half-written.
+- **clean shutdown.** on stop, cowboy finishes queued work first. data lives in sqlite (`cowboy.db` and `outcomes.db` next to the data path), written in transactions, so a crash never leaves it half-written. a `cowboy.json` from an older version is imported once and kept as `cowboy.json.migrated`.
 - **startup check.** cowboy checks the token can read each repo in `REPOS` and says so in the log.
 
 ## after merge: did the pens get it right?
@@ -281,7 +296,7 @@ cowboy suggests up to three likely causes per incident (shipped in that release,
 
 **replayed on real history.** `cmd/cowboy-replay` runs the same engine on 7,721 real merged prs from sentry, grafana and n8n (november 2025 to september 2026). reverts it found matched an independent earlier count on 213 prs (8 only there, 5 only here). weighted back to sentry's real mix of prs, 1.42% of careful prs were reverted within 30 days against 0.81% of easy ones. suggested fixes looked right by title in about 7 in 10 of a sample, which is why a person confirms them. those are the repos the rules were tuned on. against simply flagging the biggest prs, or even chance, careful's lead is within noise there, and on supabase (never used for tuning) careful did no better than size or chance; the easy pen held up in both. on three fresh repos (next.js, airflow, kibana), neither the revised rules nor rules fitted to each repo's own history beat chance either. on three more (elasticsearch, vs code, home assistant), giving every method the same lines read instead of the same number of prs, careful did worse than chance: a 10-line pr was about as likely to be reverted as a 1,000-line one, so reading the smallest prs first caught far more ([results](scripts/eval/evidence/RESULTS-lines.md)). the claims (written down first) and results: [`scripts/eval/evidence`](scripts/eval/evidence).
 
-`OUTCOMES=off` turns this off. it needs a host that reports history (github, forgejo, gitea).
+`OUTCOMES=off` turns this off. it needs a host that reports history (github, gitlab, forgejo, gitea).
 
 ## what it writes
 
@@ -359,7 +374,7 @@ testdata/           sample repo + 10 sample prs with expected pens
 
 ## prototype limits (vs. the build plan)
 
-- store is a json file, not sqlite (this build has zero dependencies)
+- the gitlab adapter is tested against a stand-in for its api, not yet against gitlab.com; merge requests show as #12 on the dashboard, not !12
 - blast radius for java and kotlin reads imports only (files in the same package use each other without one), and hasn't been checked against a reference yet
 - review requests skip teams (`@org/team`); users only
 - after-merge tracking has been run against a stand-in for github, sentry and pagerduty, and revert detection against real history; not yet on a live repo for 30 days
