@@ -23,6 +23,7 @@ every team has review rules: *big prs need two reviewers*, *anything in migratio
 - 🐄 **sorts every pull request as it arrives** into **easy**, **normal** or **careful**, by fixed rules, with the reasons written on the pr. work from claude code, copilot, codex and other agents is tagged.
 - 🔎 **watches what happens after merge.** reverts, main breaking, follow-up fixes and incidents, traced back to the pull request that caused them. it can rate your last 90 days on day one.
 - ⚖️ **checks which rules earn their place,** against simple alternatives (largest first, most files touched, a random pick), with the counts and a likely range. with too little history, it says so.
+- 🧭 **shows your team's habits, and guides your agents.** how often prs here change tests with code, skip shortcuts and get reviewed, and whether each habit went with less trouble *in this repo*. `cowboy guide` turns your rules and habits into an `AGENTS.md` section your coding agents follow.
 
 we ran that test on our own rules first, on about 28,000 merged prs from eleven public repos: the easy pen mostly held up, and the careful pen didn't beat simpler rules (counted by lines read, it did worse than chance). [we publish all of it](scripts/eval/evidence). your repo may tell a different story, and cowboy will show you either way.
 
@@ -151,7 +152,7 @@ REPOS=your-group/your-project cowboy serve
 
 | env | what |
 |---|---|
-| `FORGE` | `github` (default), `gitea` or `forgejo` |
+| `FORGE` | `github` (default), `gitlab`, `gitea` or `forgejo` |
 | `FORGE_URL` | your forge (not needed for github.com) |
 | `PUBLIC_URL` | the https address github can reach this cowboy at (github app setup, links in the tally) |
 | `FORGE_TOKEN` | token that can read prs and write labels + comments (leave empty on github to use the app) |
@@ -298,6 +299,21 @@ cowboy suggests up to three likely causes per incident (shipped in that release,
 
 `OUTCOMES=off` turns this off. it needs a host that reports history (github, gitlab, forgejo, gitea).
 
+## habits, and guiding your agents
+
+the **habits** page shows, for each repo, how often merged prs keep five habits: tests with code, no shortcuts, reviewable size (under 400 lines of source), reviewed before merge, and checks green. each one has its share over the last 90 days, the 90 days before, and a verdict from that repo's own history: **holds here**, **did worse here**, **no demonstrated difference**, or **not enough evidence yet** (fewer than 20 prs with trouble). size is held fixed, and the range has to clear the line.
+
+the numbers are for the whole team, never per person. we tested these habits across nine public repos and [none went with fewer reverts everywhere](scripts/eval/evidence/RESULTS-practices.md), so cowboy doesn't hand out a universal score: a habit only "holds" where your history shows it. when a habit your team requires shows no difference with a tight range, the page says it may be a ritual worth questioning. when the range is wide, it says it can't tell.
+
+**guide your agents.** coding agents read an instructions file in the repo. `cowboy guide` writes one section for it from what cowboy already knows: which paths and files get a careful review, the size that gets the quickest review, the shortcuts cowboy flags (only the checks you have on), this team's habits, and how to say an agent helped.
+
+```sh
+cowboy guide --repo acme/app                     # print it
+cowboy guide --repo acme/app --write AGENTS.md   # or CLAUDE.md, .github/copilot-instructions.md
+```
+
+the section sits between `<!-- cowboy:guide start -->` and `<!-- cowboy:guide end -->`, so running it again replaces only that part; the rest of the file is yours. the habits page has the same text with copy and download buttons. cowboy never commits it for you.
+
 ## what it writes
 
 only these, ever:
@@ -341,6 +357,7 @@ cowboy tally                                                     # this week's p
 cowboy tally --send                                              # send the last 7 days to slack/email now
 cowboy outcomes [--check]                                        # after merge, by pen (--check reads the git host now)
 cowboy backfill --days 90                                        # rate prs that already merged (writes nothing to the host)
+cowboy guide --repo o/r [--write AGENTS.md]                      # instructions for coding agents from your rules and habits
 cowboy audit verify                                              # was the audit record changed?
 cowboy audit export --format csv --since 2026-01-01              # the record, for an auditor
 cowboy benchmark export > ours.json                              # counts only, to share if you want
@@ -360,10 +377,12 @@ internal/score      measure + decide (pure functions)
 internal/pipeline   one pr in, one decision out (doubles, strays, comment)
 internal/model      optional local model: scope check + brief (openai-compatible api)
 internal/detect     undisclosed-agent check: matrix, extractors, per-author baselines, scorer
-internal/forge      github + gitea/forgejo clients, and a demo forge
+internal/forge      github, gitlab and gitea/forgejo clients, and a demo forge
 internal/app        the loop: fetch -> sort -> store -> label; live events; catch-up sweep
 internal/webhook    signed webhook receivers
 internal/store      decisions + corrections
+internal/db         sqlite storage (pure go, no cgo)
+internal/habits     the habits page and the agent guide
 internal/outcome    after merge: reverts, broken main, fixes, incidents, survival; report card, scorecards, benchmark
 internal/audit      the hash-chained audit record
 internal/web        the corral ui
