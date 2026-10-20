@@ -347,6 +347,10 @@ func (s *Server) move(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
+	if r.Header.Get("X-Cowboy-Move") == "1" { // dragged on the corral: no page to go to
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	http.Redirect(w, r, "/pr?repo="+repo+"&n="+strconv.Itoa(n)+"&moved=1", http.StatusSeeOther)
 }
 

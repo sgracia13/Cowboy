@@ -261,3 +261,12 @@ form.setup .repo-pick input,.repo-pick input{min-width:0;width:auto;padding:0;di
 .h-verdict.v-holds{background:var(--y)}
 .h-verdict.v-worse{background:var(--k);color:var(--y)}
 @media (max-width:900px){.habits li{grid-template-columns:minmax(0,1fr)}}
+/* drag a card to another pen */
+.drag-hint{display:none;margin:4px 0 0;font-size:14px}
+@media (hover:hover) and (pointer:fine){.drag-hint{display:block}.card[draggable=true]{cursor:grab}.card[draggable=true]:active{cursor:grabbing}}
+.card.dragging{opacity:.35}
+.pen.drop-target{outline:4px dashed var(--k);outline-offset:4px}
+.pen-careful.drop-target{outline-color:var(--y);box-shadow:0 0 0 4px var(--k)}
+.move-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:14px;background:var(--k);color:var(--y);border:3px solid var(--k);padding:10px 12px 10px 18px;font-weight:600;box-shadow:6px 6px 0 var(--y);max-width:calc(100% - 32px)}
+.move-toast[hidden]{display:none}
+.move-toast .btn{background:var(--y);color:var(--k);padding:8px 14px;min-height:0}

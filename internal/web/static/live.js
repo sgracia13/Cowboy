@@ -29,7 +29,8 @@
 
   function refresh() {
     if (!live) return;
-    if (pending) { again = true; return; }
+    // a dragged card waiting to be saved: redraw after, or it would jump back
+    if (pending || document.body.hasAttribute("data-hold")) { again = true; return; }
     pending = true;
     fetch(location.pathname + location.search, { headers: { "X-Cowboy-Partial": "1" } })
       .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
@@ -48,5 +49,6 @@
       });
   }
 
+  window.cowboyRefresh = function () { if (again) { again = false; refresh(); } };
   if (window.EventSource) connect();
 })();
