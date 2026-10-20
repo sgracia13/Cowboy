@@ -41,6 +41,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/diff"
 	"github.com/sgracia13/Cowboy/internal/evaluate"
 	"github.com/sgracia13/Cowboy/internal/forge"
+	"github.com/sgracia13/Cowboy/internal/habits"
 	"github.com/sgracia13/Cowboy/internal/model"
 	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
@@ -82,6 +83,7 @@ const usage = `cowboy: finds out what breaks your repo, and sorts new pull reque
   cowboy outcomes [--check]        what happened after merge, by pen (--check reads the git host now)
   cowboy backfill [--days 90]      rate pull requests that already merged (writes nothing to the git host)
   cowboy evaluate [--json]         do the pens beat largest-first, most-files and chance? (same method as the evidence)
+  cowboy guide [--write AGENTS.md] instructions for coding agents from this repo's rules and habits
   cowboy audit verify|export       check the audit record wasn't changed, or export it
   cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
@@ -161,6 +163,8 @@ func main() {
 		outcomesCmd(os.Args[2:])
 	case "backfill":
 		backfillCmd(os.Args[2:])
+	case "guide":
+		guideCmd(os.Args[2:])
 	case "evaluate":
 		evaluateCmd(os.Args[2:])
 	default:
@@ -688,6 +692,71 @@ func auditCmd(args []string) {
 	}
 }
 
+// guideCmd prints (or writes into a file) the agent guidance section for a
+// repo: its rules, the shortcuts Cowboy flags, and its habits.
+func guideCmd(args []string) {
+	fs := flag.NewFlagSet("guide", flag.ExitOnError)
+	repo := fs.String("repo", "", "owner/repo (default: the only repo Cowboy follows)")
+	write := fs.String("write", "", "put the section into this file (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md), replacing an earlier one")
+	cfgPath := fs.String("config", "", "the repo's cowboy.json (default: ./cowboy.json or ./.cowboy.json if present)")
+	days := fs.Int("days", 90, "how far back habits are counted")
+	fs.Parse(args)
+	if os.Getenv("DATA") == "" {
+		// a local `cowboy` keeps its data in the user's config folder
+		if _, err := os.Stat("data/cowboy.db"); err != nil {
+			if dir, err := os.UserConfigDir(); err == nil {
+				if _, err := os.Stat(filepath.Join(dir, "cowboy", "cowboy.db")); err == nil {
+					os.Setenv("DATA", filepath.Join(dir, "cowboy", "cowboy.json"))
+				}
+			}
+		}
+	}
+	st, oc := openForReport()
+	if *repo == "" {
+		switch rs := st.Repos(); len(rs) {
+		case 0:
+			log.Fatal("Cowboy doesn't follow any repo here yet: pass --repo owner/repo")
+		case 1:
+			*repo = rs[0]
+		default:
+			log.Fatalf("Cowboy follows several repos; pick one with --repo (%s)", strings.Join(rs, ", "))
+		}
+	}
+	cfg := config.Default()
+	path := *cfgPath
+	if path == "" {
+		for _, p := range []string{"cowboy.json", ".cowboy.json"} {
+			if _, err := os.Stat(p); err == nil {
+				path = p
+				break
+			}
+		}
+	}
+	if path != "" {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := config.Merge(&cfg, b); err != nil {
+			log.Fatalf("%s: %v", path, err)
+		}
+	}
+	rep := habits.Build(*repo, st.List(*repo, ""), oc, cfg, time.Now().UTC(), outcomeWindow(), *days)
+	g := habits.Guide(*repo, cfg, rep)
+	if *write == "" {
+		fmt.Print(g)
+		return
+	}
+	old, err := os.ReadFile(*write)
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	if err := os.WriteFile(*write, []byte(habits.Apply(string(old), g)), 0o644); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("wrote the Cowboy section into %s (the rest of the file is unchanged)\n", *write)
+}
+
 func openForReport() (*store.Store, *outcome.State) {
 	st, err := store.Open(env("DATA", "data/cowboy.json"))
 	if err != nil {
@@ -1109,7 +1178,10 @@ func demo(args []string) {
 	td := findTestdata()
 	fake := forge.NewFake(filepath.Join(td, "prs"), filepath.Join(td, "acme"))
 	dataFile := filepath.Join(os.TempDir(), "cowboy-demo.json")
-	os.Remove(dataFile)
+	// every demo starts fresh: drop the last run's data
+	for _, f := range []string{dataFile, "cowboy-demo.db", "cowboy-demo.db-wal", "cowboy-demo.db-shm"} {
+		os.Remove(filepath.Join(os.TempDir(), filepath.Base(f)))
+	}
 	st, _ := store.Open(dataFile)
 	a := app.New(fake, st, map[string]string{"acme/app": filepath.Join(td, "acme")})
 	// The experimental check is off in the demo unless asked for: its

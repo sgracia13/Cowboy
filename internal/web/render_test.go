@@ -59,6 +59,7 @@ func TestPagesWhenEmpty(t *testing.T) {
 	s.Routes(mux)
 	checkPage(t, mux, "/", "0 pull requests in the corral", "Nothing here")
 	checkPage(t, mux, "/outcomes", "Nothing to rate yet", "Rate the last 90 days")
+	checkPage(t, mux, "/habits", "No repos yet")
 	checkPage(t, mux, "/tally", "Nothing in the last 7 days")
 	checkPage(t, mux, "/trail", "Nothing yet")
 	checkPage(t, mux, "/rules", "No repos yet")
@@ -142,6 +143,15 @@ func TestPagesWithData(t *testing.T) {
 	}
 	checkPage(t, mux, "/pr?repo=acme/app&n=506", "A person moved it", "Why it’s careful")
 	checkPage(t, mux, "/pr?repo=o/one&n=1", "After merge", "This pull request is from a replay")
+	body = checkPage(t, mux, "/habits?repo=o/two", "o/two", "Tests with code", "Reviewable size", "Guide your agents", "cowboy:guide start", "Not enough evidence yet")
+	if strings.Contains(body, "per person:") {
+		t.Error("habits must stay team-wide")
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/habits/guide.md?repo=o/one", nil))
+	if rec.Code != 200 || !strings.Contains(rec.Header().Get("Content-Type"), "markdown") || !strings.Contains(rec.Body.String(), "## Working in o/one") {
+		t.Errorf("guide download: %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
 	for _, u := range []string{"/tally", "/rules", "/trail", "/demo/host?n=507"} {
 		checkPage(t, mux, u)
 	}

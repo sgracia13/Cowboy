@@ -244,3 +244,20 @@ form.setup .repo-pick input,.repo-pick input{min-width:0;width:auto;padding:0;di
   details.fold > summary{padding:12px 16px}
   details.fold > .in{padding:0 16px 16px}
 }
+
+/* habits */
+.habits{list-style:none;padding:0;margin:8px 0 0}
+.habits li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.3fr);gap:8px 22px;align-items:start;padding:14px 0;border-bottom:2px solid var(--track)}
+.habits li:last-child{border-bottom:0}
+.h-name b{display:block;font-size:16px}
+.h-name span{font-size:14px;color:#3b3b3b}
+.h-share{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:4px 10px;align-items:center}
+.h-share .bar-track{height:16px}
+.h-share .bar-fill{background:var(--k)}
+.h-share .val{font:700 15px var(--mono);text-align:right}
+.h-share small{grid-column:1/-1;font-size:13px;color:#4b4b4b}
+.h-verdict{border:2px solid var(--k);padding:8px 10px;font-size:14px;background:var(--paper)}
+.h-verdict b{display:block;font-size:14px}
+.h-verdict.v-holds{background:var(--y)}
+.h-verdict.v-worse{background:var(--k);color:var(--y)}
+@media (max-width:900px){.habits li{grid-template-columns:minmax(0,1fr)}}

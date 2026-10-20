@@ -169,6 +169,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /static/", http.FileServerFS(files))
 	if s.Outcomes != nil {
 		mux.HandleFunc("GET /outcomes", s.outcomes)
+		mux.HandleFunc("GET /habits", s.habitsPage)
+		mux.HandleFunc("GET /habits/guide.md", s.habitsGuide)
 		mux.HandleFunc("POST /outcomes/decide", s.decideOutcome)
 		mux.HandleFunc("POST /outcomes/link", s.linkIncident)
 		mux.HandleFunc("POST /outcomes/backfill", s.startBackfill)

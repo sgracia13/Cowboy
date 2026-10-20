@@ -1,0 +1,31 @@
+{{template "head" .}}{{with .Data}}
+<section class="hero"><h1>Habits</h1></section>
+<p class="lead">How often pull requests here keep the habits that keep changes safe, and whether each one went with less trouble after merge in this repo. Numbers are for the whole team, never per person.</p>
+{{if gt (len .Repos) 1}}<p class="repos">{{range .Repos}}<a href="/habits?repo={{.}}"{{if eq . $.Data.Repo}} aria-current="page" style="text-decoration:none"{{end}}>{{.}}</a> {{end}}</p>{{end}}
+{{if not .Repo}}<section class="box"><p>No repos yet. Once Cowboy has sorted and followed some merged pull requests, their habits show up here.</p></section>
+{{else}}{{$r := .Report}}
+<section class="box">
+<h2>{{.Repo}} <span class="h2small">{{$r.Merged}} merged pull requests in the last {{$r.Days}} days</span></h2>
+{{if not $r.Merged}}<p>Nothing merged in the last {{$r.Days}} days yet. On the After merge page, <b>Rate the last 90 days</b> fills this in.</p>{{end}}
+<ul class="habits">{{range $r.Rows}}<li>
+<div class="h-name"><b>{{.Name}}</b><span>{{capFirst .What}}.</span></div>
+<div class="h-share">{{if .Applies}}<span class="bar-track" title="{{.Kept}} of {{.Applies}}"><span class="bar-fill" style="width:{{printf "%.1f" (mulf .Share 100)}}%"></span></span><span class="val">{{pctf .Share}}</span><small>{{.Kept}} of {{.Applies}}{{if ge .Before 0.0}} · {{pctf .Before}} the {{$r.Days}} days before{{end}}</small>{{else}}<small>Can't tell yet{{if eq .Key "reviewed"}}: approvals are read when a pull request merges{{end}}.</small>{{end}}</div>
+<div class="h-verdict v-{{if eq .Verdict "holds here"}}holds{{else if eq .Verdict "did worse here"}}worse{{else}}none{{end}}"><b>{{capFirst .Verdict}}</b>
+{{if eq .Verdict "not enough evidence yet"}}<span>{{.Trouble}} of 20 pull requests with trouble needed.</span>
+{{else if eq .Verdict "holds here"}}<span>Pull requests that did this had trouble {{times .RR}} as often, size held fixed (likely {{times .Low}} to {{times .High}}).</span>
+{{else if eq .Verdict "did worse here"}}<span>Pull requests that did this had trouble {{times .RR}} as often (likely {{times .Low}} to {{times .High}}). Worth a look at why.</span>
+{{else if .Narrow}}<span>Likely {{times .Low}} to {{times .High}}: close to no effect here. If your team requires this, it may be a ritual worth questioning.</span>
+{{else}}<span>Likely {{times .Low}} to {{times .High}}: too wide to say either way yet.</span>{{end}}
+</div></li>{{end}}</ul>
+<p class="small">"Trouble" is the same as on the After merge page: reverted, broke main, or confirmed as needing a fix or causing an incident within {{$.Data.Window}} days. Verdicts use every rated pull request, hold size fixed, and only say "holds here" when the whole likely range clears the line. These show what went together, not what caused what. Across nine public repos <a href="https://github.com/sgracia13/Cowboy/blob/main/scripts/eval/evidence/RESULTS-practices.md">we found no habit that went with fewer reverts everywhere</a>, which is why each repo gets its own answer.</p>
+</section>
+
+<section class="box" id="guide">
+<h2>Guide your agents</h2>
+<p>Coding agents follow the instructions file in your repo. This section turns {{.Repo}}'s review rules, the shortcuts Cowboy flags and this team's habits into instructions they can follow. Paste it into <code>AGENTS.md</code>, <code>CLAUDE.md</code> or <code>.github/copilot-instructions.md</code>, or run <code>cowboy guide --repo {{.Repo}} --write AGENTS.md</code> in a checkout. Cowboy never commits it for you.</p>
+<p class="move"><button class="btn sm" type="button" data-copy="guide-text">Copy</button><a class="btn sm ghost" href="/habits/guide.md?repo={{.Repo}}">Download</a></p>
+<pre class="comment" id="guide-text">{{.Guide}}</pre>
+</section>
+{{end}}
+{{end}}<script src="/static/copy.js"></script>
+{{template "foot" .}}

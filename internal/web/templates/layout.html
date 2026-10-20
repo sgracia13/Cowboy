@@ -11,6 +11,7 @@
     <a href="/tally" {{if eq .Nav "tally"}}class="on"{{end}}>Tally</a>
     <a href="/rules" {{if eq .Nav "rules"}}class="on"{{end}}>Rules</a>
     {{if .Outcomes}}<a href="/outcomes" {{if eq .Nav "outcomes"}}class="on"{{end}}>After merge</a>{{end}}
+    {{if .Outcomes}}<a href="/habits" {{if eq .Nav "habits"}}class="on"{{end}}>Habits</a>{{end}}
     <a href="/trail" {{if eq .Nav "trail"}}class="on"{{end}}>Activity</a>
   </nav>
   <span class="live-dot" id="live-dot" title="live updates"></span><span class="where">On your ranch · {{.Forge}} · {{if .Model}}model: {{.Model}}{{else}}rules only{{end}}{{if .DryRun}} · just looking{{end}}{{if .Setup}} · <a href="/setup">GitHub</a>{{end}}{{if .SignOut}} · <a href="/logout">Sign out</a>{{end}}</span>
