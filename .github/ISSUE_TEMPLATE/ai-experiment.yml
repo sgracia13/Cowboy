@@ -1,0 +1,53 @@
+name: "AI experiment: register a run"
+description: Register a run of the AI risk test before scoring, then post the result here, whichever way it comes out.
+title: "AI run: <model> on <repos>"
+labels: ["ai-experiment"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing whether a local model beats Cowboy's rules. Rules for a run that counts: [CLAIMS-ai.md](https://github.com/sgracia13/Cowboy/blob/main/scripts/eval/evidence/CLAIMS-ai.md#runs-by-other-people).
+        **Open this issue before you score anything.** Then post the result as a comment here, including a run that shows nothing or fails partway.
+  - type: input
+    id: model
+    attributes:
+      label: Model and exact build
+      description: The name and the build or digest your server reports, e.g. from `ollama show`.
+      placeholder: "qwen2.5-coder:7b, digest abc123…"
+    validations:
+      required: true
+  - type: input
+    id: cutoff
+    attributes:
+      label: The model's published training cutoff
+      description: Where it's published (a link). Only PRs merged after this date count.
+    validations:
+      required: true
+  - type: input
+    id: prompt
+    attributes:
+      label: Prompt version
+      description: Printed by `cowboy-ailab score`, e.g. risk-v1-67cdf1330a3f. A changed prompt is a different test.
+    validations:
+      required: true
+  - type: textarea
+    id: repos
+    attributes:
+      label: Repos and PR window
+      description: Which public repos, the merge-date window, and how you picked them (the collector's screen, not by looking at results).
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      placeholder: "1× RTX 4090, Ollama 0.x"
+  - type: checkboxes
+    id: promise
+    attributes:
+      label: Before scoring
+      options:
+        - label: I haven't scored any PR for this run yet.
+          required: true
+        - label: I'll post the result here whichever way it comes out, as the output of `cowboy-ailab compare -json` (counts and settings only, no code or names).
+          required: true
