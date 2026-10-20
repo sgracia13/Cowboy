@@ -1,8 +1,11 @@
 package db
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -79,4 +82,38 @@ func TestFilesArePrivate(t *testing.T) {
 		}
 	}
 	d.Close()
+}
+
+// A process killed mid-run leaves its write-ahead log behind; the next
+// start must replay it, not crash or lose rows. (v0.21 of the SQLite
+// library crashed here; this keeps it from coming back.)
+func TestReopenAfterKill(t *testing.T) {
+	if os.Getenv("COWBOY_DB_CHILD") != "" {
+		d, err := Open(os.Getenv("COWBOY_DB_CHILD"))
+		if err != nil {
+			os.Exit(3)
+		}
+		for i := 0; i < 300; i++ {
+			d.Write(Op{Kind: "k", Key: fmt.Sprint(i), Body: []byte(strings.Repeat("x", 500))})
+		}
+		os.Exit(0) // no Close: the log stays, as after a kill
+	}
+	path := filepath.Join(t.TempDir(), "killed.db")
+	cmd := exec.Command(os.Args[0], "-test.run=^TestReopenAfterKill$")
+	cmd.Env = append(os.Environ(), "COWBOY_DB_CHILD="+path)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("child: %v %s", err, out)
+	}
+	if st, err := os.Stat(path + "-wal"); err != nil || st.Size() == 0 {
+		t.Fatalf("expected a leftover write-ahead log: %v", err)
+	}
+	d, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	m, err := d.Load("k")
+	if err != nil || len(m) != 300 {
+		t.Fatalf("after reopening: %d rows, %v", len(m), err)
+	}
 }
