@@ -89,3 +89,17 @@ that doesn't is reported as such, not dropped quietly.
 - Each practice per repo, and its share of source pull requests.
 - The same on the six spent repos.
 - The size-unadjusted risk ratio, to show what adjusting changed.
+
+## amendment 1 (October 20, 2026, after the screen, before any practice was measured)
+
+None of the eight candidates passed the screen: reverted pull requests in
+the window were kafka 4, gitea 2, transformers 15, temporal 14,
+TypeScript 1, loki 1, terraform-provider-aws 0, prefect 0. The screen
+looks at revert counts only; no practice was measured on any of them.
+
+So the candidate list is extended, in this order, with repos chosen for
+busy history and squash merges (nothing else about them was looked at):
+pytorch/pytorch, ray-project/ray, elastic/beats, mastodon/mastodon,
+microsoft/playwright, langchain-ai/langchain, apache/superset,
+mlflow/mlflow. Same screen, same rule: keep 30 or more, stop at the first
+three kept, use whatever passes. Nothing else in this file changes.
