@@ -1026,8 +1026,24 @@ func demoHistory(td string) (*web.OutcomeSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &web.OutcomeSettings{State: st, Window: 30 * 24 * time.Hour, Version: version, Note: h.Note,
+	return &web.OutcomeSettings{State: st, Window: 30 * 24 * time.Hour, Version: version, Note: sentenceCase(h.Note),
 		History: func() []pipeline.Decision { return h.Decisions }, Now: func() time.Time { return h.Now }}, nil
+}
+
+// sentenceCase capitalizes the start of each sentence (the replay's note
+// was written lowercase).
+func sentenceCase(s string) string {
+	b := []byte(s)
+	up := true
+	for i, c := range b {
+		if up && c >= 'a' && c <= 'z' {
+			b[i] = c - 'a' + 'A'
+		}
+		if c != ' ' {
+			up = c == '.' && (i+1 == len(b) || b[i+1] == ' ')
+		}
+	}
+	return string(b)
 }
 
 // unpackDemo writes the built-in sample repo to the cache (once per version).

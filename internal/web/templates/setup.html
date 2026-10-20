@@ -1,53 +1,53 @@
 {{define "setup-home"}}{{template "head" .}}{{with .Data}}
-<section class="hero"><h1>{{if or .C.Connected .App.Connected}}github{{else}}connect github{{end}}</h1></section>
+<section class="hero"><h1>{{if or .C.Connected .App.Connected}}GitHub{{else}}Connect GitHub{{end}}</h1></section>
 {{if .Error}}<section class="box"><p><b>{{.Error}}</b></p></section>{{end}}
 {{if .Note}}<section class="box"><p>{{.Note}}</p></section>{{end}}
 
 {{if .App.Connected}}
 <section class="box">
-<h2>connected with a github app</h2>
+<h2>Connected with a GitHub App</h2>
 <p>Cowboy signs in as the GitHub App <a href="{{.App.AppURL}}">{{.App.AppName}}</a>.{{if .App.Repos}} It's sorting {{len .App.Repos}} {{if eq (len .App.Repos) 1}}repo{{else}}repos{{end}}:{{else}} It isn't installed on any repos yet.{{end}}</p>
 {{if .App.Repos}}<ul class="trail">{{range .App.Repos}}<li>{{.}}</li>{{end}}</ul>{{end}}
-<p><a class="btn" href="{{.App.InstallURL}}">{{if .App.Repos}}add or remove repos{{else}}pick repos{{end}}</a></p>
+<p><a class="btn" href="{{.App.InstallURL}}">{{if .App.Repos}}Add or remove repos{{else}}Pick repos{{end}}</a></p>
 <p class="muted">Repos you add are picked up within a few seconds when webhooks reach Cowboy, and otherwise at the next catch-up sweep.</p>
 </section>
 
 {{else if and .C.Connected .Choosing}}
 <section class="box">
-<h2>pick repos</h2>
+<h2>Pick repos</h2>
 <p>Signed in as <b>{{.C.User}}</b>{{if eq .C.Via "gh"}} (the GitHub CLI's login){{end}}. Choose the repos Cowboy should sort.</p>
 {{if .ReposErr}}<p class="muted">Couldn't list your repos ({{.ReposErr}}). Type them below instead.</p>{{end}}
 <form method="post" action="/setup/repos" class="setup">
 {{if .Repos}}<div class="repo-list">{{range .Repos}}<label class="repo-pick"><input type="checkbox" name="repo" value="{{.Name}}"{{if .Checked}} checked{{end}}> {{.Name}}</label>{{end}}</div>{{end}}
-<p><label>another repo (owner/repo)<br><input name="other" placeholder="your-org/your-repo"></label></p>
-<h2 style="margin-top:22px">what cowboy does</h2>
-<label class="repo-pick"><input type="radio" name="mode" value="look"{{if not .C.Labelling}} checked{{end}}> <b>just look</b> (recommended to start): sort pull requests and check past ones. Nothing is written to GitHub.</label>
-<label class="repo-pick"><input type="radio" name="mode" value="label"{{if .C.Labelling}} checked{{end}}> <b>label pull requests</b>: add a cowboy:easy / normal / careful label, and one comment on careful ones. Needs a token that can write <a href="{{.Write}}" target="_blank" rel="noopener">(make one)</a>.</label>
-<p style="margin-top:18px"><button class="btn">save and start</button></p>
+<p><label>Another repo (owner/repo)<br><input name="other" placeholder="your-org/your-repo"></label></p>
+<h2 style="margin-top:22px">What Cowboy does</h2>
+<label class="repo-pick"><input type="radio" name="mode" value="look"{{if not .C.Labelling}} checked{{end}}> <b>Just look</b> (recommended to start): sort pull requests and check past ones. Nothing is written to GitHub.</label>
+<label class="repo-pick"><input type="radio" name="mode" value="label"{{if .C.Labelling}} checked{{end}}> <b>Label pull requests</b>: add a cowboy:easy / normal / careful label, and one comment on careful ones. Needs a token that can write <a href="{{.Write}}" target="_blank" rel="noopener">(make one)</a>.</label>
+<p style="margin-top:18px"><button class="btn">Save and start</button></p>
 <p class="muted">Cowboy sorts the open pull requests, then rates the ones merged in the last 90 days: what got reverted, and whether the pens would have caught it. That takes a few minutes; you'll land on the outcomes page while it works.</p>
 </form>
 </section>
 
 {{else if .C.Connected}}
 <section class="box">
-<h2>connected</h2>
+<h2>Connected</h2>
 <p>Signed in as <b>{{.C.User}}</b>{{if eq .C.Via "gh"}} with the GitHub CLI's login{{else}} with a token{{end}}. Sorting {{len .C.Repos}} {{if eq (len .C.Repos) 1}}repo{{else}}repos{{end}}:</p>
 <ul class="trail">{{range .C.Repos}}<li>{{.}}</li>{{end}}</ul>
-<p><a class="btn ghost" href="/setup/repos">change repos</a></p>
+<p><a class="btn ghost" href="/setup/repos">Change repos</a></p>
 </section>
 <section class="box">
-<h2>{{if .C.Labelling}}labelling is on{{else}}just looking{{end}}</h2>
+<h2>{{if .C.Labelling}}Labelling is on{{else}}Just looking{{end}}</h2>
 {{if .C.Locked}}<p>{{.C.Locked}}</p>
 {{else if .C.Labelling}}<p>New and updated pull requests get a cowboy label, and careful ones one comment.</p>
-<form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="off"><button class="btn ghost">stop labelling</button></form>
+<form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="off"><button class="btn ghost">Stop labelling</button></form>
 {{else}}<p>Cowboy sorts and checks pull requests but writes nothing to GitHub. When the pens look sensible on your repos, switch labelling on.</p>
-<form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="on"><button class="btn">start labelling</button></form>
+<form method="post" action="/setup/mode" class="move"><input type="hidden" name="label" value="on"><button class="btn">Start labelling</button></form>
 <p class="muted">Labels need write access. Cowboy checks first by adding the cowboy:easy label to each repo; if the login can't, it says so. If you need one, <a href="{{.Write}}" target="_blank" rel="noopener">make a token that can write</a> and paste it below.</p>{{end}}
 </section>
 <section class="box">
-<h2>sign-in</h2>
-<form method="post" action="/setup/token" class="setup"><p><label>{{if eq .C.Via "gh"}}use a token instead{{else}}replace the token{{end}}<br><input name="token" type="password" autocomplete="off" placeholder="github_pat_..."></label> <button class="btn ghost">use this token</button></p></form>
-<form method="post" action="/setup/disconnect" class="move"><button class="btn ghost">sign out</button></form>
+<h2>Sign-in</h2>
+<form method="post" action="/setup/token" class="setup"><p><label>{{if eq .C.Via "gh"}}use a token instead{{else}}replace the token{{end}}<br><input name="token" type="password" autocomplete="off" placeholder="github_pat_..."></label> <button class="btn ghost">Use this token</button></p></form>
+<form method="post" action="/setup/disconnect" class="move"><button class="btn ghost">Sign out</button></form>
 <p class="muted">Signing out forgets the saved login. The pull requests Cowboy sorted and what it found stay.</p>
 </section>
 
@@ -56,26 +56,26 @@
 <p>Cowboy needs to read your repo's pull requests. Pick a way to sign in. Nothing is written to GitHub until you switch labelling on.</p>
 </section>
 {{if .GH}}<section class="box">
-<h2>use your github cli login</h2>
+<h2>Use your GitHub CLI login</h2>
 <p>The GitHub CLI (<code>gh</code>) is signed in on this computer. Cowboy can borrow that login: no token to make.</p>
-<form method="post" action="/setup/gh" class="move"><button class="btn">use my gh login</button></form>
+<form method="post" action="/setup/gh" class="move"><button class="btn">Use my gh login</button></form>
 <p class="muted">It can see what you can see on GitHub. Cowboy only reads until you switch labelling on.</p>
 </section>{{end}}
 <section class="box">
-<h2>{{if .GH}}or paste a token{{else}}paste a token{{end}}</h2>
+<h2>{{if .GH}}Or paste a token{{else}}Paste a token{{end}}</h2>
 <ol class="trail">
-<li><a class="btn" href="{{.Read}}" target="_blank" rel="noopener">open github's token page</a><br><span class="muted">It opens with the name and read-only permissions filled in. Under <b>Repository access</b>, pick the repos to sort, then press <b>Generate token</b> and copy it.</span></li>
-<li><form method="post" action="/setup/token" class="setup"><label>paste it here<br><input name="token" type="password" autocomplete="off" placeholder="github_pat_..." required></label> <button class="btn">connect</button></form></li>
+<li><a class="btn" href="{{.Read}}" target="_blank" rel="noopener">Open GitHub's token page</a><br><span class="muted">It opens with the name and read-only permissions filled in. Under <b>Repository access</b>, pick the repos to sort, then press <b>Generate token</b> and copy it.</span></li>
+<li><form method="post" action="/setup/token" class="setup"><label>Paste it here<br><input name="token" type="password" autocomplete="off" placeholder="github_pat_..." required></label> <button class="btn">Connect</button></form></li>
 </ol>
 <p class="muted">The token is saved on this computer only, in Cowboy's data folder, readable by you alone.</p>
 </section>
 {{if .HasApp}}<section class="box">
-<details><summary><b>for a team server: create a github app instead</b></summary>
+<details><summary><b>For a team server: create a GitHub App instead</b></summary>
 <p>Cowboy asks GitHub to create a private GitHub App for this server. You confirm it on GitHub, pick the repos, and come straight back. Best when Cowboy runs on a server your team shares.</p>
 <form method="post" action="/setup/github/start" class="setup">
   <p><label>App name<br><input name="name" value="{{.AppName}}" maxlength="34" required></label><br><span class="muted">Must be unique on GitHub. You can change it on the next page.</span></p>
   <p><label>Organization (optional)<br><input name="org" placeholder="your-org" maxlength="39"></label><br><span class="muted">Leave empty to create the app on your own account.</span></p>
-  <p><button class="btn">create the github app</button></p>
+  <p><button class="btn">Create the GitHub App</button></p>
 </form>
 <p class="muted">{{if .Hooks}}GitHub will send updates to <code>{{.Base}}/webhook/github</code>.{{else}}GitHub can't reach <code>{{.Base}}</code>, so the app is created with webhooks off and Cowboy checks for changes every few minutes. Set <code>PUBLIC_URL</code> to an https address GitHub can reach to get updates instantly.{{end}} It asks for pull requests and issues (read and write), contents, checks and metadata (read). It never merges, closes, approves or pushes code.</p>
 </details>
@@ -84,22 +84,22 @@
 {{end}}{{template "foot" .}}{{end}}
 
 {{define "setup-go"}}{{template "head" .}}{{with .Data}}
-<section class="hero"><h1>off to github</h1></section>
+<section class="hero"><h1>Off to GitHub</h1></section>
 <section class="box">
 <form id="to-github" method="post" action="{{.Action}}">
   <input type="hidden" name="manifest" value="{{.Manifest}}">
   <p>Taking you to GitHub to create the app. If nothing happens, press the button.</p>
-  <p><button class="btn">continue to github</button></p>
+  <p><button class="btn">Continue to GitHub</button></p>
 </form>
 </section>
 <script src="/static/setup.js"></script>
 {{end}}{{template "foot" .}}{{end}}
 
 {{define "setup-done"}}{{template "head" .}}
-<section class="hero"><h1>connected</h1></section>
+<section class="hero"><h1>Connected</h1></section>
 <section class="box">
 <p>Cowboy is listing the repos you picked and sorting their open pull requests. They'll appear in the corral in a moment.</p>
-<p><a id="go-corral" class="btn" href="/">open the corral</a></p>
+<p><a id="go-corral" class="btn" href="/">Open the corral</a></p>
 </section>
 <script src="/static/setup.js"></script>
 {{template "foot" .}}{{end}}

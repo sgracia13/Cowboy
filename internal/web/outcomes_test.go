@@ -63,7 +63,7 @@ func pens(i int) score.Pen {
 
 func TestOutcomesCheckInsufficient(t *testing.T) {
 	body := outcomesPageWith(t, 300, pens, func(i int) bool { return i%60 == 0 })
-	if !strings.Contains(body, "insufficient evidence") || !strings.Contains(body, "of 20 needed") {
+	if !strings.Contains(body, "Not enough evidence yet") || !strings.Contains(body, "of 20 needed") || !strings.Contains(body, "Not enough trouble yet to judge the rules") {
 		t.Error("few events should say insufficient evidence")
 	}
 	if strings.Contains(body, "outperformed") {
@@ -74,7 +74,7 @@ func TestOutcomesCheckInsufficient(t *testing.T) {
 func TestOutcomesCheckOutperformed(t *testing.T) {
 	// careful PRs have trouble far more often
 	body := outcomesPageWith(t, 1000, pens, func(i int) bool { return (i%10 == 0 && i%20 == 0) || i%300 == 7 })
-	if !strings.Contains(body, "<b>outperformed</b>: careful prs had trouble") {
+	if !strings.Contains(body, "Against a random pick: outperformed") || !strings.Contains(body, "more than chance would explain") {
 		t.Errorf("a strong rule should outperform chance:\n%s", section(body))
 	}
 }
@@ -83,7 +83,7 @@ func TestOutcomesCheckNoAdvantage(t *testing.T) {
 	// trouble unrelated to the pen
 	body := outcomesPageWith(t, 1000, pens, func(i int) bool { return (i*7919)%37 == 3 })
 	s := section(body)
-	if !strings.Contains(s, "no demonstrated advantage") || strings.Contains(s, "<b>outperformed</b>: careful") {
+	if !strings.Contains(s, "Against a random pick: no demonstrated advantage") || strings.Contains(s, "Against a random pick: outperformed") {
 		t.Errorf("a coin-flip rule shouldn't outperform:\n%s", s)
 	}
 }
