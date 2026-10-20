@@ -68,7 +68,7 @@ where they land:
 
 the demo also shows **local model notes** from prewritten answers, so you can see the feature without a model server. look at #506: the rules say normal, but the model notices the agent also changed `send()` for every caller, which the issue never asked for. #530 gets flagged the same way.
 
-click any pr to see what was measured and the one comment Cowboy would post, and to move it to another pen (that gets counted in the tally). the link **see it on the demo git host** shows the pr the way github or forgejo would: just the labels, that comment and a review request.
+click any pr to see what was measured and the one comment Cowboy would post, and to move it to another pen (that gets counted in the tally). on the corral you can also drag a card to another pen, with a few seconds to undo. the link **see it on the demo git host** shows the pr the way github or forgejo would: just the labels, that comment and a review request.
 
 send it a real signed webhook while the demo runs:
 
@@ -415,7 +415,7 @@ testdata/           sample repo + 10 sample prs with expected pens
 - review requests skip teams (`@org/team`); users only
 - after-merge tracking has been run against a stand-in for github, sentry and pagerduty, and revert detection against real history; not yet on a live repo for 30 days
 - releases are matched to prs by time (merged before the release was published), not by walking the git history
-- gitea/forgejo label changes aren't read back as corrections yet (github's are); use the corral's move buttons
+- gitea/forgejo label changes aren't read back as corrections yet (github's are); drag the card to another pen on the corral, or use the move buttons
 - the weekly tally goes to a slack-style webhook or email; teams/discord-native formats aren't built
 - model notes are tested against a stand-in server; try them with your own model before trusting the wording
 - the model's "off task" note is advice only; an opt-in rule to send off-task prs to careful isn't built

@@ -1,11 +1,14 @@
 {{template "head" .}}
 <div id="ticker" class="ticker" aria-live="polite"><span class="dot"></span><span id="ticker-text">Listening for pull requests…</span></div>
 <div id="live">{{template "corral-live" .Data}}</div>
+<div id="move-toast" class="move-toast" role="status" aria-live="polite" hidden><span id="move-text"></span><button type="button" id="move-undo" class="btn ghost">Undo</button></div>
 <script src="/static/live.js"></script>
+<script src="/static/drag.js"></script>
 {{template "foot" .}}
 {{define "corral-live"}}
 <section class="hero">
-  <h1>{{.Total}} {{if eq .Total 1}}pull request{{else}}pull requests{{end}} in the corral</h1>
+  <div><h1>{{.Total}} {{if eq .Total 1}}pull request{{else}}pull requests{{end}} in the corral</h1>
+  <p class="drag-hint">Drag a card to another pen to move it.</p></div>
   <form method="post" action="/sweep"><button class="btn ghost">Check for strays</button></form>
 </section>
 {{if gt (len .Repos) 1}}<p class="repos">{{range .Repos}}<a href="/?repo={{.}}">{{.}}</a> {{end}}<a href="/">All repos</a></p>{{end}}

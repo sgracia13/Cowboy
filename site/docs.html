@@ -293,7 +293,7 @@ REPOS=your-group/your-project cowboy serve</pre>
 <li>Create an access token with read and write access to <b>repository</b> and <b>issue</b>.</li>
 <li>Add a webhook with the URL <span class="d-c">https://cowboy.your-domain.com/webhook/forgejo</span> (or <span class="d-c">/webhook/gitea</span>), content type <span class="d-c">application/json</span>, your secret, and <b>pull request</b> events.</li>
 </ul>
-<p>One difference: on Forgejo and Gitea, changing a <span class="d-c">cowboy:</span> label by hand isn't read back as a correction yet. Use the move buttons on the dashboard instead.</p>
+<p>One difference: on Forgejo and Gitea, changing a <span class="d-c">cowboy:</span> label by hand isn't read back as a correction yet. Drag the card to another pen on the dashboard, or use the move buttons, instead.</p>
 </section>
 
 <!-- 5 settings -->
@@ -438,7 +438,7 @@ REPOS=your-group/your-project cowboy serve</pre>
 <section id="dashboard">
 <h2>The dashboard</h2>
 <ul>
-<li><b>Corral</b>: every open pull request in its pen, agent work tagged, with doubles and strays flagged at the top. It updates live; the yellow dot in the header means it's connected.</li>
+<li><b>Corral</b>: every open pull request in its pen, agent work tagged, with doubles and strays flagged at the top. It updates live; the yellow dot in the header means it's connected. Drag a card to another pen to move it: you get a few seconds to undo before the label changes. On a phone or with a keyboard, use the buttons on the pull request page.</li>
 <li><b>Pull request page</b>: click any card. Shows why it's in its pen, what Cowboy measured, local model notes if you have a model, and the comment it posted. Use the buttons to move it to another pen; Cowboy updates the label and counts the move in the tally.</li>
 <li><b>Tally</b>: the last 7 days by agent, with pull requests from people as one row: how many pull requests, in which pens, doubles, strays, shortcuts and how often your team moved one. It can be sent to Slack or by email every week (below), and has a ready-to-paste version too.</li>
 <li><b>Rules</b>: the rules each repo is using, and the model and agent check settings.</li>
