@@ -150,17 +150,35 @@ func (c *Client) Ping() (string, error) {
 	return c.complete("Reply with the single word: ok", "ping")
 }
 
+// Sampling settings for every request: as repeatable as the server allows.
+const (
+	Temperature = 0
+	Seed        = 7
+)
+
 func (c *Client) complete(sys, user string) (string, error) {
+	r, err := c.chat(sys, user)
+	return r.Content, err
+}
+
+// reply is the server's answer, with what it says it ran.
+type reply struct {
+	Content     string
+	Served      string // the "model" field of the response
+	Fingerprint string // "system_fingerprint", when the server sends one
+}
+
+func (c *Client) chat(sys, user string) (reply, error) {
 	req := map[string]any{
 		"model":       c.Model,
-		"temperature": 0,
-		"seed":        7,
+		"temperature": Temperature,
+		"seed":        Seed,
 		"messages":    []map[string]string{{"role": "system", "content": sys}, {"role": "user", "content": user}},
 	}
 	b, _ := json.Marshal(req)
 	r, err := http.NewRequest("POST", c.BaseURL+"/v1/chat/completions", bytes.NewReader(b))
 	if err != nil {
-		return "", err
+		return reply{}, err
 	}
 	r.Header.Set("Content-Type", "application/json")
 	if c.Key != "" {
@@ -168,22 +186,24 @@ func (c *Client) complete(sys, user string) (string, error) {
 	}
 	resp, err := c.HTTP.Do(r)
 	if err != nil {
-		return "", fmt.Errorf("can't reach the model server at %s: %w", c.BaseURL, err)
+		return reply{}, fmt.Errorf("can't reach the model server at %s: %w", c.BaseURL, err)
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("model server said %d: %s", resp.StatusCode, strings.TrimSpace(string(data)))
+		return reply{}, fmt.Errorf("model server said %d: %s", resp.StatusCode, strings.TrimSpace(string(data)))
 	}
 	var out struct {
-		Choices []struct {
+		Model       string `json:"model"`
+		Fingerprint string `json:"system_fingerprint"`
+		Choices     []struct {
 			Message struct{ Content string } `json:"message"`
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || len(out.Choices) == 0 {
-		return "", fmt.Errorf("unexpected reply from model server")
+		return reply{}, fmt.Errorf("unexpected reply from model server")
 	}
-	return out.Choices[0].Message.Content, nil
+	return reply{Content: out.Choices[0].Message.Content, Served: out.Model, Fingerprint: out.Fingerprint}, nil
 }
 
 var jsonObj = regexp.MustCompile(`(?s)\{.*\}`)

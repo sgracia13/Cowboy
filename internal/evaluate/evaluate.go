@@ -28,6 +28,10 @@ type Item struct {
 	Safe    bool // the rule called it safe (e.g. easy)
 	Lines   int
 	Files   int
+	// Score is a model's risk score for the PR (higher = riskier), for
+	// CompareAI; Scored says one exists. Evaluate ignores both.
+	Score  float64
+	Scored bool
 }
 
 // Verdict words. No pass/fail badges: a result is one of these.
