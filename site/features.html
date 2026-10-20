@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cowboy features</title>
-<meta name="description" content="What Cowboy does: sorts pull requests as they arrive, then looks back after merge to test whether the rules earned their place.">
+<meta name="description" content="What Cowboy does: sorts pull requests as they arrive, looks back after merge to test whether the rules earned their place, shows which habits pay off in your repo, and guides your coding agents.">
 <meta property="og:title" content="Cowboy features">
-<meta property="og:description" content="What Cowboy does: sorts pull requests as they arrive, then looks back after merge to test whether the rules earned their place.">
+<meta property="og:description" content="What Cowboy does: sorts pull requests as they arrive, looks back after merge to test whether the rules earned their place, shows which habits pay off in your repo, and guides your coding agents.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd400'/%3E%3Crect x='3' y='5' width='10' height='6' fill='%23111'/%3E%3Crect x='4' y='11' width='2' height='3' fill='%23111'/%3E%3Crect x='10' y='11' width='2' height='3' fill='%23111'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -141,7 +141,7 @@ a{color:#111111}a:hover{color:#000000}
 <!-- intro -->
 <section style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 64px; display: flex; flex-direction: column; gap: 20px">
 <h1 style="margin: 0; font-size: clamp(46px, 8vw, 104px); line-height: 1; font-weight: 800; letter-spacing: -0.055em; max-width: 1000px">Sort what’s coming. Check what happened.</h1>
-<p style="margin: 0; font-size: clamp(18px, 2.2vw, 24px); max-width: 700px">Cowboy does two things at once. It sorts every new pull request as it arrives, so you know where to look first. And it looks back at the ones that merged, to see what went wrong and whether the sorting, or any rule of yours, would have caught it. The screens here come from the demo that ships with Cowboy, which runs on a made-up repo, except where a caption says otherwise. All of it is free. This is a preview release: the last section says what's tested and what isn't yet.</p>
+<p style="margin: 0; font-size: clamp(18px, 2.2vw, 24px); max-width: 700px">Cowboy sorts every new pull request as it arrives, so you know where to look first. It looks back at the ones that merged, to see what went wrong and whether the sorting, or any rule of yours, would have caught it. And it shows which of your team's habits pay off in your repo, then turns all of that into instructions your coding agents follow. The screens here come from the demo that ships with Cowboy, which runs on a made-up repo, except where a caption says otherwise. All of it is free. This is a preview release: the last section says what's tested and what isn't yet.</p>
 </section>
 
 <!-- divider -->
@@ -426,6 +426,79 @@ a{color:#111111}a:hover{color:#000000}
 </div>
 </section>
 
+<!-- habits -->
+<section style="background: #fffdf2; border-top: 3px solid #111111">
+<div class="f-in">
+<div class="f-text">
+<h2>Your team's habits, judged on your history.</h2>
+<p>How often pull requests here change tests with code, avoid shortcuts, stay a reviewable size, get reviewed and merge with checks green. And whether each habit went with less trouble after merge, in this repo.</p>
+<ul>
+<li>A share for each habit over the last 90 days, next to the 90 days before.</li>
+<li>The same verdicts as the rest of Cowboy: holds here, did worse here, no demonstrated difference, not enough evidence yet. Size is held fixed.</li>
+<li>When a habit your team requires shows no difference and the range is tight, it says so: that rule may be a ritual worth dropping.</li>
+<li>Numbers for the whole team, never per person.</li>
+<li>Why per repo: across nine public repos, <a href="evidence.html#practices">no habit went with fewer reverts everywhere</a>.</li>
+</ul>
+</div>
+<div class="f-shot">
+<div class="ui ui-win" role="img" aria-label="the Habits page for next.js: tests with code in 59% of pull requests, did worse here, 2.80 times as often; no shortcuts in 82%, no demonstrated difference, range too wide; reviewed before merge, not enough evidence yet">
+<div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">cowboy.yourhost/habits</span></div>
+<div class="ui-top"><span class="ui-brand">cowboy</span><span class="ui-nav"><span>Corral</span><span>Rules</span><span>After merge</span><span class="on">Habits</span></span><span class="ui-where"><span class="ui-dot"></span><span class="long">On your ranch</span></span></div>
+<div class="ui-main">
+<p class="ui-h1" style="margin-bottom: 4px">Habits</p>
+<p style="margin: 0 0 6px; font-size: 11px">vercel/next.js · 544 merged pull requests in the last 90 days</p>
+<div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 44px; gap: 10px; align-items: center; margin: 9px 0 2px"><span><b>Tests with code</b></span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 59%; background:#111111"></span></span><b style="text-align: right">59%</b></div><p style="margin: 0 0 2px; font-size: 11px">238 of 405 · 53% the 90 days before</p>
+<div class="ui-r"><b>Did worse here</b><span>Had trouble 2.80× as often (likely 1.24× to 10.52×). Worth a look at why.</span></div>
+<div style="display: grid; grid-template-columns: minmax(96px, 150px) minmax(0,1fr) 44px; gap: 10px; align-items: center; margin: 9px 0 2px"><span><b>No shortcuts</b></span><span style="height: 16px; border: 2px solid #111111; background: #ffffff"><span style="display: block; height: 100%; width: 82%; background:#111111"></span></span><b style="text-align: right">82%</b></div><p style="margin: 0 0 2px; font-size: 11px">332 of 405 · 85% the 90 days before</p>
+<div class="ui-r lt"><b>No difference</b><span>Likely 0.54× to 7.08×: too wide to say either way yet.</span></div>
+<div class="ui-r lt" style="margin-top: 12px"><b>Reviewed</b><span>Not enough evidence yet: approvals are read when a pull request merges.</span></div>
+</div></div>
+<p style="margin: 12px 0 0; font-size: 14px">Real numbers from the next.js history in the demo. “Did worse here” is a question to look into, not a reason to write fewer tests.</p>
+</div>
+</div>
+</section>
+
+<!-- guide your agents -->
+<section style="background: #ffd400; border-top: 3px solid #111111">
+<div class="f-in">
+<div class="f-text">
+<h2>Guide your agents.</h2>
+<p>Coding agents follow the instructions file in your repo. Cowboy writes a section for it from what it already knows, so agents open pull requests your team can review quickly.</p>
+<ul>
+<li>Which paths and files get a careful review, and the size that gets the quickest one.</li>
+<li>The shortcuts Cowboy flags, only for the checks you have switched on.</li>
+<li>This team's habits, with evidence quoted only where your history backs it.</li>
+<li>How to say an agent helped, so reviewers know what they're reading.</li>
+<li>Copy or download it from the Habits page, or run <span style="font-family: 'Geist Mono', monospace">cowboy guide --write AGENTS.md</span>. It replaces only its own section, between markers. Cowboy never commits it for you.</li>
+</ul>
+</div>
+<div class="f-shot">
+<div class="ui ui-win" role="img" aria-label="an AGENTS.md file with the Cowboy section: what gets a closer review, shortcuts not to take, this team's habits, and how to say an agent helped">
+<div class="ui-chrome" aria-hidden="true"><i></i><i></i><i></i><span class="ui-url">AGENTS.md</span></div>
+<pre class="ui-code" style="white-space: pre-wrap">&lt;!-- cowboy:guide start --&gt;
+## Working in vercel/next.js
+
+### What gets a closer review
+- Changes under `auth/**`, `migrations/**`, `payments/**` are sent for careful review. Keep them small.
+- Pull requests of 50 lines or fewer, in 2 folders or fewer, get the quickest review. One concern per PR.
+
+### Don't take these shortcuts
+- Don't silence warnings or type errors to get checks passing. Fix the cause, or say why the warning is wrong.
+- Don't skip or delete tests to get a change through.
+
+### This team's habits (last 90 days)
+- **Tests with code**: 59% of pull requests here do this.
+- **No shortcuts**: 82% of pull requests here do this.
+
+### Say when an agent helped
+- Add a Co-authored-by trailer naming the agent.
+&lt;!-- cowboy:guide end --&gt;</pre>
+</div>
+<p style="margin: 12px 0 0; font-size: 14px">Shortened. The full section lists every careful path and shortcut check.</p>
+</div>
+</div>
+</section>
+
 <!-- 07 tally -->
 <section style="background: #fffdf2; border-top: 3px solid #111111">
 <div class="f-in">
@@ -567,6 +640,7 @@ a{color:#111111}a:hover{color:#000000}
 <li>GitLab, on gitlab.com or your own server: tested against a stand-in for GitLab's API, not yet gitlab.com.</li>
 <li>Forgejo and Gitea.</li>
 <li>Storage in SQLite, saved change by change. An older install's data file is moved over by itself on first start.</li>
+<li>The Habits page and the agent guide: covered by tests and run on the demo's next.js history. Reviews and checks need a live install to fill in.</li>
 <li>Local model notes and the "off task?" flag.</li>
 <li>Review requests to code owners, and strays: covered by tests, not yet seen on a live repo.</li>
 <li>The experimental check for pull requests with no agent mark.</li>

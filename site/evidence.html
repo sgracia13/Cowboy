@@ -105,7 +105,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <h1 style="margin: 0; font-size: clamp(46px, 8vw, 100px); line-height: 1; font-weight: 800; letter-spacing: -0.055em; max-width: 1050px">Does the sorting work? Here’s what we checked.</h1>
 <p style="margin: 0; font-size: clamp(18px, 2.2vw, 24px); max-width: 780px; line-height: 1.45">Four rounds, eleven public repos, about 28,000 merged pull requests, and the claims written down before each round ran. All of it is below, including what failed.</p>
 <div style="background: #111111; color: #fffdf2; padding: 22px 24px; max-width: 900px; font-size: clamp(17px, 1.9vw, 21px); line-height: 1.5; box-shadow: 10px 10px 0 #fffdf2">
-<b style="color: #ffd400">Short answer.</b> Not proven yet. The careful pen has not beaten chance in any round: not the original rules, not revised ones, and not rules fitted to each repo’s own history. The easy pen held up pooled in every round, but in one repo (Kibana) it didn’t. Round 4 measured effort in lines read instead of pull requests flagged, and the careful pen did <i>worse</i> than random there: a 10-line PR was about as likely to be reverted as a 1,000-line one. What works so far is the measuring: Cowboy can show any repo what actually got reverted, and whether a rule would have caught it.
+<b style="color: #ffd400">Short answer.</b> Not proven yet. The careful pen has not beaten chance in any round: not the original rules, not revised ones, and not rules fitted to each repo’s own history. The easy pen held up pooled in every round, but in one repo (Kibana) it didn’t. Round 4 measured effort in lines read instead of pull requests flagged, and the careful pen did <i>worse</i> than random there: a 10-line PR was about as likely to be reverted as a 1,000-line one. What works so far is the measuring: Cowboy can show any repo what actually got reverted, and whether a rule would have caught it. A separate test of common habits found none that went with fewer reverts everywhere, so habits are judged per repo too.
 </div>
 </div>
 </section>
@@ -157,10 +157,32 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 </div>
 </section>
 
+<!-- practices -->
+<section class="e-sec" id="practices">
+<div class="e-wrap">
+<p class="e-k">03 · Habits</p>
+<h2 class="e-h2">Do good habits mean fewer reverts? Not everywhere.</h2>
+<p class="e-lead">We asked whether three habits visible in git history go with fewer reverts: no shortcuts (no silenced warnings, skipped tests and the like), tests changed with the code, and linking an issue. Claims were written first; the counted repos were PyTorch, Ray and Playwright (1,699 reverted pull requests among source changes), with six more repos from earlier rounds reported but not counted. Size was held fixed.</p>
+<div class="e-board">
+<div class="e-row e4 hd e-l4"><div>habit, with ÷ without</div><div class="e-rc">as pre-registered</div><div class="e-rc">after the checks</div><div class="e-rc">verdict</div></div>
+<div class="e-row e4 e-l4"><div class="e-rt"><span class="e-n">1</span>No shortcuts</div><div class="e-rc">0.76×</div><div class="e-rc">0.87× (0.76× to 1.00×)</div><div class="e-rc"><span class="e-chip ok">barely holds*</span></div></div>
+<div class="e-row e4 e-l4"><div class="e-rt"><span class="e-n">2</span>Tests with code</div><div class="e-rc">1.38×</div><div class="e-rc">1.38× (1.20× to 1.58×)</div><div class="e-rc"><span class="e-chip no">reverted more</span></div></div>
+<div class="e-row e4 e-l4"><div class="e-rt"><span class="e-n">3</span>Links an issue</div><div class="e-rc">1.18×</div><div class="e-rc">1.00× (0.88× to 1.14×)</div><div class="e-rc"><span class="e-chip no">no difference</span></div></div>
+</div>
+<p style="margin: 18px 0 0; font-size: 15px; max-width: 820px">* An independent recomputation matched the pre-registered numbers, then found two flaws: 175 PyTorch relands were counted as reverted, and most “issue links” in PyTorch were references to other pull requests in a stack. The corrected numbers are in the second column. PyTorch supplies 1,629 of the 1,699 reverts, so it decides the pooled result; without it, no habit reaches a verdict.</p>
+<div class="e-cols" style="margin-top: 28px">
+<div class="e-box"><h3>Why tests “did worse”</h3><p>PyTorch’s merge bot reverts fast, mostly for breaking tests or internal builds. A pull request that changes tests is likelier to break tests. That says what PyTorch reverts for, not that writing tests is a bad habit.</p></div>
+<div class="e-box"><h3>What we built from it</h3><p>No cross-team “practices score”: the data doesn’t support one. Cowboy’s Habits page shows each repo its own shares, and only says a habit “holds here” when that repo’s history shows it.</p></div>
+<div class="e-box"><h3>What this can’t tell</h3><p>Reviews, approvals, checks before merge and disclosed agent help aren’t in git history, so they weren’t tested. A live Cowboy install reads them from the git host.</p></div>
+</div>
+<p style="margin: 22px 0 0; font-size: 15px"><a href="https://github.com/sgracia13/Cowboy/blob/main/scripts/eval/evidence/CLAIMS-practices.md">The claims, written first</a> · <a href="https://github.com/sgracia13/Cowboy/blob/main/scripts/eval/evidence/RESULTS-practices.md">full results and checks</a></p>
+</div>
+</section>
+
 <!-- latest round -->
 <section class="e-sec" style="background: #f8f5e6">
 <div class="e-wrap">
-<p class="e-k">03 · Rounds 2 and 3, in numbers</p>
+<p class="e-k">04 · Rounds 2 and 3, in numbers</p>
 <h2 class="e-h2">Fresh repos: revised rules, then fitted ones.</h2>
 <p class="e-lead">151 later-reverted PRs across next.js, Airflow and Kibana, six times as many as the first held-out test. Rates are weighted back to each repo’s real mix of PRs.</p>
 <div class="e-tablewrap">
@@ -182,7 +204,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- each claim -->
 <section class="e-sec" style="background: #f8f5e6">
 <div class="e-wrap">
-<p class="e-k">04 · Round 1, claim by claim</p>
+<p class="e-k">05 · Round 1, claim by claim</p>
 <h2 class="e-h2">The result, and how sure it is.</h2>
 <p class="e-lead">Each bar is the range the result could plausibly fall in (a 95% bootstrap range, 2,000 resamples). If the bar crosses the dashed line, the claim isn’t shown.</p>
 <div class="e-claims">
@@ -278,7 +300,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- where reverts landed -->
 <section class="e-sec">
 <div class="e-wrap">
-<p class="e-k">05 · Round 1: where the reverts landed</p>
+<p class="e-k">06 · Round 1: where the reverts landed</p>
 <h2 class="e-h2">Share of later-reverted PRs each method would have flagged.</h2>
 <p class="e-lead">Give every method the same budget: the share of PRs Cowboy put in careful. Then count how many of the PRs that were later reverted each one caught.</p>
 <div class="e-recalls">
@@ -290,7 +312,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- per pen -->
 <section class="e-sec" style="background: #f8f5e6">
 <div class="e-wrap">
-<p class="e-k">06 · Round 1: per pen, per repo</p>
+<p class="e-k">07 · Round 1: per pen, per repo</p>
 <h2 class="e-h2">How often PRs in each pen were reverted within 30 days.</h2>
 <p class="e-lead">Weighted back to each repo’s real mix of PRs. Reverts are rare everywhere, so small differences matter. Read the PostHog row as a warning: its careful pen took 38% of all PRs and was reverted less often than average.</p>
 <div class="e-tablewrap">
@@ -311,7 +333,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- how -->
 <section class="e-sec">
 <div class="e-wrap">
-<p class="e-k">07 · How the tests work</p>
+<p class="e-k">08 · How the tests work</p>
 <h2 class="e-h2">Plan first, data second.</h2>
 <div class="e-cols">
 <div class="e-box"><h3>The claims were written down first</h3><p>The four claims, the alternatives and the pass mark were committed to the repo <a href="https://github.com/sgracia13/Cowboy/commit/b9251e0">before the comparison ran</a>. The commit time is the proof. The plan also said: if a claim fails, this page says so.</p></div>
@@ -324,7 +346,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- trust -->
 <section class="e-sec" style="background: #f8f5e6">
 <div class="e-wrap">
-<p class="e-k">08 · Can you trust the measuring?</p>
+<p class="e-k">09 · Can you trust the measuring?</p>
 <h2 class="e-h2">The parts were checked against outside tools.</h2>
 <div class="e-cols">
 <div class="e-box"><h3>Blast radius</h3><div class="e-big">100%</div><p>of 250,319 JavaScript and TypeScript imports in Sentry, Grafana and n8n found, and wherever the TypeScript compiler could resolve an import, 99.9% or more went to the same file it picks. Every file TypeScript says has 20+ importers, Cowboy caught. Python imports matched Python’s own parser.</p></div>
@@ -337,7 +359,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- limits -->
 <section class="e-sec e-dark">
 <div class="e-wrap">
-<p class="e-k">09 · What this doesn’t show</p>
+<p class="e-k">10 · What this doesn’t show</p>
 <h2 class="e-h2">Read these before quoting a number.</h2>
 <div class="e-cols two">
 <div class="e-box"><h3>Tuned in-sample</h3><p>The rules were adjusted while looking at Sentry, Grafana and n8n. The held-out test is the fairer one, and it’s the weaker result.</p></div>
@@ -351,7 +373,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- next -->
 <section class="e-sec">
 <div class="e-wrap">
-<p class="e-k">10 · What happens next</p>
+<p class="e-k">11 · What happens next</p>
 <h2 class="e-h2">Stop guessing what’s risky. Show each team what was.</h2>
 <div class="e-cols">
 <div class="e-box"><h3>Lead with the measuring</h3><p>Three rounds say no fixed rule set, and no simple fit, reliably finds risky PRs across repos. What did work every time is the part that measures: finding what got reverted, tying it back to the PR, and checking any rule against it. That’s what Cowboy will lead with.</p></div>
@@ -364,7 +386,7 @@ pre.e-code{background:#111111;color:#ffd400;border:3px solid #111111;padding:18p
 <!-- rerun -->
 <section class="e-sec" style="background: #f8f5e6">
 <div class="e-wrap">
-<p class="e-k">11 · Run it yourself</p>
+<p class="e-k">12 · Run it yourself</p>
 <h2 class="e-h2">Every number here comes from scripts in the repo.</h2>
 <p class="e-lead">The <a href="https://github.com/sgracia13/Cowboy/tree/main/scripts/eval/evidence">evidence folder</a> has the claims, the results and the comparison script. Collect a repo’s PRs, sort them, replay the after-merge engine, then compare:</p>
 <pre class="e-code">git clone --filter=blob:none --bare https://github.com/OWNER/REPO repo.git

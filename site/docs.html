@@ -80,6 +80,7 @@ a{color:#111111}a:hover{color:#000000}
 <li><a href="#quick-start">Quick start</a></li>
 <li><a href="#your-repo">Try it on your repo</a></li>
 <li><a href="#run">Run it for your team</a></li>
+<li><a href="#gitlab">GitLab</a></li>
 <li><a href="#forgejo">Forgejo and Gitea</a></li>
 <li><a href="#settings">Settings</a></li>
 <li><a href="#sorting">How sorting works</a></li>
@@ -87,6 +88,7 @@ a{color:#111111}a:hover{color:#000000}
 <li><a href="#agents">Recognizing agents</a></li>
 <li><a href="#dashboard">The dashboard</a></li>
 <li><a href="#after">After merge</a></li>
+<li><a href="#habits">Habits and agent guide</a></li>
 <li><a href="#writes">What Cowboy writes and stores</a></li>
 <li><a href="#model">Local model notes</a></li>
 <li><a href="#cli">Command line</a></li>
@@ -107,8 +109,9 @@ a{color:#111111}a:hover{color:#000000}
 <li><b>careful</b>: risky changes a code owner should look at.</li>
 </ul>
 <p>It picks the pen with fixed rules, so the same pull request always lands in the same pen, and it writes down why. It also flags <b>doubles</b> (two agents doing the same work) and <b>strays</b> (an agent that went quiet after you asked for changes).</p>
+<p>It looks back at what merged, to show which rules and habits actually went with less trouble in your repo, and it can turn your rules into instructions your coding agents follow.</p>
 <p>Cowboy runs on your own server. It only reads your pull requests and adds labels, one comment and review requests. It never merges, closes or reviews code, and your code isn't sent anywhere except an optional model server you run yourself.</p>
-<div class="d-note"><b>Preview release.</b> The sorting rules, labels, comments, doubles and the catch-up sweep are tested on real repos with GitHub. Forgejo and Gitea, the local model notes and the check for unmarked agent pull requests are in preview. See <a href="#limits">Limits of this preview</a>.</div>
+<div class="d-note"><b>Preview release.</b> The sorting rules, labels, comments, doubles and the catch-up sweep are tested on real repos with GitHub. GitLab, Forgejo and Gitea, the Habits page, the local model notes and the check for unmarked agent pull requests are in preview. See <a href="#limits">Limits of this preview</a>.</div>
 </section>
 
 <!-- 2 quick start -->
@@ -258,6 +261,21 @@ WantedBy=multi-user.target</pre>
 <p>On stop, Cowboy finishes the work already queued before it exits.</p>
 </section>
 
+<!-- gitlab -->
+<section id="gitlab">
+<h2>GitLab <span class="d-tag">preview</span></h2>
+<p>GitLab.com and self-managed GitLab both work. Merge requests are sorted, labelled and commented on like pull requests, and after-merge tracking reads the default branch, releases and pipelines.</p>
+<pre class="d-code">FORGE=gitlab FORGE_URL=https://gitlab.com FORGE_TOKEN=glpat-... WEBHOOK_SECRET=... \
+REPOS=your-group/your-project cowboy serve</pre>
+<ul>
+<li><b>Token:</b> a personal, project or group access token with the <span class="d-c">api</span> scope (or <span class="d-c">read_api</span> with <span class="d-c">DRY_RUN=1</span> to only look). Project and group tokens show up as a bot user, which keeps Cowboy's labels apart from people's.</li>
+<li><b>Repos:</b> the project's full path, subgroups included: <span class="d-c">acme/platform/web</span>.</li>
+<li><b>Webhook:</b> project → Settings → Webhooks, URL <span class="d-c">https://cowboy.your-domain.com/webhook/gitlab</span>, secret token = <span class="d-c">WEBHOOK_SECRET</span>, triggers: merge request events and pipeline events.</li>
+<li><b>Reverts:</b> GitLab's Revert button, <span class="d-c">git revert</span> and revert merge requests are all traced back to the merge request they undid.</li>
+</ul>
+<p>Limits: strays need a GitLab version that records "requested changes" on reviewers. If GitLab refuses several reviewers (a paid GitLab feature), Cowboy asks the first code owner only. Tested against a stand-in for GitLab's API, not yet against gitlab.com itself.</p>
+</section>
+
 <!-- 4 forgejo -->
 <section id="forgejo">
 <h2>Forgejo and Gitea <span class="d-tag">preview</span></h2>
@@ -275,7 +293,7 @@ WantedBy=multi-user.target</pre>
 <h2>Settings</h2>
 <p>Cowboy is configured with environment variables. On a server you need a way to sign in (UI_PASSWORD or AUTH_PROXY_HEADER). With the GitHub App, add PUBLIC_URL; with a token, add FORGE_TOKEN and WEBHOOK_SECRET. Everything else has a default.</p>
 <div class="d-scroll"><table class="d-tbl"><thead><tr><th>Variable</th><th>What it does</th></tr></thead><tbody>
-<tr><td>FORGE</td><td><span class="d-c">github</span> (default), <span class="d-c">forgejo</span> or <span class="d-c">gitea</span></td></tr>
+<tr><td>FORGE</td><td><span class="d-c">github</span> (default), <span class="d-c">gitlab</span>, <span class="d-c">forgejo</span> or <span class="d-c">gitea</span></td></tr>
 <tr><td>FORGE_TOKEN</td><td>a token (required on Forgejo and Gitea; leave it empty on GitHub to use the GitHub App)</td></tr>
 <tr><td>WEBHOOK_SECRET</td><td>the secret your webhooks are signed with (required with a token; the GitHub App brings its own)</td></tr>
 <tr><td>PUBLIC_URL</td><td>the HTTPS address GitHub can reach Cowboy at, e.g. <span class="d-c">https://cowboy.your-domain.com</span>. Used for the GitHub App's webhooks and links in the weekly tally</td></tr>
@@ -291,7 +309,7 @@ WantedBy=multi-user.target</pre>
 <tr><td>REPO_PATHS</td><td><span class="d-c">owner/repo=/path,...</span>: read blast radius from local copies instead of downloading</td></tr>
 <tr><td>DRY_RUN</td><td><span class="d-c">1</span> sorts and shows, but writes nothing to your git host</td></tr>
 <tr><td>CATCHUP_MINUTES</td><td>how often the catch-up sweep runs (default 5)</td></tr>
-<tr><td>DATA</td><td>where Cowboy keeps its data file (default <span class="d-c">./data/cowboy.json</span>; <span class="d-c">/data/cowboy.json</span> in Docker)</td></tr>
+<tr><td>DATA</td><td>where Cowboy keeps its data (default <span class="d-c">./data/cowboy.json</span>; <span class="d-c">/data/cowboy.json</span> in Docker). The databases sit next to it as <span class="d-c">cowboy.db</span> and <span class="d-c">outcomes.db</span></td></tr>
 <tr><td>ADDR</td><td>the address to listen on (default <span class="d-c">:8080</span>)</td></tr>
 <tr><td>MODEL_URL</td><td>your model server, e.g. <span class="d-c">http://localhost:11434</span> (optional)</td></tr>
 <tr><td>MODEL_NAME</td><td>the model to use (default <span class="d-c">qwen2.5-coder:7b</span>)</td></tr>
@@ -416,7 +434,9 @@ WantedBy=multi-user.target</pre>
 <li><b>Pull request page</b>: click any card. Shows why it's in its pen, what Cowboy measured, local model notes if you have a model, and the comment it posted. Use the buttons to move it to another pen; Cowboy updates the label and counts the move in the tally.</li>
 <li><b>Tally</b>: the last 7 days by agent, with pull requests from people as one row: how many pull requests, in which pens, doubles, strays, shortcuts and how often your team moved one. It can be sent to Slack or by email every week (below), and has a ready-to-paste version too.</li>
 <li><b>Rules</b>: the rules each repo is using, and the model and agent check settings.</li>
-<li><b>Trail</b>: everything Cowboy did, newest first.</li>
+<li><b>After merge</b>: what happened to merged pull requests, by pen and by rule (<a href="#after">below</a>).</li>
+<li><b>Habits</b>: the habits each repo keeps and the agent guide (<a href="#habits">below</a>).</li>
+<li><b>Activity</b>: everything Cowboy did, newest first.</li>
 </ul>
 <h3>Get the tally every week</h3>
 <p>Cowboy can post the tally to a Slack channel, email it, or both, every Monday at 9:00 by default. Nothing is sent unless you set a destination.</p>
@@ -492,6 +512,25 @@ PUBLIC_URL=https://cowboy.your-domain.com</pre>
 <p>On two years of Sentry, Grafana and n8n history, Cowboy traced 98.8%, 87% and 70% of reverts to the pull request they undid; the rest name no pull request, title or commit. Replayed over 7,721 real merged pull requests from the same repos, the reverts it found matched an independent earlier count on 213 pull requests (8 found only there, 5 only here), and, weighted back to Sentry's real mix of pull requests, 1.42% of careful pull requests were reverted within 30 days against 0.81% of easy ones. Those repos are the ones the rules were tuned on; on Supabase, which the rules never saw, careful PRs were reverted about as often as any other, and on three fresh repos (next.js, Airflow, Kibana) neither revised rules nor rules fitted to each repo beat chance (<a href="evidence.html">the evidence page</a> has all three rounds). Suggested fixes looked right in about 7 in 10 of a sample, which is why a person confirms them. Everything else has been tested against stand-ins for GitHub, Sentry and PagerDuty, not yet on a live repo for 30 days. <a href="https://github.com/sgracia13/Cowboy/tree/main/scripts/eval/outcomes">See the check</a>.</p>
 </section>
 
+<section id="habits">
+<h2>Habits and agent guide <span class="d-tag">preview</span></h2>
+<p>The <b>Habits</b> page shows, for each repo, how often merged pull requests keep five habits, and whether each went with less trouble after merge in that repo:</p>
+<ul>
+<li><b>Tests with code</b>: changes tests alongside source code.</li>
+<li><b>No shortcuts</b>: no silenced warnings, skipped or deleted tests, loosened CI or catch-alls that hide errors.</li>
+<li><b>Reviewable size</b>: under 400 lines of source.</li>
+<li><b>Reviewed before merge</b>: approved by someone other than the author.</li>
+<li><b>Checks green</b>: checks were passing when Cowboy last sorted it.</li>
+</ul>
+<p>Each habit shows its share over the last 90 days and the 90 days before, and a verdict from all rated history: <b>holds here</b>, <b>did worse here</b>, <b>no demonstrated difference</b> or <b>not enough evidence yet</b> (fewer than 20 pull requests with trouble). Size is held fixed, and a verdict needs the whole 95% range to clear the line. When a habit shows no difference and the range is tight (0.8× to 1.25×), the page says a rule requiring it may be a ritual worth questioning; when the range is wide, it says it can't tell yet.</p>
+<p>Numbers are for the whole team, never per person. Across nine public repos <a href="evidence.html#practices">no habit went with fewer reverts everywhere</a>, which is why each repo gets its own answer.</p>
+<h3>Guide your agents</h3>
+<p>Coding agents follow an instructions file in the repo (<span class="d-c">AGENTS.md</span>, <span class="d-c">CLAUDE.md</span> or <span class="d-c">.github/copilot-instructions.md</span>). Cowboy writes a section for it: the paths and files that get a careful review, the size that gets the quickest review, the shortcuts it flags (only the checks you have on), this team's habits, and how to say an agent helped.</p>
+<pre class="d-code">cowboy guide --repo acme/app                     # print it
+cowboy guide --repo acme/app --write AGENTS.md   # put it in the file</pre>
+<p>The section sits between <span class="d-c">&lt;!-- cowboy:guide start --&gt;</span> and <span class="d-c">&lt;!-- cowboy:guide end --&gt;</span>, so running it again replaces only that part. It reads the repo's <span class="d-c">cowboy.json</span> from the current folder (or <span class="d-c">--config</span>). The Habits page has the same text with Copy and Download buttons. Cowboy never commits it for you.</p>
+</section>
+
 <section id="writes">
 <h2>What Cowboy writes and stores</h2>
 <h3>On your git host</h3>
@@ -503,12 +542,12 @@ PUBLIC_URL=https://cowboy.your-domain.com</pre>
 <p>That's all. It never merges, closes, approves or pushes code.</p>
 <h3>On your server</h3>
 <ul>
-<li><span class="d-c">cowboy.json</span> at <span class="d-c">DATA</span>: each decision, its reasons and your team's moves. It's written safely, so a crash never leaves it half-written.</li>
+<li><span class="d-c">cowboy.db</span> next to <span class="d-c">DATA</span>: each decision, its reasons and your team's moves, in SQLite (built in, nothing to install). Every change is saved in a transaction, so a crash never leaves it half-written. A <span class="d-c">cowboy.json</span> from an older version is moved over on first start and kept as <span class="d-c">cowboy.json.migrated</span>.</li>
 <li><span class="d-c">baselines.json</span> next to it: per-author history for the experimental agent check.</li>
 <li><span class="d-c">tally-sent.json</span> next to it, if you send the weekly tally: when each post last went out.</li>
 <li><span class="d-c">settings.json</span> next to it, if you connected on the setup page: the login (a token, or the GitHub CLI's), the repos, the mode and a webhook secret Cowboy made. Readable only by you.</li>
 <li><span class="d-c">github-app.json</span> next to it, if you connected with the GitHub App: the app's id, private key and webhook secret, readable only by Cowboy's user.</li>
-<li><span class="d-c">outcomes.json</span> next to it: merges, outcomes and incidents for <a href="#after">After merge</a>.</li>
+<li><span class="d-c">outcomes.db</span> next to it: merges, outcomes and incidents for <a href="#after">After merge</a>, also SQLite.</li>
 <li><span class="d-c">audit.jsonl</span> next to it: the tamper-evident audit record.</li>
 </ul>
 <h3>Over the network</h3>
@@ -540,6 +579,7 @@ cowboy serve</pre>
 <tr><td>cowboy check-model</td><td>check your model server answers</td></tr>
 <tr><td>cowboy outcomes</td><td>after merge, by pen. <span class="d-c">--check</span> reads the git host now</td></tr>
 <tr><td>cowboy evaluate</td><td>do the pens beat largest-first, most-files and chance? <span class="d-c">--json</span> for every number</td></tr>
+<tr><td>cowboy guide</td><td>instructions for coding agents from this repo's rules and habits: <span class="d-c">--repo owner/repo</span>, <span class="d-c">--write AGENTS.md</span> to put them in a file, <span class="d-c">--days 90</span></td></tr>
 <tr><td>cowboy audit verify</td><td>check the audit record wasn't changed</td></tr>
 <tr><td>cowboy audit export</td><td>the audit record as CSV or JSON: <span class="d-c">--format csv --since 2026-01-01 --repo owner/repo</span></td></tr>
 <tr><td>cowboy benchmark export</td><td>the counts-only summary, to share if you want. <span class="d-c">benchmark report a.json b.json</span> pools several</td></tr>
@@ -580,11 +620,12 @@ cowboy serve</pre>
 <ul>
 <li>One-click GitHub App setup is tested against a stand-in for GitHub's API, not yet against github.com.</li>
 <li>After-merge tracking has been tested against stand-ins for GitHub, Sentry and PagerDuty, and its revert detection against real history, but not yet on a live repo for 30 days. Releases are matched to pull requests by time, not by walking the git history.</li>
-<li>Forgejo and Gitea support is covered by tests but hasn't run against a live server yet.</li>
+<li>GitLab, Forgejo and Gitea support is covered by tests but hasn't run against a live server yet.</li>
 <li>Review requests to code owners and strays are covered by tests but haven't yet been seen on a live repo.</li>
 <li>Review requests go to individual people, not teams like <span class="d-c">@org/team</span>.</li>
 <li>The weekly tally goes to Slack-style webhooks and email; Microsoft Teams and Discord formats aren't built yet.</li>
-<li>Data is kept in a single file, fine for a small team. A database for large organizations isn't built yet.</li>
+<li>Data is kept in SQLite on one server. Running several Cowboy servers against one shared database isn't supported.</li>
+<li>The Habits page reads reviews and checks from live installs only; a backfilled history fills in the code habits first.</li>
 <li>Blast radius for Java and Kotlin reads import lines only (files in the same package use each other without one), and hasn't been checked against a reference tool yet.</li>
 <li>The check for unmarked agent pull requests is experimental and catches few hidden ones.</li>
 <li>The macOS builds aren't signed.</li>
