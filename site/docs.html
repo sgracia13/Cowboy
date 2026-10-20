@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cowboy docs</title>
+<meta name="description" content="Install, configure and run Cowboy: rules, settings, the dashboard, and how outcomes are measured.">
+<meta property="og:title" content="Cowboy docs">
+<meta property="og:description" content="Install, configure and run Cowboy: rules, settings, the dashboard, and how outcomes are measured.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd400'/%3E%3Crect x='3' y='5' width='10' height='6' fill='%23111'/%3E%3Crect x='4' y='11' width='2' height='3' fill='%23111'/%3E%3Crect x='10' y='11' width='2' height='3' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;800&amp;family=Geist+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#fffdf2}
+a{color:#111111}a:hover{color:#000000}
+.d-page{display:flex;flex-wrap:wrap;gap:48px;max-width:1240px;margin:0 auto;padding:48px 24px 96px;align-items:flex-start}
+.d-nav{flex:1 1 220px;min-width:0;border:3px solid #111111;background:#ffffff;padding:18px 20px}
+.d-nav p{margin:0 0 10px;font-weight:800;font-size:14px;letter-spacing:0.04em;text-transform:uppercase}
+.d-nav ol{margin:0;padding-left:20px;font-size:15px;line-height:1.5}
+.d-nav li{margin:4px 0}
+.d-nav a{text-decoration:none;display:inline-block;min-height:28px}
+.d-nav a:hover{text-decoration:underline}
+.d-main{flex:999 1 560px;min-width:0;font-size:17px;line-height:1.6;color:#111111}
+.d-main section{padding-top:8px;margin-bottom:56px;scroll-margin-top:16px}
+.d-main h2{margin:0 0 14px;font-size:clamp(30px,4vw,42px);line-height:1.05;font-weight:800;letter-spacing:-0.045em}
+.d-main h3{margin:28px 0 8px;font-size:21px;line-height:1.2;font-weight:800;letter-spacing:-0.02em}
+.d-main p{margin:0 0 14px}
+.d-main ul,.d-main ol{margin:0 0 14px;padding-left:24px}
+.d-main li{margin:4px 0}
+.d-c{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:0.88em;background:#f1ecd6;padding:1px 6px;border-radius:4px;word-break:break-word}
+.d-code{margin:0 0 16px;padding:16px 18px;background:#111111;color:#ffd400;border-radius:10px;font:14px/1.6 'Geist Mono',ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+.d-scroll{overflow-x:auto;margin:0 0 18px;border:3px solid #111111;background:#ffffff}
+.d-tbl{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}
+.d-tbl th{background:#111111;color:#ffd400;text-align:left;padding:8px 12px;font-weight:800}
+.d-tbl td{border-top:2px solid #111111;padding:8px 12px;vertical-align:top}
+.d-tbl td:first-child{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:14px;white-space:nowrap}
+.d-note{border:3px solid #111111;background:#ffd400;padding:14px 16px;margin:0 0 18px}
+.d-warn{background:#111111;color:#fffdf2;padding:14px 16px;margin:0 0 18px;border-radius:0}
+.d-warn .d-c{background:#333333;color:#ffd400}
+.d-tag{display:inline-block;font:600 12px/1.4 'Geist Mono',ui-monospace,monospace;border:2px solid #111111;padding:0 6px;margin-left:8px;vertical-align:middle;letter-spacing:0}
+.d-steps{counter-reset:s;list-style:none;padding-left:0}
+.d-steps>li{counter-increment:s;position:relative;padding-left:44px;margin:0 0 18px}
+.d-steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:#111111;color:#ffd400;font:800 15px/30px 'Geist Mono',ui-monospace,monospace;text-align:center}
+@media (max-width:820px){.d-page{padding:32px 16px 72px;gap:32px}}
+</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: #fffdf2; color: #111111; font-family: 'Geist', 'Helvetica Neue', Helvetica, sans-serif">
+
+<!-- top bar -->
+<header style="background: #111111; color: #ffd400">
+<div style="max-width: 1240px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+<a href="index.html" style="display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: #ffd400; text-decoration: none; font-weight: 800; font-size: 24px; letter-spacing: -0.04em">cowboy</a>
+<nav style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+<a href="index.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: #ffd400; text-decoration: none; font-weight: 600">Home</a>
+<a href="features.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: #ffd400; text-decoration: none; font-weight: 600">Features</a>
+<a href="#overview" style="display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; color: #ffd400; text-decoration: none; font-weight: 600; border: 2px solid #ffd400">Docs</a>
+<a href="evidence.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: #ffd400; text-decoration: none; font-weight: 600">Evidence</a>
+<a href="https://github.com/sgracia13/Cowboy" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; background: #ffd400; color: #111111; border-radius: 10px; font-weight: 600; text-decoration: none; margin-left: 6px">GitHub</a>
+</nav>
+</div>
+</header>
+
+<!-- title band -->
+<section style="background: #ffd400; border-bottom: 3px solid #111111">
+<div style="max-width: 1240px; margin: 0 auto; padding: 56px 24px 48px; display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: clamp(46px, 8vw, 96px); line-height: 1; font-weight: 800; letter-spacing: -0.055em">Docs</h1>
+<p style="margin: 0; font-size: clamp(18px, 2.2vw, 22px); max-width: 760px">Everything you need to try Cowboy, run it for your team and tune its rules. These docs cover 0.6.0-preview, the latest preview release.</p>
+</div>
+</section>
+
+<div class="d-page">
+
+<!-- contents -->
+<nav class="d-nav" aria-label="Contents">
+<p>Contents</p>
+<ol>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#quick-start">Quick start</a></li>
+<li><a href="#your-repo">Try it on your repo</a></li>
+<li><a href="#run">Run it for your team</a></li>
+<li><a href="#forgejo">Forgejo and Gitea</a></li>
+<li><a href="#settings">Settings</a></li>
+<li><a href="#sorting">How sorting works</a></li>
+<li><a href="#rules">Per-repo rules</a></li>
+<li><a href="#agents">Recognizing agents</a></li>
+<li><a href="#dashboard">The dashboard</a></li>
+<li><a href="#after">After merge</a></li>
+<li><a href="#writes">What Cowboy writes and stores</a></li>
+<li><a href="#model">Local model notes</a></li>
+<li><a href="#cli">Command line</a></li>
+<li><a href="#trouble">Troubleshooting</a></li>
+<li><a href="#limits">Limits of this preview</a></li>
+</ol>
+</nav>
+
+<div class="d-main">
+
+<!-- 1 overview -->
+<section id="overview">
+<h2>Overview</h2>
+<p>Cowboy sorts every pull request into a pen, and tags the ones your AI coding agents opened:</p>
+<ul>
+<li><b>easy</b>: small, low-risk changes you can skim.</li>
+<li><b>normal</b>: a regular review.</li>
+<li><b>careful</b>: risky changes a code owner should look at.</li>
+</ul>
+<p>It picks the pen with fixed rules, so the same pull request always lands in the same pen, and it writes down why. It also flags <b>doubles</b> (two agents doing the same work) and <b>strays</b> (an agent that went quiet after you asked for changes).</p>
+<p>Cowboy runs on your own server. It only reads your pull requests and adds labels, one comment and review requests. It never merges, closes or reviews code, and your code isn't sent anywhere except an optional model server you run yourself.</p>
+<div class="d-note"><b>Preview release.</b> The sorting rules, labels, comments, doubles and the catch-up sweep are tested on real repos with GitHub. Forgejo and Gitea, the local model notes and the check for unmarked agent pull requests are in preview. See <a href="#limits">Limits of this preview</a>.</div>
+</section>
+
+<!-- 2 quick start -->
+<section id="quick-start">
+<h2>Quick start</h2>
+<p>The demo runs Cowboy on a made-up sample repo, with nothing to set up and no account needed.</p>
+<h3>macOS or Linux</h3>
+<pre class="d-code">curl -fsSL https://github.com/sgracia13/Cowboy/releases/latest/download/install.sh | sh
+cowboy demo</pre>
+<p>The install script downloads the right file for your computer, checks it against the published checksums and puts it in <span class="d-c">/usr/local/bin</span>, or <span class="d-c">~/.local/bin</span> if that isn't writable. The macOS builds aren't signed yet; the script clears the download quarantine for you.</p>
+<h3>Windows</h3>
+<p>Download <span class="d-c">cowboy-windows-amd64.exe</span> from the <a href="https://github.com/sgracia13/Cowboy/releases">releases page</a> and run <span class="d-c">cowboy-windows-amd64.exe demo</span>.</p>
+<h3>With Go</h3>
+<pre class="d-code">go run github.com/sgracia13/Cowboy/cmd/cowboy@latest demo</pre>
+<h3>What you'll see</h3>
+<p>Open <span class="d-c">http://localhost:8080</span> straight away. The sample pull requests arrive one every 4 seconds and drop into their pens without a refresh. One webhook is skipped on purpose, so you can watch the catch-up sweep find that pull request a few seconds later. Click any card to see its reasons and the comment Cowboy would post.</p>
+<p>Want everything at once? <span class="d-c">cowboy demo --drip 0</span>. Just a table in the terminal? <span class="d-c">cowboy demo --once</span>.</p>
+<p>Then open <b>outcomes</b>: a replay of real vercel/next.js history (about 2,500 merged pull requests, author names removed), so you can see what Cowboy finds after merge and how the pens compare with simple alternatives there.</p>
+</section>
+
+<!-- 2b your repo -->
+<section id="your-repo">
+<h2>Try it on your repo</h2>
+<pre class="d-code">cowboy</pre>
+<p>With no arguments, Cowboy starts on this machine only and opens your browser on a setup page:</p>
+<ol>
+<li><b>Connect GitHub.</b> One click to use your GitHub CLI (<span class="d-c">gh</span>) login if it's signed in, or paste a token. The <b>open github's token page</b> button opens GitHub with the name and read-only permissions filled in; pick the repos under Repository access and press Generate.</li>
+<li><b>Pick repos</b> from the list it can see.</li>
+<li><b>Choose what it does:</b> <i>just look</i> (the default: sort pull requests and check past ones, writing nothing to GitHub) or <i>label pull requests</i>.</li>
+<li><b>Save.</b> Cowboy sorts the open pull requests, rates the ones merged in the last 90 days, and takes you to the outcomes page while it works.</li>
+</ol>
+<p>When the pens look sensible, press <b>start labelling</b> on the setup page. Cowboy first checks the login can write labels on every repo, by adding the <span class="d-c">cowboy:easy</span> label, and tells you if it can't. The login, repos and mode are saved, so next time it's just <span class="d-c">cowboy</span>. Sign out or swap the token on the same page.</p>
+<p>On a laptop GitHub can't send webhooks to Cowboy, so it checks for new pull requests every 5 minutes instead. For a server your team shares, see the next section.</p>
+</section>
+
+<!-- 3 run for real -->
+<section id="run">
+<h2>Run it for your team</h2>
+<p>On GitHub, Cowboy can set itself up: it creates a private GitHub App for your server, and you pick the repos. On Forgejo and Gitea, or if you'd rather use a token, follow the steps further down.</p>
+<h3>Connect GitHub with one click <span class="d-c">preview</span></h3>
+<pre class="d-code">docker run -d --name cowboy -p 8080:8080 -v cowboy-data:/data \
+  -e UI_PASSWORD=a-dashboard-password \
+  -e PUBLIC_URL=https://cowboy.your-domain.com \
+  ghcr.io/sgracia13/cowboy:latest</pre>
+<ol>
+<li>Open the dashboard and sign in. A banner says Cowboy isn't connected yet.</li>
+<li>Press <b>create the github app</b>. To create it under an organization, type the organization's name first.</li>
+<li>GitHub shows the app it's about to create. Confirm it (you can change the name there).</li>
+<li>Pick the repos Cowboy should sort, then press <b>Install</b>.</li>
+<li>You land back in the corral, and the open pull requests appear as they're sorted.</li>
+</ol>
+<p>That's all: no token, no webhook and no secret to copy. Repos you add or remove on GitHub later are picked up automatically.</p>
+<ul>
+<li><b>What it asks for:</b> pull requests (read and write), issues (read and write, for labels and the comment), contents (read, for <span class="d-c">cowboy.json</span> and <span class="d-c">CODEOWNERS</span>), checks and metadata (read).</li>
+<li><b>How it signs in:</b> with one-hour tokens per installation, not a long-lived personal token. The app's private key and webhook secret are saved in <span class="d-c">github-app.json</span> next to the data file, readable only by Cowboy's user. Back it up with the data volume.</li>
+<li><b>Webhooks:</b> with a <span class="d-c">PUBLIC_URL</span> GitHub can reach over HTTPS, they're turned on and pull requests are sorted the moment they change. On your own machine or a private address, the app is created with webhooks off and the catch-up sweep checks every 5 minutes instead.</li>
+<li><b>Trying it on your laptop:</b> run <span class="d-c">cowboy serve</span> and open <span class="d-c">http://localhost:8080</span>. No password or <span class="d-c">PUBLIC_URL</span> is needed on your own machine.</li>
+<li><b>GitHub Enterprise:</b> set <span class="d-c">FORGE_URL</span> to your API address, like <span class="d-c">https://ghe.your-co.com/api/v3</span>.</li>
+<li><b>An app you made yourself:</b> set <span class="d-c">GITHUB_APP_ID</span>, <span class="d-c">GITHUB_APP_PRIVATE_KEY_FILE</span> and <span class="d-c">WEBHOOK_SECRET</span>.</li>
+</ul>
+<p>This setup is new. It's tested end to end against a stand-in for GitHub's API, but hasn't yet been run against github.com.</p>
+<h3>Or: with a token</h3>
+<p>You need a server your git host can reach over HTTPS, a token Cowboy can use, and a webhook. This uses GitHub; for Forgejo and Gitea see <a href="#forgejo">the next section</a>.</p>
+<ol class="d-steps">
+<li>
+<h3 style="margin-top: 0">Create a token</h3>
+<p>In GitHub, go to <b>Settings › Developer settings › Fine-grained tokens</b>, choose the repos Cowboy should sort, and give it these permissions:</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Permission</th><th>Access</th><th>Used for</th></tr></thead><tbody>
+<tr><td>Pull requests</td><td>Read and write</td><td>reading pull requests, diffs and reviews; asking code owners for a review</td></tr>
+<tr><td>Issues</td><td>Read and write</td><td>labels and the comment (GitHub handles these for pull requests through issues)</td></tr>
+<tr><td>Contents</td><td>Read</td><td>reading <span class="d-c">cowboy.json</span> and <span class="d-c">CODEOWNERS</span> from the default branch</td></tr>
+<tr><td>Checks</td><td>Read</td><td>knowing whether checks pass</td></tr>
+<tr><td>Metadata</td><td>Read</td><td>required by GitHub</td></tr>
+</tbody></table></div>
+<p>A classic token with the <span class="d-c">repo</span> scope also works.</p>
+</li>
+<li>
+<h3 style="margin-top: 0">Start Cowboy</h3>
+<p>With Docker:</p>
+<pre class="d-code">docker run -d --name cowboy -p 8080:8080 -v cowboy-data:/data \
+  -e FORGE=github \
+  -e FORGE_TOKEN=github_pat_... \
+  -e WEBHOOK_SECRET=a-long-random-string \
+  -e UI_PASSWORD=a-dashboard-password \
+  -e REPOS=your-org/your-repo \
+  ghcr.io/sgracia13/cowboy:latest</pre>
+<p>Or with the binary, using the same settings as environment variables:</p>
+<pre class="d-code">export FORGE=github FORGE_TOKEN=github_pat_... WEBHOOK_SECRET=... UI_PASSWORD=...
+export REPOS=your-org/your-repo DATA=/var/lib/cowboy/cowboy.json
+cowboy serve</pre>
+<p>When it starts, the log says whether the token can read each repo in <span class="d-c">REPOS</span>, then Cowboy sorts the pull requests that are already open.</p>
+<div class="d-note"><b>Try a dry run first.</b> Add <span class="d-c">DRY_RUN=1</span> and Cowboy sorts everything and shows it on the dashboard without writing anything to GitHub. Remove it when you're happy.</div>
+</li>
+<li>
+<h3 style="margin-top: 0">Add the webhook</h3>
+<p>In the repo (or the whole organization), go to <b>Settings › Webhooks › Add webhook</b>:</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Payload URL</td><td><span class="d-c">https://cowboy.your-domain.com/webhook/github</span></td></tr>
+<tr><td>Content type</td><td><span class="d-c">application/json</span> (the default form type won't work)</td></tr>
+<tr><td>Secret</td><td>the same value as <span class="d-c">WEBHOOK_SECRET</span></td></tr>
+<tr><td>Events</td><td>Let me select: <b>Pull requests</b>, <b>Check suites</b> and <b>Check runs</b></td></tr>
+</tbody></table></div>
+<p>Webhooks are how Cowboy hears about pull requests the moment they change. If one is lost, the catch-up sweep picks the pull request up within 5 minutes.</p>
+</li>
+<li>
+<h3 style="margin-top: 0">Open the dashboard</h3>
+<p>Go to your Cowboy address and sign in with <span class="d-c">UI_PASSWORD</span>. New pull requests appear in their pens as they're sorted.</p>
+</li>
+</ol>
+
+<h3>Put it behind HTTPS</h3>
+<p>GitHub needs an HTTPS address for webhooks. The simplest way is a reverse proxy such as Caddy, which gets a certificate for you:</p>
+<pre class="d-code"># Caddyfile
+cowboy.your-domain.com {
+  reverse_proxy 127.0.0.1:8080
+}</pre>
+<div class="d-warn"><b>Keep the password on behind a proxy.</b> If Cowboy listens on <span class="d-c">127.0.0.1</span> it treats the dashboard as local and won't insist on a login, but the proxy makes it public. Always set <span class="d-c">UI_PASSWORD</span> (or <span class="d-c">AUTH_PROXY_HEADER</span>) when a proxy is in front.</div>
+
+<h3>Blast radius</h3>
+<p>To know how many files depend on a changed file, Cowboy builds an import graph of the repo. It does this by itself: there's nothing to set up.</p>
+<ul>
+<li><b>No local copy needed.</b> Cowboy downloads the default branch as a compressed archive from your git host, through the same connection it already uses (the GitHub App's <i>contents: read</i> covers it). It reads the imports as the archive streams in and keeps only the list of who imports what. No code is written to disk.</li>
+<li><b>Kept current.</b> Every hour it checks whether the default branch moved, and downloads again only if it did. Pull requests keep being sorted with the last graph while a new one builds.</li>
+<li><b>Real parsing.</b> Go is read with Go's own parser. JavaScript, TypeScript and Python are read by scanners that handle imports split over many lines and skip comments and strings. Imports are matched to files using <span class="d-c">go.mod</span>, tsconfig <span class="d-c">paths</span> and <span class="d-c">baseUrl</span>, workspace packages in monorepos, and Python package folders like <span class="d-c">src/</span>.</li>
+<li><b>Checked against the real tools.</b> On n8n, Grafana and Sentry it found 100% of the imports the TypeScript compiler and Python's own parser find, and caught every file that 20 or more files import. <a href="https://github.com/sgracia13/Cowboy/tree/main/scripts/eval/graphcheck">See the numbers</a>.</li>
+<li><b>Size.</b> Archives over 300 MB are skipped (set <span class="d-c">BLAST_RADIUS_MAX_MB</span> to change it). n8n, Grafana and Sentry are 50 to 55 MB and take 3 to 7 seconds. Files over 2 MB, like bundles, aren't read.</li>
+</ul>
+<p>The rules page on the dashboard shows how blast radius is working for each repo. To read a local copy instead, set <span class="d-c">REPO_PATHS</span>; to turn downloads off, set <span class="d-c">BLAST_RADIUS=off</span>.</p>
+<pre class="d-code"># optional: use a checkout you keep up to date yourself
+export REPO_PATHS=your-org/your-repo=/srv/cowboy/your-repo</pre>
+
+<h3>Run it as a service</h3>
+<p>For the binary on Linux, a minimal systemd unit:</p>
+<pre class="d-code"># /etc/systemd/system/cowboy.service
+[Unit]
+Description=cowboy
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/cowboy.env
+ExecStart=/usr/local/bin/cowboy serve
+Restart=on-failure
+User=cowboy
+
+[Install]
+WantedBy=multi-user.target</pre>
+<p>On stop, Cowboy finishes the work already queued before it exits.</p>
+</section>
+
+<!-- 4 forgejo -->
+<section id="forgejo">
+<h2>Forgejo and Gitea <span class="d-tag">preview</span></h2>
+<p>Cowboy works the same way on Forgejo and Gitea. This support is covered by tests but hasn't been run against a live server yet, so please report anything odd.</p>
+<ul>
+<li>Set <span class="d-c">FORGE=forgejo</span> (or <span class="d-c">gitea</span>) and <span class="d-c">FORGE_URL</span> to your server, e.g. <span class="d-c">https://git.your-domain.com</span>.</li>
+<li>Create an access token with read and write access to <b>repository</b> and <b>issue</b>.</li>
+<li>Add a webhook with the URL <span class="d-c">https://cowboy.your-domain.com/webhook/forgejo</span> (or <span class="d-c">/webhook/gitea</span>), content type <span class="d-c">application/json</span>, your secret, and <b>pull request</b> events.</li>
+</ul>
+<p>One difference: on Forgejo and Gitea, changing a <span class="d-c">cowboy:</span> label by hand isn't read back as a correction yet. Use the move buttons on the dashboard instead.</p>
+</section>
+
+<!-- 5 settings -->
+<section id="settings">
+<h2>Settings</h2>
+<p>Cowboy is configured with environment variables. On a server you need a way to sign in (UI_PASSWORD or AUTH_PROXY_HEADER). With the GitHub App, add PUBLIC_URL; with a token, add FORGE_TOKEN and WEBHOOK_SECRET. Everything else has a default.</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Variable</th><th>What it does</th></tr></thead><tbody>
+<tr><td>FORGE</td><td><span class="d-c">github</span> (default), <span class="d-c">forgejo</span> or <span class="d-c">gitea</span></td></tr>
+<tr><td>FORGE_TOKEN</td><td>a token (required on Forgejo and Gitea; leave it empty on GitHub to use the GitHub App)</td></tr>
+<tr><td>WEBHOOK_SECRET</td><td>the secret your webhooks are signed with (required with a token; the GitHub App brings its own)</td></tr>
+<tr><td>PUBLIC_URL</td><td>the HTTPS address GitHub can reach Cowboy at, e.g. <span class="d-c">https://cowboy.your-domain.com</span>. Used for the GitHub App's webhooks and links in the weekly tally</td></tr>
+<tr><td>GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY_FILE</td><td>only for a GitHub App you created yourself instead of with the setup button</td></tr>
+<tr><td>UI_PASSWORD</td><td>the dashboard password, one shared login for the team (or use AUTH_PROXY_HEADER)</td></tr>
+<tr><td>AUTH_PROXY_HEADER</td><td>instead of a password: the header your sign-in proxy sets, e.g. <span class="d-c">X-Forwarded-User</span></td></tr>
+<tr><td>UI_OPEN</td><td><span class="d-c">1</span> runs the dashboard with no login. Only if nothing else can reach it</td></tr>
+<tr><td>UI_SESSION_DAYS</td><td>how long a sign-in lasts (default 14)</td></tr>
+<tr><td>FORGE_URL</td><td>your Forgejo or Gitea server, or the API address of GitHub Enterprise</td></tr>
+<tr><td>REPOS</td><td><span class="d-c">owner/repo,owner/repo</span>: repos to sort on start and to sweep</td></tr>
+<tr><td>BLAST_RADIUS</td><td><span class="d-c">off</span> stops Cowboy downloading repos for blast radius (default on)</td></tr>
+<tr><td>BLAST_RADIUS_MAX_MB</td><td>the biggest repo archive to download (default <span class="d-c">300</span>)</td></tr>
+<tr><td>REPO_PATHS</td><td><span class="d-c">owner/repo=/path,...</span>: read blast radius from local copies instead of downloading</td></tr>
+<tr><td>DRY_RUN</td><td><span class="d-c">1</span> sorts and shows, but writes nothing to your git host</td></tr>
+<tr><td>CATCHUP_MINUTES</td><td>how often the catch-up sweep runs (default 5)</td></tr>
+<tr><td>DATA</td><td>where Cowboy keeps its data file (default <span class="d-c">./data/cowboy.json</span>; <span class="d-c">/data/cowboy.json</span> in Docker)</td></tr>
+<tr><td>ADDR</td><td>the address to listen on (default <span class="d-c">:8080</span>)</td></tr>
+<tr><td>MODEL_URL</td><td>your model server, e.g. <span class="d-c">http://localhost:11434</span> (optional)</td></tr>
+<tr><td>MODEL_NAME</td><td>the model to use (default <span class="d-c">qwen2.5-coder:7b</span>)</td></tr>
+<tr><td>MODEL_KEY</td><td>only if your model server asks for one</td></tr>
+<tr><td>OUTCOMES</td><td><span class="d-c">off</span> turns off <a href="#after">after-merge tracking</a> (default on)</td></tr>
+<tr><td>OUTCOME_WINDOW_DAYS</td><td>how long after merge trouble counts (default <span class="d-c">30</span>)</td></tr>
+<tr><td>SENTRY_CLIENT_SECRET, PAGERDUTY_SECRET, INCIDENT_SECRET</td><td>turn on incident webhooks from Sentry, PagerDuty or any tool</td></tr>
+<tr><td>INCIDENT_REPOS</td><td><span class="d-c">project=owner/repo,...</span>: when a tool names a project or service, not the repo</td></tr>
+<tr><td>TALLY_SLACK_WEBHOOK</td><td>a Slack incoming webhook for the weekly tally (optional; see <a href="#dashboard">the dashboard</a>)</td></tr>
+<tr><td>TALLY_EMAIL_TO</td><td>addresses for the weekly tally by email, comma-separated (optional)</td></tr>
+<tr><td>SMTP_HOST, SMTP_PORT</td><td>your mail server for the tally email (port defaults to <span class="d-c">587</span>; <span class="d-c">465</span> also works)</td></tr>
+<tr><td>SMTP_USER, SMTP_PASSWORD</td><td>the mail server login, if it needs one</td></tr>
+<tr><td>SMTP_FROM</td><td>the sender address (defaults to SMTP_USER)</td></tr>
+<tr><td>TALLY_DAY, TALLY_HOUR</td><td>when the tally goes out (default <span class="d-c">monday</span> at <span class="d-c">9</span>)</td></tr>
+<tr><td>TZ</td><td>the time zone for TALLY_HOUR, e.g. <span class="d-c">America/New_York</span> (default: the server's)</td></tr>
+</tbody></table></div>
+<p>If the dashboard would be reachable from other machines and no login is set, Cowboy refuses to start and tells you what to set.</p>
+</section>
+
+<!-- 6 sorting -->
+<section id="sorting">
+<h2>How sorting works</h2>
+<p>Every pull request goes through the same rules, whoever wrote it: the rules look at the code, not the author. Agent pull requests also get an agent tag (see <a href="#agents">Recognizing agents</a>).</p>
+<h3>Pull requests from people stay quiet</h3>
+<p>A pull request with no agent mark gets a pen label like <span class="d-c">cowboy:easy</span> and nothing else: no agent label, never a double or stray label, and a comment only when it lands in careful (where a heads-up is worth it). Change that with <span class="d-c">"people": {"comment": "always"}</span> or <span class="d-c">"never"</span> in <a href="#rules">cowboy.json</a>, or sort agent pull requests only with <span class="d-c">"detect": {"sort_all": false}</span>.</p>
+<p>Why sort everything? Agent work that nobody marked can't be spotted reliably, so sorting every pull request is how nothing risky goes unsorted.</p>
+<h3>Careful, if any of these is true</h3>
+<ul>
+<li>It touches a <b>sensitive path</b>. By default: <span class="d-c">auth/**</span>, <span class="d-c">billing/**</span>, <span class="d-c">payments/**</span>, <span class="d-c">migrations/**</span>, <span class="d-c">.github/workflows/**</span> and <span class="d-c">security/**</span>, wherever they sit in the repo.</li>
+<li>It changes one of the repo's <b>most-imported files</b>: among the 1% of files the most others import, and imported by at least 20 (<a href="#run">blast radius</a>). In a big repo, 20 importers is ordinary, so the bar rises with the repo.</li>
+<li>It adds a <b>catch-all that hides errors</b>: a broad catch whose body does nothing with the error, like an empty <span class="d-c">catch {}</span>, <span class="d-c">except Exception: pass</span> or a <span class="d-c">return null</span>, or a bare Python <span class="d-c">except:</span>. A broad catch that logs or re-raises doesn't count.</li>
+<li>It <b>loosens CI</b>: <span class="d-c">|| true</span>, <span class="d-c">continue-on-error</span>, removed test steps and similar.</li>
+<li>It <b>loses test assertions</b> across the whole pull request. Assertions moved to another test file don't count, and neither do pull requests that remove a feature along with its tests.</li>
+<li>Its <b>checks are failing</b>.</li>
+</ul>
+<h3>Easy, if it isn't careful and</h3>
+<ul>
+<li>it changes 50 lines or fewer, in 2 folders or fewer, and 3 or fewer files import what it changed, and its checks aren't failing; or</li>
+<li>it changes no source or generated code at all (only tests, docs or config) and 600 lines or fewer (12 times easy.max_lines).</li>
+</ul>
+<h3>Normal</h3>
+<p>Everything else.</p>
+<h3>Worth a look</h3>
+<p>Some things are shown on the pull request as notes but never change the pen: warning silencers (like <span class="d-c">eslint-disable</span> or <span class="d-c"># type: ignore</span>), newly skipped tests, comments that admit special-casing for tests, and pull requests with 400 or more lines of source, which get a "too big to review well" note.</p>
+<h3>Doubles and strays</h3>
+<ul>
+<li>A <b>double</b> is a newer agent pull request that links the same issue (<span class="d-c">Fixes #12</span>) as an older open one, or changes 80% or more of the same files. It gets the <span class="d-c">cowboy:double</span> label.</li>
+<li>A <b>stray</b> is an agent pull request with no new commits 3 days after changes were requested. It gets <span class="d-c">cowboy:stray</span>; after 7 days Cowboy suggests closing it. Strays are checked every hour, or when you press <b>check for strays</b>.</li>
+</ul>
+<h3>How well the rules work</h3>
+<p>Not proven yet. On about 28,000 merged pull requests from eleven public repos, tested with the claims written down first, the careful pen didn't beat “largest first” or chance at finding pull requests that were later reverted. The easy pen mostly held up: it was no riskier than the same share of the smallest pull requests. So read careful as “a closer look might be worth it”, not “this will break”, and check the pens on your own repo with the <a href="#after">comparison on the outcomes page</a>. <a href="evidence.html">The evidence page</a> has every test.</p>
+</section>
+
+<!-- 7 rules file -->
+<section id="rules">
+<h2>Per-repo rules</h2>
+<p>Put a <span class="d-c">cowboy.json</span> (or <span class="d-c">.cowboy.json</span>) on the repo's default branch to change the rules for that repo. Cowboy always reads it from the default branch, so a pull request can't loosen its own rules. Anything you leave out keeps its default.</p>
+<pre class="d-code">{
+  "agents": { "build-bot": "our-agent" },
+  "careful": {
+    "paths": ["auth/**", "billing/**", "infra/**"],
+    "min_fan_in": 20,
+    "top_fan_in_percent": 1,
+    "shortcuts": ["tests_removed", "catch_all", "ci_loosened"]
+  },
+  "easy": { "max_lines": 50, "max_dirs": 2, "max_fan_in": 3 },
+  "notes": { "big_source_lines": 400 },
+  "strays": { "nudge_after_days": 3, "suggest_archive_after_days": 7 },
+  "fan_in_ignore": ["src/utils/index.ts"],
+  "people": { "comment": "careful" },
+  "detect": { "enabled": false, "sort_all": true }
+}</pre>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Key</th><th>What it does</th></tr></thead><tbody>
+<tr><td>agents</td><td>bot accounts (or co-author names) and the agent name to label them with</td></tr>
+<tr><td>careful.paths</td><td>sensitive paths; replaces the default list</td></tr>
+<tr><td>careful.min_fan_in</td><td>the fewest importing files that can make a change careful (default 20)</td></tr>
+<tr><td>careful.top_fan_in_percent</td><td>a changed file must also be in this top share of the repo's most-imported files (default 1; 100 turns the extra bar off)</td></tr>
+<tr><td>careful.shortcuts</td><td>which shortcuts make a pull request careful. The others become notes. Options: <span class="d-c">tests_removed</span>, <span class="d-c">catch_all</span>, <span class="d-c">ci_loosened</span>, <span class="d-c">suppressions</span>, <span class="d-c">skips</span>, <span class="d-c">special_case_comments</span></td></tr>
+<tr><td>careful.min_source_lines</td><td>make big pull requests careful again (off by default)</td></tr>
+<tr><td>easy.*</td><td>the limits for easy</td></tr>
+<tr><td>notes.big_source_lines</td><td>when the "too big to review well" note appears (default 400)</td></tr>
+<tr><td>shortcuts</td><td>turn a shortcut check off entirely, e.g. <span class="d-c">"shortcuts": {"skips": false}</span></td></tr>
+<tr><td>strays.*</td><td>days before the stray label and the suggestion to close</td></tr>
+<tr><td>fan_in_ignore</td><td>files never counted for blast radius, like a shared utils file everything imports</td></tr>
+<tr><td>people.comment</td><td>when pull requests from people get a comment: <span class="d-c">careful</span> (default), <span class="d-c">always</span> or <span class="d-c">never</span>. They always get a pen label</td></tr>
+<tr><td>detect.sort_all</td><td><span class="d-c">true</span> (default) sorts every pull request; <span class="d-c">false</span> sorts agent pull requests only</td></tr>
+<tr><td>detect.*</td><td>the experimental check for unmarked pull requests; see <a href="#agents">Recognizing agents</a></td></tr>
+</tbody></table></div>
+<p>The <b>rules</b> page on the dashboard shows the rules each repo is actually using.</p>
+<h3>Code owners</h3>
+<p>For careful pull requests, Cowboy asks the matching people in <span class="d-c">CODEOWNERS</span> (in <span class="d-c">.github/</span>, the repo root, <span class="d-c">docs/</span> or <span class="d-c">.gitea/</span>) for a review. It skips the pull request's own author, and in this preview it skips teams like <span class="d-c">@org/team</span>.</p>
+</section>
+
+<!-- 8 agents -->
+<section id="agents">
+<h2>Recognizing agents</h2>
+<p>Cowboy labels a pull request as agent work when it finds one of these:</p>
+<ul>
+<li>a <b>co-author line</b> in a commit, like <span class="d-c">Co-authored-by: Claude &lt;noreply@anthropic.com&gt;</span>;</li>
+<li>a <b>bot account</b> as the author, like <span class="d-c">copilot-swe-agent[bot]</span>;</li>
+<li>a <b>signature</b> in the pull request description, like "Generated with Claude Code".</li>
+</ul>
+<p>Built in: Claude Code, GitHub Copilot, Codex, Devin, Cursor and Jules. These are only recognized when the agent leaves one of those marks; an agent run on someone's laptop that leaves no mark looks like a person. Add your own bots under <span class="d-c">agents</span> in <span class="d-c">cowboy.json</span>.</p>
+<p>The label is <span class="d-c">agent:&lt;name&gt;</span>, for example <span class="d-c">agent:claude-code</span>.</p>
+<h3>Unmarked pull requests <span class="d-tag">experimental</span></h3>
+<p>Cowboy can also score pull requests that carry no mark, comparing each one to that author's own history: commit timing, writing style and code shape. If even the low end of its estimate reaches 80, the pull request gets <span class="d-c">agent:likely</span> and is treated like other agent work. Either way it's sorted into a pen.</p>
+<div class="d-warn"><b>How well it works today:</b> tested on 12,300 real pull requests with their agent labels removed, it caught almost none of the hidden agent work and flagged almost no people. Agent branch names like <span class="d-c">claude/</span> or <span class="d-c">codex/</span> are a strong hint but rare. Treat it as a hint, never a verdict. It never changes a pen.</div>
+<ul>
+<li>It's on by default in this preview. Turn it off with <span class="d-c">"detect": {"enabled": false}</span>.</li>
+<li>Remove the <span class="d-c">agent:likely</span> label, or press <b>not an agent</b> on the dashboard, and Cowboy treats the pull request as human work and asks for more evidence on that author from then on.</li>
+<li><span class="d-c">"label_at"</span> changes the threshold (default 80).</li>
+<li>Its per-author history is kept in <span class="d-c">baselines.json</span> next to the data file.</li>
+<li>To see how it reasons, run <span class="d-c">cowboy demo --agent-check</span>. The sample authors there are invented, so it shows the method, not how well it works on real repos.</li>
+</ul>
+</section>
+
+<!-- 9 dashboard -->
+<section id="dashboard">
+<h2>The dashboard</h2>
+<ul>
+<li><b>Corral</b>: every open pull request in its pen, agent work tagged, with doubles and strays flagged at the top. It updates live; the yellow dot in the header means it's connected.</li>
+<li><b>Pull request page</b>: click any card. Shows why it's in its pen, what Cowboy measured, local model notes if you have a model, and the comment it posted. Use the buttons to move it to another pen; Cowboy updates the label and counts the move in the tally.</li>
+<li><b>Tally</b>: the last 7 days by agent, with pull requests from people as one row: how many pull requests, in which pens, doubles, strays, shortcuts and how often your team moved one. It can be sent to Slack or by email every week (below), and has a ready-to-paste version too.</li>
+<li><b>Rules</b>: the rules each repo is using, and the model and agent check settings.</li>
+<li><b>Trail</b>: everything Cowboy did, newest first.</li>
+</ul>
+<h3>Get the tally every week</h3>
+<p>Cowboy can post the tally to a Slack channel, email it, or both, every Monday at 9:00 by default. Nothing is sent unless you set a destination.</p>
+<pre class="d-code"># Slack: create an incoming webhook for the channel (Mattermost webhooks work too)
+TALLY_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+
+# Email
+TALLY_EMAIL_TO=team@your-co.com,lead@your-co.com
+SMTP_HOST=smtp.your-co.com SMTP_USER=... SMTP_PASSWORD=... SMTP_FROM=cowboy@your-co.com
+
+# Optional
+TALLY_DAY=friday TALLY_HOUR=16 TZ=Europe/Berlin
+PUBLIC_URL=https://cowboy.your-domain.com</pre>
+<p>The post covers the 7 days before it goes out: pull requests per agent and for people, by pen, with doubles, strays and how often your team moved one. In Slack it's a short summary and a table; by email it's a small html table with a plain-text copy.</p>
+<p>The first post goes out at the next scheduled time. To try it straight away, run <span class="d-c">cowboy tally --send</span> with the same settings. The tally page on the dashboard says where it's sent and when the next one goes out.</p>
+<p>Cowboy remembers what it sent in <span class="d-c">tally-sent.json</span> next to the data file, so a restart never posts twice. If a send fails, it tries that destination again every 30 minutes; a post more than a day late (the server was off) is skipped instead of sent stale.</p>
+<p>On GitHub you can also move a pull request by changing its <span class="d-c">cowboy:easy</span>, <span class="d-c">cowboy:normal</span> or <span class="d-c">cowboy:careful</span> label yourself; Cowboy remembers your choice.</p>
+<h3>Signing in</h3>
+<ul>
+<li><b>Password:</b> set <span class="d-c">UI_PASSWORD</span>. Everyone shares one login, and moves are recorded as "team".</li>
+<li><b>Sign-in proxy:</b> behind oauth2-proxy, Authelia, Cloudflare Access or similar, set <span class="d-c">AUTH_PROXY_HEADER</span> to the header it sets. Moves are recorded under each person's name.</li>
+</ul>
+<p>Dashboard buttons only accept requests from the dashboard itself, and the pages send strict browser security headers.</p>
+</section>
+
+<!-- 10 writes -->
+<section id="after">
+<h2>After merge</h2>
+<p>Cowboy follows every merged pull request for 30 days and ties what happened back to it. The <b>outcomes</b> page shows what went wrong, and whether the pens, or any simpler rule, would have pointed at it. It's on by default; set <span class="d-c">OUTCOMES=off</span> to turn it off.</p>
+<h3>What counts as trouble</h3>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Outcome</th><th>How Cowboy knows</th><th>Counts</th></tr></thead><tbody>
+<tr><td>Reverted</td><td>A revert on the default branch names the pull request: GitHub's Revert button, <span class="d-c">git revert</span>, a revert branch, or the pull request's title</td><td>Straight away</td></tr>
+<tr><td>Broke main</td><td>Checks failed on the merge commit, though the pull request itself was green</td><td>Straight away</td></tr>
+<tr><td>Needed a fix</td><td>Within two weeks, a pull request titled as a fix names this one, or rewrites three or more lines it added</td><td>Once a person confirms</td></tr>
+<tr><td>Incident</td><td>An alert from Sentry, PagerDuty or any tool, matched by release and by the files in the error</td><td>Once a person confirms</td></tr>
+</tbody></table></div>
+<p>Anything that counts can be marked "not a problem". Cowboy also records who approved each pull request, which release it shipped in, and how much of its code is still there after 30 and 90 days. It measures that from fingerprints of a sample of the added lines; no code is kept.</p>
+<h3>The outcomes page</h3>
+<ul>
+<li><b>Do the pens beat simple alternatives?</b> See below.</li>
+<li><b>By pen:</b> how often easy, normal and careful pull requests had trouble, with a range, so "2 of 10" doesn't look like a fact. Only pull requests merged at least 30 days ago are rated, so recent ones don't look cleaner than they are.</li>
+<li><b>Rule report card:</b> for each careful rule, how often its pull requests had trouble, and whether careful pull requests approved before merge did better than ones that weren't.</li>
+<li><b>Suggested rule changes:</b> only when the numbers clearly point somewhere, like a folder whose easy pull requests keep breaking. Cowboy never changes the rules itself: if you agree, edit <span class="d-c">cowboy.json</span>.</li>
+<li><b>Scorecards:</b> each agent, and people, by area of the code and by month.</li>
+<li><b>Needs a person:</b> Cowboy's guesses, with yes and no buttons.</li>
+</ul>
+<p>Careful pull requests also get more attention, so a pen's rate shows what happened, not what the pen caused.</p>
+<h3>Do the pens beat simple alternatives?</h3>
+<p>A pen that takes a quarter of your pull requests will catch some trouble by luck. So the outcomes page gives the same share of pull requests to simple alternatives and counts how many of the pull requests that had trouble each one caught:</p>
+<ul>
+<li><b>The careful pen</b> against the largest pull requests first, the ones touching the most files first, and a random pick.</li>
+<li><b>The easy pen</b> against the same share of the smallest pull requests.</li>
+</ul>
+<p>Each result has a likely range (95%, from 2,000 resamples) and is said in words: <b>outperformed</b> (the whole range clears the line), <b>no demonstrated advantage</b> (it doesn't, which isn't the same as useless), or <b>did worse</b>. Until a repo has 20 pull requests with trouble, it says <b>insufficient evidence</b> and nothing else. It's the same calculation as the <a href="evidence.html">published evidence</a>; here, every kind of trouble counts, not only reverts. Run <span class="d-c">cowboy evaluate</span> for the same thing in a terminal, or <span class="d-c">cowboy evaluate --json</span> for all the numbers.</p>
+<h3>Don't wait a month</h3>
+<p>On a fresh install the outcomes page offers <b>rate the last 90 days</b> (or run <span class="d-c">cowboy backfill --days 90</span>). Cowboy sorts the pull requests that already merged, the way it would have, and checks what happened to them. Nothing is written to your git host: no labels, no comments. It uses today's rules and today's import graph, and these pull requests stay out of the tally.</p>
+<h3>Connect incidents</h3>
+<p>Each is optional. Point the tool at your Cowboy address:</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Tool</th><th>Setting</th><th>Address</th></tr></thead><tbody>
+<tr><td>Sentry</td><td><span class="d-c">SENTRY_CLIENT_SECRET</span>: the client secret of an internal integration with a webhook, used from an issue alert's action</td><td><span class="d-c">/webhook/sentry</span></td></tr>
+<tr><td>PagerDuty</td><td><span class="d-c">PAGERDUTY_SECRET</span>: a v3 webhook subscription for <span class="d-c">incident.triggered</span></td><td><span class="d-c">/webhook/pagerduty</span></td></tr>
+<tr><td>Anything else</td><td><span class="d-c">INCIDENT_SECRET</span>: sign the JSON body (<span class="d-c">X-Cowboy-Signature: sha256=…</span>) or send <span class="d-c">Authorization: Bearer &lt;secret&gt;</span></td><td><span class="d-c">/webhook/incident</span></td></tr>
+</tbody></table></div>
+<pre class="d-code">{"id": "INC-12", "title": "Checkout errors", "severity": "sev2",
+ "started_at": "2026-10-19T14:02:00Z", "url": "https://…",
+ "repo": "acme/web", "release": "v2.3.0", "files": ["src/pay/api.ts"]}</pre>
+<p>Only <span class="d-c">title</span> is required. If a tool names a project or service rather than the repo, map it with <span class="d-c">INCIDENT_REPOS=web-frontend=acme/web</span>; with one repo, nothing is needed. For each incident Cowboy suggests up to three likely causes: shipped in that release (or just before it started), and changed files that appear in the error. It never uses the pen to pick a cause, so the pens are judged fairly. You can also link an incident to a pull request by hand.</p>
+<h3>The audit record</h3>
+<p>Every sort, move, merge, approval, outcome and confirmation is added to <span class="d-c">audit.jsonl</span> next to the data file. Each entry carries the hash of the one before, so <span class="d-c">cowboy audit verify</span> finds any entry that was changed or removed. The weekly tally post includes the latest fingerprint, which gives you a copy outside the server to check against. Export it with <span class="d-c">cowboy audit export --format csv</span>, or from the outcomes page.</p>
+<h3>The benchmark</h3>
+<p><span class="d-c">cowboy benchmark export</span> writes counts only: pens, agents, rules and kinds of outcome, with no repo names, file paths, titles or people. Read it, and share it only if you want to. <span class="d-c">cowboy benchmark report a.json b.json</span> pools several teams' files into one report. Cowboy never sends it anywhere.</p>
+<h3>How well it works</h3>
+<p>On two years of Sentry, Grafana and n8n history, Cowboy traced 98.8%, 87% and 70% of reverts to the pull request they undid; the rest name no pull request, title or commit. Replayed over 7,721 real merged pull requests from the same repos, the reverts it found matched an independent earlier count on 213 pull requests (8 found only there, 5 only here), and, weighted back to Sentry's real mix of pull requests, 1.42% of careful pull requests were reverted within 30 days against 0.81% of easy ones. Those repos are the ones the rules were tuned on; on Supabase, which the rules never saw, careful PRs were reverted about as often as any other, and on three fresh repos (next.js, Airflow, Kibana) neither revised rules nor rules fitted to each repo beat chance (<a href="evidence.html">the evidence page</a> has all three rounds). Suggested fixes looked right in about 7 in 10 of a sample, which is why a person confirms them. Everything else has been tested against stand-ins for GitHub, Sentry and PagerDuty, not yet on a live repo for 30 days. <a href="https://github.com/sgracia13/Cowboy/tree/main/scripts/eval/outcomes">See the check</a>.</p>
+</section>
+
+<section id="writes">
+<h2>What Cowboy writes and stores</h2>
+<h3>On your git host</h3>
+<ul>
+<li>Labels: <span class="d-c">cowboy:easy</span>, <span class="d-c">cowboy:normal</span>, <span class="d-c">cowboy:careful</span>, <span class="d-c">cowboy:double</span>, <span class="d-c">cowboy:stray</span>, <span class="d-c">agent:&lt;name&gt;</span> and <span class="d-c">agent:likely</span>.</li>
+<li>One comment per agent pull request (and per careful pull request from a person), edited in place on every push, never a new one.</li>
+<li>Review requests to code owners, for careful pull requests.</li>
+</ul>
+<p>That's all. It never merges, closes, approves or pushes code.</p>
+<h3>On your server</h3>
+<ul>
+<li><span class="d-c">cowboy.json</span> at <span class="d-c">DATA</span>: each decision, its reasons and your team's moves. It's written safely, so a crash never leaves it half-written.</li>
+<li><span class="d-c">baselines.json</span> next to it: per-author history for the experimental agent check.</li>
+<li><span class="d-c">tally-sent.json</span> next to it, if you send the weekly tally: when each post last went out.</li>
+<li><span class="d-c">settings.json</span> next to it, if you connected on the setup page: the login (a token, or the GitHub CLI's), the repos, the mode and a webhook secret Cowboy made. Readable only by you.</li>
+<li><span class="d-c">github-app.json</span> next to it, if you connected with the GitHub App: the app's id, private key and webhook secret, readable only by Cowboy's user.</li>
+<li><span class="d-c">outcomes.json</span> next to it: merges, outcomes and incidents for <a href="#after">After merge</a>.</li>
+<li><span class="d-c">audit.jsonl</span> next to it: the tamper-evident audit record.</li>
+</ul>
+<h3>Over the network</h3>
+<p>Cowboy talks only to your git host (including downloading the default branch for blast radius) and, if you set them, your own model server (<span class="d-c">MODEL_URL</span>) and where the weekly tally goes (your Slack webhook or mail server). The tally holds counts only, no code. No telemetry, no accounts, nothing sent to us.</p>
+</section>
+
+<!-- 11 model -->
+<section id="model">
+<h2>Local model notes <span class="d-tag">preview</span></h2>
+<p>An open-weight model on your own server can add notes to each pull request it sorts: whether the change stayed on task, a three-line brief, and where to look first. The model never picks the pen; the same pull request gets the same pen with or without it. Notes that mention a file the pull request didn't change are dropped.</p>
+<p>It works with anything that speaks the OpenAI chat API: Ollama, vLLM, llama.cpp server, LM Studio or LocalAI. With Ollama on the same machine:</p>
+<pre class="d-code">ollama pull qwen2.5-coder:7b
+export MODEL_URL=http://localhost:11434 MODEL_NAME=qwen2.5-coder:7b
+cowboy check-model     # is it answering?
+cowboy serve</pre>
+<p>Labels go on first and the notes follow when the model finishes. Without <span class="d-c">MODEL_URL</span>, everything else works with rules only. The notes have only been tried against a stand-in model so far, so check the wording with your own model before relying on it.</p>
+</section>
+
+<!-- 12 cli -->
+<section id="cli">
+<h2>Command line</h2>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
+<tr><td>cowboy</td><td>start on this machine and open the browser: connect GitHub, pick repos and choose a mode on the setup page</td></tr>
+<tr><td>cowboy demo</td><td>the sample repo on <span class="d-c">localhost:8080</span>. Flags: <span class="d-c">--drip 0</span> (all at once), <span class="d-c">--once</span> (print and exit), <span class="d-c">--model-url</span>, <span class="d-c">--model-name</span>, <span class="d-c">--no-model</span>, <span class="d-c">--agent-check</span> (turn on the experimental check), <span class="d-c">--addr</span></td></tr>
+<tr><td>cowboy serve</td><td>run on a server, configured by the <a href="#settings">settings</a> (a login saved on the setup page is used too; environment variables win)</td></tr>
+<tr><td>cowboy score</td><td>sort one pull request offline from files: <span class="d-c">--diff pr.diff --meta meta.json</span>, plus <span class="d-c">--repo ./checkout</span> for blast radius and <span class="d-c">--json</span> for full output</td></tr>
+<tr><td>cowboy tally</td><td>print this week's tally as a markdown table. <span class="d-c">--send</span> sends it to Slack and/or email now</td></tr>
+<tr><td>cowboy sign</td><td>print the webhook signature for a file, for testing: <span class="d-c">--secret S body.json</span></td></tr>
+<tr><td>cowboy check-model</td><td>check your model server answers</td></tr>
+<tr><td>cowboy outcomes</td><td>after merge, by pen. <span class="d-c">--check</span> reads the git host now</td></tr>
+<tr><td>cowboy evaluate</td><td>do the pens beat largest-first, most-files and chance? <span class="d-c">--json</span> for every number</td></tr>
+<tr><td>cowboy audit verify</td><td>check the audit record wasn't changed</td></tr>
+<tr><td>cowboy audit export</td><td>the audit record as CSV or JSON: <span class="d-c">--format csv --since 2026-01-01 --repo owner/repo</span></td></tr>
+<tr><td>cowboy benchmark export</td><td>the counts-only summary, to share if you want. <span class="d-c">benchmark report a.json b.json</span> pools several</td></tr>
+<tr><td>cowboy version</td><td>print the version</td></tr>
+</tbody></table></div>
+<p>The dashboard also serves <span class="d-c">/healthz</span> for health checks, outside the login, and <span class="d-c">/api/decisions</span> as JSON for signed-in users.</p>
+</section>
+
+<!-- 13 troubleshooting -->
+<section id="trouble">
+<h2>Troubleshooting</h2>
+<h3>Nothing shows up in the corral</h3>
+<ul>
+<li>Check the log at start: it says "token works" or "can't list pull requests" for each repo in <span class="d-c">REPOS</span>.</li>
+<li>Pull requests from people get a pen label but no comment unless they're careful, so they're easy to miss on GitHub; they do show in the corral. If you turned off <span class="d-c">sort_all</span>, only agent pull requests are sorted.</li>
+</ul>
+<h3>Webhooks fail with 401 "bad signature"</h3>
+<p>The webhook secret doesn't match <span class="d-c">WEBHOOK_SECRET</span>, or the content type isn't <span class="d-c">application/json</span>. Fix it in the webhook settings and use GitHub's <b>Redeliver</b> button. Missed pull requests are caught by the sweep within 5 minutes either way.</p>
+<h3>Cowboy won't start: "the dashboard would be open to anyone"</h3>
+<p>Set <span class="d-c">UI_PASSWORD</span>, or <span class="d-c">AUTH_PROXY_HEADER</span> behind a sign-in proxy. See <a href="#settings">Settings</a>.</p>
+<h3>"files depend on it" never appears</h3>
+<p>Open the rules page: it says how blast radius is working for each repo, and why not if it isn't (for example, an archive over the size limit). See <a href="#run">Blast radius</a>.</p>
+<h3>Rate limit messages in the log</h3>
+<p>Cowboy waits out short GitHub rate limits by itself. For longer ones it gives up on that call and the next catch-up sweep tries again.</p>
+<h3>macOS says the app can't be opened</h3>
+<p>The builds aren't signed yet. The install script handles this; if you downloaded the file yourself, run <span class="d-c">xattr -d com.apple.quarantine ./cowboy-darwin-arm64</span> once.</p>
+<h3>"This setup link has expired or was already used"</h3>
+<p>The link back from GitHub works once, within an hour. Go to <span class="d-c">/setup</span> and press the button again. If GitHub already created an app, delete it in GitHub's settings first or give the new one a different name.</p>
+<h3>Setup says Cowboy is connected, but no repos show up</h3>
+<p>The app isn't installed on any repos yet. Open <span class="d-c">/setup</span> and press <b>pick repos</b>.</p>
+<h3>Something else</h3>
+<p>Open an issue on <a href="https://github.com/sgracia13/Cowboy/issues">GitHub</a> with the log lines around the problem.</p>
+</section>
+
+<!-- 14 limits -->
+<section id="limits">
+<h2>Limits of this preview</h2>
+<ul>
+<li>One-click GitHub App setup is tested against a stand-in for GitHub's API, not yet against github.com.</li>
+<li>After-merge tracking has been tested against stand-ins for GitHub, Sentry and PagerDuty, and its revert detection against real history, but not yet on a live repo for 30 days. Releases are matched to pull requests by time, not by walking the git history.</li>
+<li>Forgejo and Gitea support is covered by tests but hasn't run against a live server yet.</li>
+<li>Review requests to code owners and strays are covered by tests but haven't yet been seen on a live repo.</li>
+<li>Review requests go to individual people, not teams like <span class="d-c">@org/team</span>.</li>
+<li>The weekly tally goes to Slack-style webhooks and email; Microsoft Teams and Discord formats aren't built yet.</li>
+<li>Data is kept in a single file, fine for a small team. A database for large organizations isn't built yet.</li>
+<li>Blast radius for Java and Kotlin reads import lines only (files in the same package use each other without one), and hasn't been checked against a reference tool yet.</li>
+<li>The check for unmarked agent pull requests is experimental and catches few hidden ones.</li>
+<li>The macOS builds aren't signed.</li>
+</ul>
+<p>Cowboy is free and open source under the AGPL-3.0 license. Whatever's free today stays free.</p>
+</section>
+
+</div>
+</div>
+
+<!-- footer -->
+<footer style="background: #111111; color: #ffd400">
+<div style="max-width: 1240px; margin: 0 auto; padding: 40px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between">
+<p style="margin: 0; font-size: 18px; font-weight: 600; color: #fffdf2">Free. Open source. Your server.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<a href="https://github.com/sgracia13/Cowboy" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: #ffd400; color: #111111; border-radius: 10px; font-weight: 600; text-decoration: none">Get Cowboy free</a>
+<a href="index.html" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: #fffdf2; color: #111111; border-radius: 10px; font-weight: 600; text-decoration: none">Back to home</a>
+</div>
+</div>
+</footer>
+
+</div>
+
+</body>
+</html>
