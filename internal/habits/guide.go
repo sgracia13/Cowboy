@@ -83,6 +83,8 @@ func Guide(repo string, cfg config.Config, rep Report) string {
 		}
 	}
 
+	w("\n### Check before you open a pull request\n\n")
+	w("- Run `cowboy check` (or the Cowboy MCP tool `check_changes`) on your changes and fix what it flags, or say in the pull request why it's right.\n")
 	w("\n### Say when an agent helped\n\n")
 	w("- Add a trailer to commits an agent wrote or co-wrote, naming the agent, for example `Co-authored-by: Claude <noreply@anthropic.com>`. Reviewers then know what they're reading, and Cowboy tags the pull request.\n")
 	w("%s\n", End)

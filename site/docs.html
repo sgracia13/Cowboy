@@ -97,6 +97,7 @@ a{color:#111111}a:hover{color:#000000}
 <li><a href="#dashboard">The dashboard</a></li>
 <li><a href="#after">After merge</a></li>
 <li><a href="#habits">Habits and agent guide</a></li>
+<li><a href="#agents-tools">For coding agents</a></li>
 <li><a href="#writes">What Cowboy writes and stores</a></li>
 <li><a href="#model">Local model notes</a></li>
 <li><a href="#cli">Command line</a></li>
@@ -539,6 +540,25 @@ cowboy guide --repo acme/app --write AGENTS.md   # put it in the file</pre>
 <p>The section sits between <span class="d-c">&lt;!-- cowboy:guide start --&gt;</span> and <span class="d-c">&lt;!-- cowboy:guide end --&gt;</span>, so running it again replaces only that part. It reads the repo's <span class="d-c">cowboy.json</span> from the current folder (or <span class="d-c">--config</span>). The Habits page has the same text with Copy and Download buttons. Cowboy never commits it for you.</p>
 </section>
 
+<section id="agents-tools">
+<h2>For coding agents <span class="d-tag">preview</span></h2>
+<p><b>Check before the pull request exists.</b> In any checkout, <span class="d-c">cowboy check</span> sorts your changes (committed, uncommitted and new files since the default branch) the way the pull request would be sorted: the pen, the reasons and any shortcuts it found. The rules come from <span class="d-c">cowboy.json</span> on the default branch, so a change can't loosen its own rules. It only reads. <span class="d-c">--strict</span> exits 1 when shortcuts are found, for a git hook or CI; <span class="d-c">--json</span> prints everything.</p>
+<pre class="d-code">cowboy check
+# acme/app: this change would be sorted Careful (84 lines, 3 files …)
+# Shortcuts found …
+# - skips in pay/charge_test.go: adds a skip marker: t.Skip("flaky")</pre>
+<p><b>The MCP server.</b> <span class="d-c">cowboy mcp</span> lets coding agents that speak MCP (Claude Code, Cursor, Codex and others) call Cowboy as tools. It runs as a local process; nothing is sent anywhere, and every tool only reads.</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Tool</th><th>What it answers</th></tr></thead><tbody>
+<tr><td>check_changes</td><td>How would my changes be sorted, and what shortcuts did I take? (the same as <span class="d-c">cowboy check</span>)</td></tr>
+<tr><td>repo_rules</td><td>This repo's review rules, as the default branch has them</td></tr>
+<tr><td>agent_guide</td><td>The instructions <span class="d-c">cowboy guide</span> writes, with the team's habits when this machine has Cowboy history</td></tr>
+<tr><td>file_history</td><td>Which merged pull requests touched a file or folder, and which had trouble after merge (needs Cowboy's data on this machine)</td></tr>
+</tbody></table></div>
+<p>Add it to your agent's MCP settings:</p>
+<pre class="d-code">{ "mcpServers": { "cowboy": { "command": "cowboy", "args": ["mcp"] } } }</pre>
+<p>In Claude Code: <span class="d-c">claude mcp add cowboy -- cowboy mcp</span>. The agent guide tells agents to run the check before opening a pull request. Cowboy still checks the pull request itself either way: an agent checks itself, it doesn't grade itself.</p>
+</section>
+
 <section id="writes">
 <h2>What Cowboy writes and stores</h2>
 <h3>On your git host</h3>
@@ -587,6 +607,8 @@ cowboy serve</pre>
 <tr><td>cowboy check-model</td><td>check your model server answers</td></tr>
 <tr><td>cowboy outcomes</td><td>after merge, by pen. <span class="d-c">--check</span> reads the git host now</td></tr>
 <tr><td>cowboy evaluate</td><td>do the pens beat largest-first, most-files and chance? <span class="d-c">--json</span> for every number</td></tr>
+<tr><td>cowboy check</td><td>sort your local changes before opening a pull request: the pen, the reasons and any shortcuts. <span class="d-c">--strict</span> exits 1 on shortcuts, <span class="d-c">--json</span>, <span class="d-c">--base main</span></td></tr>
+<tr><td>cowboy mcp</td><td>an MCP server for coding agents: check_changes, repo_rules, agent_guide, file_history (local, read-only)</td></tr>
 <tr><td>cowboy guide</td><td>instructions for coding agents from this repo's rules and habits: <span class="d-c">--repo owner/repo</span>, <span class="d-c">--write AGENTS.md</span> to put them in a file, <span class="d-c">--days 90</span></td></tr>
 <tr><td>cowboy audit verify</td><td>check the audit record wasn't changed</td></tr>
 <tr><td>cowboy audit export</td><td>the audit record as CSV or JSON: <span class="d-c">--format csv --since 2026-01-01 --repo owner/repo</span></td></tr>

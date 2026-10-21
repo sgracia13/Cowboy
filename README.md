@@ -314,6 +314,34 @@ cowboy guide --repo acme/app --write AGENTS.md   # or CLAUDE.md, .github/copilot
 
 the section sits between `<!-- cowboy:guide start -->` and `<!-- cowboy:guide end -->`, so running it again replaces only that part; the rest of the file is yours. the habits page has the same text with copy and download buttons. Cowboy never commits it for you.
 
+## for coding agents: `cowboy check` and the MCP server
+
+**check before the pr exists.** in any checkout, `cowboy check` sorts your changes (committed, uncommitted and new files since the default branch) the way the pr would be sorted: the pen, the reasons, and any shortcuts it found. the rules come from `cowboy.json` on the default branch, so a change can't loosen its own rules. it only reads. `--strict` exits 1 when shortcuts are found, for a git hook or ci; `--json` prints everything.
+
+```sh
+cowboy check
+# acme/app: this change would be sorted Careful (84 lines, 3 files, compared with 1a2b3c4d5e; rules from cowboy.json on the base branch).
+# Shortcuts found (a reviewer will see each of these; fix the cause, or say in the PR why it's right):
+# - skips in pay/charge_test.go: adds a skip marker: t.Skip("flaky")
+```
+
+**the MCP server.** `cowboy mcp` lets coding agents (Claude Code, Cursor, Codex, anything that speaks MCP) call Cowboy as tools. it runs as a local process over stdio: nothing is sent anywhere, and every tool only reads.
+
+| tool | what it answers |
+|---|---|
+| `check_changes` | how would my changes be sorted, and what shortcuts did I take? (the same as `cowboy check`) |
+| `repo_rules` | this repo's review rules, as the default branch has them |
+| `agent_guide` | the instructions `cowboy guide` writes, with the team's habits when this machine has cowboy history |
+| `file_history` | which merged prs touched this file or folder, and which had trouble after merge (needs cowboy's data on this machine) |
+
+add it to your agent's mcp settings:
+
+```json
+{ "mcpServers": { "cowboy": { "command": "cowboy", "args": ["mcp"] } } }
+```
+
+or, in claude code: `claude mcp add cowboy -- cowboy mcp`. the agent guide (`cowboy guide`) now tells agents to run the check before opening a pull request. the check on the pr itself still runs either way: an agent checks itself, it doesn't grade itself.
+
 ## does a local model help? (an experiment, no results yet)
 
 > **untested with a real model.** the pipeline was checked with a stand-in that knows nothing; nobody knows yet whether a local model even returns usable scores, let alone beats the rules. **help us find out:** [register a run](https://github.com/sgracia13/Cowboy/issues/new?template=ai-experiment.yml) before you score, then post the result in the same issue, whichever way it comes out. the rules for a run that counts are in [`CLAIMS-ai.md`](scripts/eval/evidence/CLAIMS-ai.md#runs-by-other-people).
@@ -374,6 +402,8 @@ cowboy tally --send                                              # send the last
 cowboy outcomes [--check]                                        # after merge, by pen (--check reads the git host now)
 cowboy backfill --days 90                                        # rate prs that already merged (writes nothing to the host)
 cowboy guide --repo o/r [--write AGENTS.md]                      # instructions for coding agents from your rules and habits
+cowboy check [--strict] [--json]                                 # sort your local changes before opening a pr
+cowboy mcp                                                       # mcp server for coding agents (local, read-only)
 cowboy audit verify                                              # was the audit record changed?
 cowboy audit export --format csv --since 2026-01-01              # the record, for an auditor
 cowboy benchmark export > ours.json                              # counts only, to share if you want
@@ -400,6 +430,8 @@ internal/webhook    signed webhook receivers
 internal/store      decisions + corrections
 internal/db         sqlite storage (pure go, no cgo)
 internal/habits     the habits page and the agent guide
+internal/check      self-check of a local checkout (cowboy check, the mcp check_changes tool)
+internal/mcp        a small stdio mcp server (json-rpc, tools only)
 internal/outcome    after merge: reverts, broken main, fixes, incidents, survival; report card, scorecards, benchmark
 internal/audit      the hash-chained audit record
 internal/web        the corral ui
