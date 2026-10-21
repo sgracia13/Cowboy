@@ -84,6 +84,8 @@ const usage = `cowboy: finds out what breaks your repo, and sorts new pull reque
   cowboy backfill [--days 90]      rate pull requests that already merged (writes nothing to the git host)
   cowboy evaluate [--json]         do the pens beat largest-first, most-files and chance? (same method as the evidence)
   cowboy guide [--write AGENTS.md] instructions for coding agents from this repo's rules and habits
+  cowboy check [--strict]          sort your local changes before opening a PR: pen, reasons, shortcuts found
+  cowboy mcp                       an MCP server for coding agents (check_changes, repo_rules, agent_guide, file_history)
   cowboy audit verify|export       check the audit record wasn't changed, or export it
   cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
@@ -165,6 +167,10 @@ func main() {
 		backfillCmd(os.Args[2:])
 	case "guide":
 		guideCmd(os.Args[2:])
+	case "check":
+		checkCmd(os.Args[2:])
+	case "mcp":
+		mcpCmd(os.Args[2:])
 	case "evaluate":
 		evaluateCmd(os.Args[2:])
 	default:

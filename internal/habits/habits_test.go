@@ -95,7 +95,7 @@ func TestGuide(t *testing.T) {
 	cfg := config.Default()
 	cfg.Shortcuts["skips"] = false
 	g := Guide("acme/app", cfg, Build("o/r", ds, st, cfg, now, window, 90))
-	for _, want := range []string{Start, End, "## Working in acme/app", "`auth/**`", "Don't silence warnings", "Co-authored-by:", "This team's habits", "Tests with code"} {
+	for _, want := range []string{Start, End, "## Working in acme/app", "`auth/**`", "Don't silence warnings", "Co-authored-by:", "cowboy check", "This team's habits", "Tests with code"} {
 		if !strings.Contains(g, want) {
 			t.Errorf("guide lacks %q", want)
 		}
