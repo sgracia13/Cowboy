@@ -14,6 +14,7 @@ import (
 
 // record adds an entry to the audit record, if one is kept.
 func (a *App) record(kind, repo string, n int, actor string, data map[string]string) {
+	a.emit(kind, repo, n, actor, data)
 	if a.Audit == nil {
 		return
 	}

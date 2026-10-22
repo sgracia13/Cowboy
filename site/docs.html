@@ -98,6 +98,7 @@ a{color:#111111}a:hover{color:#000000}
 <li><a href="#after">After merge</a></li>
 <li><a href="#habits">Habits and agent guide</a></li>
 <li><a href="#agents-tools">For coding agents</a></li>
+<li><a href="#orchestrators">Events and API for other tools</a></li>
 <li><a href="#writes">What Cowboy writes and stores</a></li>
 <li><a href="#model">Local model notes</a></li>
 <li><a href="#cli">Command line</a></li>
@@ -325,6 +326,10 @@ REPOS=your-group/your-project cowboy serve</pre>
 <tr><td>MODEL_KEY</td><td>only if your model server asks for one</td></tr>
 <tr><td>OUTCOMES</td><td><span class="d-c">off</span> turns off <a href="#after">after-merge tracking</a> (default on)</td></tr>
 <tr><td>OUTCOME_WINDOW_DAYS</td><td>how long after merge trouble counts (default <span class="d-c">30</span>)</td></tr>
+<tr><td>EVENT_HOOKS</td><td>URLs to send each event to, for an orchestrator or a bot (see <a href="#orchestrators">Events and API</a>)</td></tr>
+<tr><td>EVENT_HOOK_SECRET</td><td>signs each event, so your receiver knows it came from Cowboy</td></tr>
+<tr><td>EVENT_HOOK_TYPES</td><td>only send these types, e.g. <span class="d-c">pr.sorted,outcome.found</span> (optional)</td></tr>
+<tr><td>API_TOKEN</td><td>lets a tool read <span class="d-c">/api/v1/…</span> with <span class="d-c">Authorization: Bearer</span>. Read-only</td></tr>
 <tr><td>SENTRY_CLIENT_SECRET, PAGERDUTY_SECRET, INCIDENT_SECRET</td><td>turn on incident webhooks from Sentry, PagerDuty or any tool</td></tr>
 <tr><td>INCIDENT_REPOS</td><td><span class="d-c">project=owner/repo,...</span>: when a tool names a project or service, not the repo</td></tr>
 <tr><td>TALLY_SLACK_WEBHOOK</td><td>a Slack incoming webhook for the weekly tally (optional; see <a href="#dashboard">the dashboard</a>)</td></tr>
@@ -559,6 +564,32 @@ cowboy guide --repo acme/app --write AGENTS.md   # put it in the file</pre>
 <p>In Claude Code: <span class="d-c">claude mcp add cowboy -- cowboy mcp</span>. The agent guide tells agents to run the check before opening a pull request. Cowboy still checks the pull request itself either way: an agent checks itself, it doesn't grade itself.</p>
 </section>
 
+<section id="orchestrators">
+<h2>Events and API for other tools <span class="d-tag">preview</span></h2>
+<p>Orchestrators decide who builds what. Cowboy tells them how it turned out. Both ways below only describe: Cowboy still never merges, closes or reviews.</p>
+<p><b>Events.</b> Set <span class="d-c">EVENT_HOOKS</span> to one or more URLs and Cowboy sends each thing that happens there as signed JSON, as it happens. Each event carries the pull request as Cowboy sees it: the pen, the careful reasons, shortcuts found, which agent wrote it, and a link.</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Event</th><th>When</th></tr></thead><tbody>
+<tr><td>pr.sorted</td><td>A pull request is sorted or re-sorted (opened, new commits, a rule change)</td></tr>
+<tr><td>pr.moved</td><td>A person moved it to another pen</td></tr>
+<tr><td>pr.merged, pr.closed</td><td>It merged, or closed without merging</td></tr>
+<tr><td>pr.not_agent</td><td>A person said a pull request marked as likely agent work is theirs</td></tr>
+<tr><td>outcome.found</td><td>Trouble after merge: a revert, broken main, or a likely fix or incident to confirm</td></tr>
+<tr><td>outcome.confirmed</td><td>A person confirmed or rejected a suggested outcome</td></tr>
+<tr><td>incident.received</td><td>An incident arrived from your monitoring tool</td></tr>
+</tbody></table></div>
+<p>Events arrive in order and are retried if your receiver is down (after 1s, 4s, 15s and 1m). Sending never slows sorting down. Each has an <span class="d-c">id</span>, so you can drop the rare repeat. Check the <span class="d-c">X-Cowboy-Signature</span> header (HMAC-SHA256 of the body with your secret) before trusting one.</p>
+<pre class="d-code">EVENT_HOOKS=https://orchestrator.acme.dev/cowboy EVENT_HOOK_SECRET=… cowboy hooks test
+# test event signed: delivered to 1 of 1 receiver(s)</pre>
+<p><b>The read API.</b> Set <span class="d-c">API_TOKEN</span> and a tool can ask Cowboy whenever it wants, with <span class="d-c">Authorization: Bearer &lt;token&gt;</span>. The token reads the API and nothing else.</p>
+<div class="d-scroll"><table class="d-tbl"><thead><tr><th>Endpoint</th><th>What it answers</th></tr></thead><tbody>
+<tr><td>GET /api/v1/prs</td><td>Pull requests by state, pen, repo or agent</td></tr>
+<tr><td>GET /api/v1/pr</td><td>One pull request: every reason, and what happened after merge</td></tr>
+<tr><td>GET /api/v1/rules</td><td>A repo's rules in force</td></tr>
+<tr><td>GET /api/v1/scorecards</td><td>How each agent's merged pull requests held up, with a 95% range, overall and by area of the code</td></tr>
+</tbody></table></div>
+<p>Both are version 1: within a version, fields are only added, never renamed or removed. Scorecards come with the same honesty as the rest of Cowboy: small counts give wide ranges, and agents given easier work will look safer. The full payloads, a signature check in Python and JavaScript, and the delivery rules are in <a href="https://github.com/sgracia13/Cowboy/blob/main/docs/api.md">docs/api.md</a>.</p>
+</section>
+
 <section id="writes">
 <h2>What Cowboy writes and stores</h2>
 <h3>On your git host</h3>
@@ -609,6 +640,7 @@ cowboy serve</pre>
 <tr><td>cowboy evaluate</td><td>do the pens beat largest-first, most-files and chance? <span class="d-c">--json</span> for every number</td></tr>
 <tr><td>cowboy check</td><td>sort your local changes before opening a pull request: the pen, the reasons and any shortcuts. <span class="d-c">--strict</span> exits 1 on shortcuts, <span class="d-c">--json</span>, <span class="d-c">--base main</span></td></tr>
 <tr><td>cowboy mcp</td><td>an MCP server for coding agents: check_changes, repo_rules, agent_guide, file_history (local, read-only)</td></tr>
+<tr><td>cowboy hooks test</td><td>send a test event to every <span class="d-c">EVENT_HOOKS</span> receiver</td></tr>
 <tr><td>cowboy guide</td><td>instructions for coding agents from this repo's rules and habits: <span class="d-c">--repo owner/repo</span>, <span class="d-c">--write AGENTS.md</span> to put them in a file, <span class="d-c">--days 90</span></td></tr>
 <tr><td>cowboy audit verify</td><td>check the audit record wasn't changed</td></tr>
 <tr><td>cowboy audit export</td><td>the audit record as CSV or JSON: <span class="d-c">--format csv --since 2026-01-01 --repo owner/repo</span></td></tr>

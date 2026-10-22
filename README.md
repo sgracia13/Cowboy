@@ -168,6 +168,10 @@ REPOS=your-group/your-project cowboy serve
 | `CATCHUP_MINUTES` | how often the catch-up sweep runs (default 5) |
 | `MODEL_URL` | your model server, e.g. `http://localhost:11434` (optional) |
 | `MODEL_NAME` | e.g. `qwen2.5-coder:7b` (optional) |
+| `EVENT_HOOKS` | URLs to POST each event to, for an orchestrator or bot ([docs/api.md](docs/api.md)) |
+| `EVENT_HOOK_SECRET` | signs each event (`X-Cowboy-Signature`) |
+| `EVENT_HOOK_TYPES` | only these event types, e.g. `pr.sorted,outcome.found` (optional) |
+| `API_TOKEN` | lets a tool read `/api/v1/...` with `Authorization: Bearer` (read-only) |
 
 ## turn on the local model (optional)
 
@@ -342,6 +346,16 @@ add it to your agent's mcp settings:
 
 or, in claude code: `claude mcp add cowboy -- cowboy mcp`. the agent guide (`cowboy guide`) now tells agents to run the check before opening a pull request. the check on the pr itself still runs either way: an agent checks itself, it doesn't grade itself.
 
+## for orchestrators: events and the API
+
+orchestrators decide who builds what. cowboy tells them how it turned out.
+
+**events.** set `EVENT_HOOKS` to one or more urls and cowboy POSTs each thing that happens there as signed json: `pr.sorted`, `pr.moved`, `pr.merged`, `pr.closed`, `outcome.found`, `outcome.confirmed`, `incident.received`. each carries the pull request as cowboy sees it: pen, the careful reasons, shortcuts found, which agent wrote it, and a link. delivery is in order and retried; it never slows sorting down. `cowboy hooks test` checks your receiver can hear it.
+
+**the read API.** set `API_TOKEN` and a tool can read `/api/v1/prs`, `/api/v1/pr`, `/api/v1/rules` and `/api/v1/scorecards` (how each agent's merged prs held up, with a 95% range, overall and by area). the token reads and nothing else.
+
+both are version 1: fields are only added within a version. the event types, payloads, signature check, retry rules and endpoints are in [docs/api.md](docs/api.md). cowboy still never merges, closes or reviews; what to do with a careful pen is your orchestrator's call.
+
 ## does a local model help? (an experiment, no results yet)
 
 > **untested with a real model.** the pipeline was checked with a stand-in that knows nothing; nobody knows yet whether a local model even returns usable scores, let alone beats the rules. **help us find out:** [register a run](https://github.com/sgracia13/Cowboy/issues/new?template=ai-experiment.yml) before you score, then post the result in the same issue, whichever way it comes out. the rules for a run that counts are in [`CLAIMS-ai.md`](scripts/eval/evidence/CLAIMS-ai.md#runs-by-other-people).
@@ -404,6 +418,7 @@ cowboy backfill --days 90                                        # rate prs that
 cowboy guide --repo o/r [--write AGENTS.md]                      # instructions for coding agents from your rules and habits
 cowboy check [--strict] [--json]                                 # sort your local changes before opening a pr
 cowboy mcp                                                       # mcp server for coding agents (local, read-only)
+cowboy hooks test                                                # send a test event to every EVENT_HOOKS receiver
 cowboy audit verify                                              # was the audit record changed?
 cowboy audit export --format csv --since 2026-01-01              # the record, for an auditor
 cowboy benchmark export > ours.json                              # counts only, to share if you want
@@ -427,6 +442,7 @@ internal/detect     undisclosed-agent check: matrix, extractors, per-author base
 internal/forge      github, gitlab and gitea/forgejo clients, and a demo forge
 internal/app        the loop: fetch -> sort -> store -> label; live events; catch-up sweep
 internal/webhook    signed webhook receivers
+internal/hooks      outbound events for other tools (signed, queued, retried)
 internal/store      decisions + corrections
 internal/db         sqlite storage (pure go, no cgo)
 internal/habits     the habits page and the agent guide
@@ -434,7 +450,7 @@ internal/check      self-check of a local checkout (cowboy check, the mcp check_
 internal/mcp        a small stdio mcp server (json-rpc, tools only)
 internal/outcome    after merge: reverts, broken main, fixes, incidents, survival; report card, scorecards, benchmark
 internal/audit      the hash-chained audit record
-internal/web        the corral ui
+internal/web        the corral ui, and the read api (/api/v1)
 testdata/           sample repo + 10 sample prs with expected pens
 ```
 

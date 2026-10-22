@@ -204,6 +204,10 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /demo/host", s.host)
 	mux.HandleFunc("POST /sweep", s.sweep)
 	mux.HandleFunc("GET /api/decisions", s.apiDecisions)
+	mux.HandleFunc("GET /api/v1/prs", s.apiPRs)
+	mux.HandleFunc("GET /api/v1/pr", s.apiPR)
+	mux.HandleFunc("GET /api/v1/rules", s.apiRules)
+	mux.HandleFunc("GET /api/v1/scorecards", s.apiScorecards)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 }
 

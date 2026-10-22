@@ -63,11 +63,11 @@ var (
 	incidents *outcome.IncidentHooks
 )
 
-// ghSetup is the "Connect GitHub" flow (GitHub App mode only), and hooks
+// ghSetup is the "Connect GitHub" flow (GitHub App mode only), and inbound
 // the webhook handler, so finishing setup can set the new app's secret.
 var (
 	ghSetup *web.GitHubSetup
-	hooks   *webhook.Handler
+	inbound *webhook.Handler
 )
 
 // version is set at release time (-ldflags "-X main.version=v0.1.0").
@@ -86,6 +86,7 @@ const usage = `cowboy: finds out what breaks your repo, and sorts new pull reque
   cowboy guide [--write AGENTS.md] instructions for coding agents from this repo's rules and habits
   cowboy check [--strict]          sort your local changes before opening a PR: pen, reasons, shortcuts found
   cowboy mcp                       an MCP server for coding agents (check_changes, repo_rules, agent_guide, file_history)
+  cowboy hooks test                send a test event to every EVENT_HOOKS receiver
   cowboy audit verify|export       check the audit record wasn't changed, or export it
   cowboy benchmark export|report   the shareable counts-only summary, or pool several into a report
   cowboy sign --secret S FILE      print a webhook signature for FILE
@@ -117,6 +118,13 @@ after merge (on by default; OUTCOMES=off to turn off):
   SENTRY_CLIENT_SECRET turns on /webhook/sentry (a Sentry internal integration)
   PAGERDUTY_SECRET     turns on /webhook/pagerduty (a v3 webhook subscription)
   INCIDENT_REPOS       "sentry-project=owner/repo,service=owner/repo" when a tool doesn't name the repo
+
+for other tools, e.g. an orchestrator (docs/api.md):
+  EVENT_HOOKS          comma-separated URLs; each event (pr.sorted, pr.moved, pr.merged,
+                       outcome.found, ...) is POSTed there as signed JSON
+  EVENT_HOOK_SECRET    signs each event (X-Cowboy-Signature: sha256=...)
+  EVENT_HOOK_TYPES     optional: only these types, e.g. "pr.sorted,outcome.found"
+  API_TOKEN            lets a tool read /api/v1/... with Authorization: Bearer <token> (read-only)
 
 optional weekly tally (sent Mondays at 09:00 server time by default):
   TALLY_SLACK_WEBHOOK  a Slack incoming webhook (or Mattermost, or any {"text": ...} webhook)
@@ -171,6 +179,8 @@ func main() {
 		checkCmd(os.Args[2:])
 	case "mcp":
 		mcpCmd(os.Args[2:])
+	case "hooks":
+		hooksCmd(os.Args[2:])
 	case "evaluate":
 		evaluateCmd(os.Args[2:])
 	default:
@@ -255,7 +265,7 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 			log.Printf("gitlab: couldn't read the token's account (%v); label changes by Cowboy may look like people's", err)
 		}
 	}
-	hooks = h
+	inbound = h
 	mux.HandleFunc("/webhook/github", h.GitHub)
 	mux.HandleFunc("/webhook/gitlab", h.GitLab)
 	mux.HandleFunc("/webhook/gitea", h.Gitea)
@@ -298,6 +308,7 @@ func run(a *app.App, addr, secret string, catchUp time.Duration, auth web.Auth, 
 		case <-ctx.Done():
 			log.Print("shutdown: gave up waiting; the catch-up sweep will finish the rest on next start")
 		}
+		a.Hooks.Close(ctx) // deliver queued events
 		os.Exit(0)
 	}()
 	log.Printf("cowboy listening on %s (catch-up sweep every %s)", addr, catchUp)
@@ -393,7 +404,7 @@ func checkAccess(f forge.Forge, repos []string) {
 
 // authFromEnv reads the dashboard login settings.
 func authFromEnv(addr string) web.Auth {
-	a := web.Auth{Password: os.Getenv("UI_PASSWORD"), ProxyHeader: os.Getenv("AUTH_PROXY_HEADER"), Open: os.Getenv("UI_OPEN") == "1"}
+	a := web.Auth{Password: os.Getenv("UI_PASSWORD"), ProxyHeader: os.Getenv("AUTH_PROXY_HEADER"), Open: os.Getenv("UI_OPEN") == "1", Token: os.Getenv("API_TOKEN")}
 	if d, err := strconv.Atoi(os.Getenv("UI_SESSION_DAYS")); err == nil {
 		a.SessionDays = d
 	}
@@ -491,8 +502,8 @@ func githubApp(a *app.App, gh *forge.GitHub, secret string) (string, error) {
 			if err := use(c); err != nil {
 				return c, err
 			}
-			if hooks != nil && os.Getenv("WEBHOOK_SECRET") == "" {
-				hooks.SetSecret(c.WebhookSecret)
+			if inbound != nil && os.Getenv("WEBHOOK_SECRET") == "" {
+				inbound.SetSecret(c.WebhookSecret)
 			}
 			return c, nil
 		},
@@ -1031,6 +1042,10 @@ func serve() {
 	}
 	addr := env("ADDR", ":8080")
 	auth := authFromEnv(addr)
+	if auth.Token != "" {
+		log.Printf("read API: on for tools with API_TOKEN (docs/api.md)")
+	}
+	wireHooks(a)
 	if rc, ok, err := report.FromEnv(os.Getenv); err != nil {
 		log.Fatalf("weekly tally: %v", err)
 	} else if ok {
@@ -1190,6 +1205,7 @@ func demo(args []string) {
 	}
 	st, _ := store.Open(dataFile)
 	a := app.New(fake, st, map[string]string{"acme/app": filepath.Join(td, "acme")})
+	wireHooks(a) // EVENT_HOOKS works in the demo too, to try a receiver
 	// The experimental check is off in the demo unless asked for: its
 	// sample authors are made up, and on real repos it catches little.
 	// Without it, the sample PRs from people are sorted quietly like any other.

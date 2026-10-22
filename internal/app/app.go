@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/sgracia13/Cowboy/internal/hooks"
 	"log"
 	"sort"
 	"strings"
@@ -45,6 +46,11 @@ type App struct {
 	ArchiveLimit int64
 	dryRun       atomic.Bool // sort and store, but write nothing to the forge
 	Now          func() time.Time
+
+	// Hooks sends events to other tools (nil = none); PRLink makes a pull
+	// request's web address for them (nil = no link).
+	Hooks  *hooks.Sender
+	PRLink func(repo string, n int) string
 
 	// Audit is the tamper-evident record (nil = not kept).
 	Audit *audit.Log
