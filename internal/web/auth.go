@@ -31,6 +31,9 @@ type Auth struct {
 	SessionDays int
 	// Open allows an unguarded dashboard (for local use or the demo).
 	Open bool
+	// Token lets other tools read /api/ with "Authorization: Bearer <token>"
+	// (API_TOKEN). It grants reads only, never the dashboard's buttons.
+	Token string
 }
 
 // Enabled reports whether any login is configured.
@@ -87,6 +90,14 @@ func (a Auth) Wrap(h http.Handler) http.Handler {
 		if r.Method == http.MethodGet && (p == "/setup/github/callback" || p == "/setup/github/installed") {
 			h.ServeHTTP(w, r)
 			return
+		}
+		// a tool with the API token may read the API, nothing else
+		if a.Token != "" && strings.HasPrefix(p, "/api/") && r.Method == http.MethodGet {
+			if got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && subtle.ConstantTimeCompare([]byte(strings.TrimSpace(got)), []byte(a.Token)) == 1 {
+				r.Header.Set("X-Forwarded-User", "api")
+				h.ServeHTTP(w, r)
+				return
+			}
 		}
 		// buttons on the dashboard post forms; refuse posts from other sites
 		if r.Method == http.MethodPost && !sameOrigin(r) {

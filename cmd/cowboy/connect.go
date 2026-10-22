@@ -183,8 +183,8 @@ func (c *connector) use(tok, via string) (string, error) {
 	if c.s.WebhookSecret == "" {
 		c.s.WebhookSecret = randomSecret()
 	}
-	if hooks != nil {
-		hooks.SetSecret(c.s.WebhookSecret)
+	if inbound != nil {
+		inbound.SetSecret(c.s.WebhookSecret)
 	}
 	return user, c.s.save()
 }
