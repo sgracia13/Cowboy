@@ -46,6 +46,7 @@ import (
 	"github.com/sgracia13/Cowboy/internal/outcome"
 	"github.com/sgracia13/Cowboy/internal/pipeline"
 	"github.com/sgracia13/Cowboy/internal/report"
+	"github.com/sgracia13/Cowboy/internal/reviewers"
 	"github.com/sgracia13/Cowboy/internal/score"
 	"github.com/sgracia13/Cowboy/internal/store"
 	"github.com/sgracia13/Cowboy/internal/web"
@@ -125,6 +126,8 @@ for other tools, e.g. an orchestrator (docs/api.md):
   EVENT_HOOK_SECRET    signs each event (X-Cowboy-Signature: sha256=...)
   EVENT_HOOK_TYPES     optional: only these types, e.g. "pr.sorted,outcome.found"
   API_TOKEN            lets a tool read /api/v1/... with Authorization: Bearer <token> (read-only)
+  AI_REVIEWERS         more AI review bots to score, e.g. "acme-review[bot]=Acme review" (known ones
+                       like Copilot, CodeRabbit, Greptile, Cursor Bugbot are found without this)
 
 optional weekly tally (sent Mondays at 09:00 server time by default):
   TALLY_SLACK_WEBHOOK  a Slack incoming webhook (or Mattermost, or any {"text": ...} webhook)
@@ -139,6 +142,10 @@ optional local model (any OpenAI-compatible server: ollama, vllm, llama.cpp, lm 
   MODEL_KEY       only if your server wants one
   with no MODEL_URL, cowboy sorts with rules only. the model never changes the pen.
 `
+
+func init() {
+	reviewers.Add(os.Getenv("AI_REVIEWERS")) // in-house review bots, "login" or "login=Name"
+}
 
 func main() {
 	log.SetFlags(log.Ltime)
@@ -1205,7 +1212,8 @@ func demo(args []string) {
 	}
 	st, _ := store.Open(dataFile)
 	a := app.New(fake, st, map[string]string{"acme/app": filepath.Join(td, "acme")})
-	wireHooks(a) // EVENT_HOOKS works in the demo too, to try a receiver
+	wireHooks(a)                                      // EVENT_HOOKS works in the demo too, to try a receiver
+	reviewers.Add("demo-reviewer[bot]=Demo reviewer") // the demo PRs carry made-up review comments
 	// The experimental check is off in the demo unless asked for: its
 	// sample authors are made up, and on real repos it catches little.
 	// Without it, the sample PRs from people are sorted quietly like any other.

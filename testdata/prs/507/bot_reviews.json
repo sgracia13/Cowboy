@@ -1,0 +1,7 @@
+{"reviewers": ["demo-reviewer[bot]"],
+ "notes": [
+  {"login": "demo-reviewer[bot]", "path": "src/auth/session.ts", "line": 7, "at": "2026-01-01T00:00:00Z",
+   "text": "**Potential issue:** `getSession` falls back to the old store when the new one has no entry, so a session deleted in the new store is still accepted from the old one."},
+  {"login": "demo-reviewer[bot]", "path": "src/auth/session.test.ts", "line": 1, "at": "2026-01-01T00:00:00Z",
+   "text": "The new test has an empty body, so it passes without checking anything."}
+ ]}

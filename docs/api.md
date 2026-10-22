@@ -170,6 +170,12 @@ its effect) and `outcomes` after merge. Each outcome has `kind`, `status`,
 `counts` (true when it counts as trouble: found automatically, or confirmed
 by a person), `at`, `evidence` and `link`.
 
+`ai_review` is what AI reviewers said before merge (GitHub): `known` (the
+reviews were read), `reviewers` (the AI reviewers that reviewed it) and
+`findings`, each with `reviewer`, `path`, `line`, a one-line `summary` and
+`called_it` (a person marked it as naming what went wrong). For an open
+pull request these are read from the git host at most every 5 minutes.
+
 ### `GET /api/v1/rules?repo=acme/app`
 
 The rules in force for a repo (its `cowboy.json`, or the defaults).
@@ -211,6 +217,41 @@ Read it carefully:
 
 Without after-merge tracking (`OUTCOMES=off`) this returns 404.
 
+### `GET /api/v1/reviewers?repo=acme/app`
+
+Each AI reviewer's track record (Copilot, CodeRabbit, Greptile, Cursor
+Bugbot and others; `AI_REVIEWERS` adds in-house ones). Of the merged pull
+requests it reviewed whose trouble window has passed:
+
+```json
+{
+  "v": 1,
+  "window_days": 30,
+  "reviewers": [
+    { "reviewer": "Greptile", "reviewed": 212, "findings": 340,
+      "flagged": { "n": 96, "bad": 9, "p": 0.094, "low": 0.05, "high": 0.17 },
+      "quiet":   { "n": 116, "bad": 3, "p": 0.026, "low": 0.009, "high": 0.07 },
+      "trouble_seen": { "n": 12, "bad": 9 },
+      "called_it": 4,
+      "verdict": "no-signal",
+      "says": "No clear difference yet: trouble followed 9% of the pull requests it flagged and 3% of the ones it passed." }
+  ]
+}
+```
+
+- `flagged`: pull requests where it left at least one finding, and how many
+  had trouble. `quiet`: ones it reviewed without a finding.
+- `trouble_seen`: of the pull requests it reviewed that had trouble, how
+  many it had flagged.
+- `called_it`: findings a person marked, on the pull request's page, as
+  naming what went wrong. The most direct evidence a reviewer is worth
+  listening to.
+- `verdict`: `too-early` until both sides have 20 rated pull requests and 5
+  had trouble; then `signal` (its flagged pull requests went wrong more
+  often, and the ranges don't overlap), `no-signal`, or `inverted`.
+
+The numbers above are an example of the shape, not a real result.
+
 ## what an orchestrator might do with this
 
 - On `pr.sorted` with `pen: careful`, put the pull request in front of a
@@ -219,6 +260,8 @@ Without after-merge tracking (`OUTCOMES=off`) this returns 404.
   person spends time on it.
 - On `outcome.found`, tell the agent that wrote it, and the person who
   merged it.
+- Weigh an AI reviewer's warning by its record in `/api/v1/reviewers`: hold
+  a merge on one whose warnings have meant something here, not on all.
 - Before handing out work, read `/api/v1/scorecards` and prefer the agent
   whose pull requests in that area hold up, once the ranges are narrow
   enough to say so.

@@ -67,6 +67,24 @@ type Merge struct {
 	// Removed holds short hashes of a sample of the lines this PR removed or
 	// rewrote, to tell when it changed lines an earlier PR added.
 	Removed []uint32 `json:"removed,omitempty"`
+	// AI reviewers that reviewed this PR before merge, and what they
+	// flagged (inline comments). AIKnown: the host's reviews were read, so
+	// an empty list means no AI reviewer took part.
+	AIReviewers []string    `json:"ai_reviewers,omitempty"`
+	AIFindings  []AIFinding `json:"ai_findings,omitempty"`
+	AIKnown     bool        `json:"ai_known,omitempty"`
+}
+
+// AIFinding is one thing an AI reviewer flagged before merge. A person can
+// mark the one that named what later went wrong ("called it").
+type AIFinding struct {
+	Reviewer string    `json:"reviewer"`
+	Path     string    `json:"path,omitempty"`
+	Line     int       `json:"line,omitempty"`
+	Text     string    `json:"text"` // a one-line summary, not the whole comment
+	At       time.Time `json:"at"`
+	CalledBy string    `json:"called_by,omitempty"`
+	CalledAt time.Time `json:"called_at,omitempty"`
 }
 
 // Outcome is one thing that happened to a merged PR.
@@ -412,6 +430,37 @@ func (s *State) update(repo string, n int, f func(m *Merge)) error {
 	f(m)
 	s.mark(kMerge, key(repo, n))
 	return nil
+}
+
+// SetAIReview stores the AI reviewers' findings on a merge record.
+func (s *State) SetAIReview(repo string, n int, reviewers []string, findings []AIFinding) error {
+	return s.update(repo, n, func(m *Merge) { m.AIReviewers, m.AIFindings, m.AIKnown = reviewers, findings, true })
+}
+
+// CallIt marks (or unmarks) finding i of a merged PR as the one that named
+// what went wrong, and saves.
+func (s *State) CallIt(repo string, n, i int, by string, on bool, at time.Time) (AIFinding, error) {
+	var f AIFinding
+	err := s.update(repo, n, func(m *Merge) {
+		if i < 0 || i >= len(m.AIFindings) {
+			return
+		}
+		if on {
+			m.AIFindings[i].CalledBy, m.AIFindings[i].CalledAt = by, at
+		} else {
+			m.AIFindings[i].CalledBy, m.AIFindings[i].CalledAt = "", time.Time{}
+		}
+		f = m.AIFindings[i]
+	})
+	if err != nil {
+		return f, err
+	}
+	if f.Reviewer == "" {
+		return f, fmt.Errorf("no finding %d on %s#%d", i, repo, n)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return f, s.save()
 }
 
 func outcomeID(o Outcome) string {
