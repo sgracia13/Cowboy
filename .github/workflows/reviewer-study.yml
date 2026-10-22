@@ -1,28 +1,41 @@
 name: reviewer-study
 # Research run for the AI reviewer study. Only runs on the study branch.
+# This step collects the finished results, encrypts them to the study's
+# public key (raw review text is never published) and commits the ciphertext.
 on:
   push:
     branches: [study/reviewers]
 permissions:
-  contents: read
+  contents: write
+  actions: read
 jobs:
-  collect:
+  package:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
-      - name: can this token read other public repos?
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh api repos/getsentry/sentry/pulls/1/reviews --jq length && gh api rate_limit --jq .resources.core
-      - name: collect
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORDER: reverse
-        run: python3 scripts/study/collect.py scripts/study/sample.json results.jsonl
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - uses: actions/download-artifact@v4
+        with:
+          name: reviewer-study-results
+          run-id: 39812745488
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: a
+      - uses: actions/download-artifact@v4
         with:
           name: reviewer-study-results-reverse
-          path: results.jsonl
-          retention-days: 7
+          run-id: 39812867294
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: b
+      - name: encrypt and commit
+        run: |
+          cat a/results.jsonl b/results.jsonl > all.jsonl
+          wc -l all.jsonl
+          gzip -9 all.jsonl
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in all.jsonl.gz -out scripts/study/results.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey scripts/study/pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out scripts/study/results.key.enc
+          rm k.bin all.jsonl.gz
+          git config user.name "cowboy-study"
+          git config user.email "study@users.noreply.github.com"
+          git add scripts/study/results.enc scripts/study/results.key.enc
+          git commit -m "Reviewer study: encrypted results"
+          git push
