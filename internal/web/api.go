@@ -90,8 +90,25 @@ func (s *Server) apiPR(w http.ResponseWriter, r *http.Request) {
 			outs = append(outs, apiOutcome{o.Kind, o.Status, o.Counts(), o.At, o.Evidence, o.Link})
 		}
 	}
+	ai := s.App.AIReviewOf(d.Repo, d.Number)
+	type apiFinding struct {
+		Reviewer string    `json:"reviewer"`
+		Path     string    `json:"path,omitempty"`
+		Line     int       `json:"line,omitempty"`
+		Summary  string    `json:"summary"`
+		At       time.Time `json:"at"`
+		CalledIt bool      `json:"called_it"`
+	}
+	aiOut := map[string]any{"known": ai.Known, "reviewers": nonNil(ai.Reviewers), "findings": []apiFinding{}}
+	var fs []apiFinding
+	for _, f := range ai.Findings {
+		fs = append(fs, apiFinding{f.Reviewer, f.Path, f.Line, f.Text, f.At, f.CalledBy != ""})
+	}
+	if fs != nil {
+		aiOut["findings"] = fs
+	}
 	writeJSON(w, 200, map[string]any{"v": APIVersion, "repo": d.Repo, "number": d.Number, "decided_at": d.DecidedAt,
-		"pr": s.App.PRInfo(d.Repo, d.Number), "reasons": d.Reasons, "outcomes": outs})
+		"pr": s.App.PRInfo(d.Repo, d.Number), "reasons": d.Reasons, "outcomes": outs, "ai_review": aiOut})
 }
 
 // GET /api/v1/rules?repo=
@@ -176,4 +193,32 @@ func (s *Server) apiScorecards(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"v": APIVersion, "repo": repo, "window_days": int(o.Window.Hours() / 24),
 		"note":   "Rated pull requests only (merged at least the trouble window ago). Trouble = reverted, broke main, or a confirmed fix or incident. Compare the ranges: a small n gives a wide one.",
 		"agents": cards, "by_area": areas})
+}
+
+func nonNil(x []string) []string {
+	if x == nil {
+		return []string{}
+	}
+	return x
+}
+
+// GET /api/v1/reviewers?repo=
+//
+// Each AI reviewer's track record: of the merged PRs it reviewed whose
+// trouble window has passed, the trouble rate where it flagged something
+// and where it stayed quiet, with 95% ranges, and how many of its warnings
+// a person marked as naming what went wrong.
+func (s *Server) apiReviewers(w http.ResponseWriter, r *http.Request) {
+	if s.Outcomes == nil {
+		apiError(w, 404, "after-merge tracking is off (OUTCOMES=off)")
+		return
+	}
+	o := s.Outcomes
+	recs := outcome.ReviewerRecords(o.State, r.URL.Query().Get("repo"), o.now(), o.Window)
+	if recs == nil {
+		recs = []outcome.ReviewerRecord{}
+	}
+	writeJSON(w, 200, map[string]any{"v": APIVersion, "repo": r.URL.Query().Get("repo"), "window_days": int(o.Window.Hours() / 24),
+		"note":      "A reviewer worth listening to flags the pull requests that go wrong more often than the ones that don't: compare flagged with quiet, and the ranges, not just the rates. verdict is too-early until both sides have 20 rated PRs and 5 had trouble.",
+		"reviewers": recs})
 }

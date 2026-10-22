@@ -78,6 +78,7 @@ func (w *Watcher) Check(repo string) string {
 	}
 	defer w.State.Flush()
 	newMerges := w.recordMerges(repo, h)
+	w.fillAIReviews(repo)
 	w.State.Flush()
 	reverts := w.scanReverts(repo, h)
 	breaks := w.checkBreaks(repo)
@@ -131,6 +132,7 @@ func (w *Watcher) recordOne(repo string, n int, h forge.History) (Merge, bool) {
 		m.Lines = lineHashes(files)
 		m.Removed = removedHashes(files)
 	}
+	m.AIReviewers, m.AIFindings, m.AIKnown = ReadAIReview(w.Forge, repo, n, m.MergedAt)
 	if err := w.State.PutMerge(m); err != nil {
 		log.Printf("outcomes: %v", err)
 		return Merge{}, false

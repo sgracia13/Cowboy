@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -197,6 +198,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /pr", s.pr)
 	mux.HandleFunc("POST /pr/move", s.move)
 	mux.HandleFunc("POST /pr/notagent", s.notAgent)
+	mux.HandleFunc("POST /pr/calledit", s.calledIt)
 	mux.HandleFunc("GET /tally", s.tally)
 	mux.HandleFunc("GET /rules", s.rules)
 	mux.HandleFunc("GET /trail", s.trail)
@@ -207,6 +209,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/prs", s.apiPRs)
 	mux.HandleFunc("GET /api/v1/pr", s.apiPR)
 	mux.HandleFunc("GET /api/v1/rules", s.apiRules)
+	mux.HandleFunc("GET /api/v1/reviewers", s.apiReviewers)
 	mux.HandleFunc("GET /api/v1/scorecards", s.apiScorecards)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 }
@@ -302,6 +305,50 @@ type prData struct {
 	Merge    *outcome.Merge
 	Outcomes []outcome.Outcome
 	Replay   bool // from a replayed history (the demo): nothing to move
+	AI       app.AIReview
+	AIGroups []aiGroup
+	CanCall  bool // merged with trouble: a person can mark the warning that called it
+	Called   bool
+}
+
+// aiGroup is one AI reviewer's findings on a PR, with its track record.
+type aiGroup struct {
+	Name   string
+	Record *outcome.ReviewerRecord
+	Items  []aiItem
+}
+
+type aiItem struct {
+	I int
+	F outcome.AIFinding
+}
+
+func (s *Server) aiGroups(repo string, ai app.AIReview) []aiGroup {
+	recs := map[string]*outcome.ReviewerRecord{}
+	if s.Outcomes != nil {
+		for _, r := range outcome.ReviewerRecords(s.Outcomes.State, repo, s.Outcomes.now(), s.Outcomes.Window) {
+			r := r
+			recs[r.Reviewer] = &r
+		}
+	}
+	var out []aiGroup
+	idx := map[string]int{}
+	add := func(name string) int {
+		if i, ok := idx[name]; ok {
+			return i
+		}
+		idx[name] = len(out)
+		out = append(out, aiGroup{Name: name, Record: recs[name]})
+		return idx[name]
+	}
+	for _, name := range ai.Reviewers {
+		add(name)
+	}
+	for i, f := range ai.Findings {
+		g := add(f.Reviewer)
+		out[g].Items = append(out[g].Items, aiItem{i, f})
+	}
+	return out
 }
 
 func (s *Server) pr(w http.ResponseWriter, r *http.Request) {
@@ -332,6 +379,16 @@ func (s *Server) pr(w http.ResponseWriter, r *http.Request) {
 		}
 		pd.Outcomes = s.Outcomes.State.Outcomes(repo, n)
 	}
+	if !replay {
+		pd.AI = s.App.AIReviewOf(repo, n)
+		pd.AIGroups = s.aiGroups(repo, pd.AI)
+		for _, o := range pd.Outcomes {
+			if o.Counts() && pd.Merge != nil && pd.AI.Known && !pd.AI.Live {
+				pd.CanCall = true
+			}
+		}
+		pd.Called = r.URL.Query().Get("called") != ""
+	}
 	s.render(w, "pr.html", "corral", pd)
 }
 
@@ -356,6 +413,26 @@ func (s *Server) move(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/pr?repo="+repo+"&n="+strconv.Itoa(n)+"&moved=1", http.StatusSeeOther)
+}
+
+// calledIt marks the AI finding that named what went wrong after merge.
+func (s *Server) calledIt(w http.ResponseWriter, r *http.Request) {
+	repo := r.FormValue("repo")
+	n, _ := strconv.Atoi(r.FormValue("n"))
+	i, err := strconv.Atoi(r.FormValue("i"))
+	if err != nil {
+		http.Error(w, "bad finding", 400)
+		return
+	}
+	by := r.Header.Get("X-Forwarded-User")
+	if by == "" {
+		by = "you"
+	}
+	if err := s.App.CallIt(repo, n, i, by, r.FormValue("on") != "no"); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	http.Redirect(w, r, "/pr?repo="+url.QueryEscape(repo)+"&n="+strconv.Itoa(n)+"&called=1#ai", http.StatusSeeOther)
 }
 
 func (s *Server) tally(w http.ResponseWriter, r *http.Request) {

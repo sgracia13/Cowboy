@@ -98,6 +98,7 @@ a{color:#111111}a:hover{color:#000000}
 <li><a href="#after">After merge</a></li>
 <li><a href="#habits">Habits and agent guide</a></li>
 <li><a href="#agents-tools">For coding agents</a></li>
+<li><a href="#ai-reviewers">AI reviewers' track record</a></li>
 <li><a href="#orchestrators">Events and API for other tools</a></li>
 <li><a href="#writes">What Cowboy writes and stores</a></li>
 <li><a href="#model">Local model notes</a></li>
@@ -330,6 +331,7 @@ REPOS=your-group/your-project cowboy serve</pre>
 <tr><td>EVENT_HOOK_SECRET</td><td>signs each event, so your receiver knows it came from Cowboy</td></tr>
 <tr><td>EVENT_HOOK_TYPES</td><td>only send these types, e.g. <span class="d-c">pr.sorted,outcome.found</span> (optional)</td></tr>
 <tr><td>API_TOKEN</td><td>lets a tool read <span class="d-c">/api/v1/…</span> with <span class="d-c">Authorization: Bearer</span>. Read-only</td></tr>
+<tr><td>AI_REVIEWERS</td><td>more AI review bots to score, e.g. <span class="d-c">acme-review[bot]=Acme review</span> (known ones are found without this; see <a href="#ai-reviewers">AI reviewers</a>)</td></tr>
 <tr><td>SENTRY_CLIENT_SECRET, PAGERDUTY_SECRET, INCIDENT_SECRET</td><td>turn on incident webhooks from Sentry, PagerDuty or any tool</td></tr>
 <tr><td>INCIDENT_REPOS</td><td><span class="d-c">project=owner/repo,...</span>: when a tool names a project or service, not the repo</td></tr>
 <tr><td>TALLY_SLACK_WEBHOOK</td><td>a Slack incoming webhook for the weekly tally (optional; see <a href="#dashboard">the dashboard</a>)</td></tr>
@@ -564,6 +566,19 @@ cowboy guide --repo acme/app --write AGENTS.md   # put it in the file</pre>
 <p>In Claude Code: <span class="d-c">claude mcp add cowboy -- cowboy mcp</span>. The agent guide tells agents to run the check before opening a pull request. Cowboy still checks the pull request itself either way: an agent checks itself, it doesn't grade itself.</p>
 </section>
 
+<section id="ai-reviewers">
+<h2>AI reviewers' track record <span class="d-tag">preview</span></h2>
+<p>If AI reviewers comment on your pull requests (Copilot, CodeRabbit, Greptile, Cursor Bugbot, Sentry Seer, Vercel Agent, cubic, Graphite and others), Cowboy keeps score of whose warnings turn out to mean something in your repo.</p>
+<ol>
+<li><b>It reads what they flagged.</b> When a pull request merges, Cowboy reads each AI reviewer's review comments from before the merge. It keeps a one-line summary of each, not the whole comment.</li>
+<li><b>It waits for the outcome.</b> Once the trouble window has passed (30 days by default), each pull request either had trouble after merge or didn't.</li>
+<li><b>It compares.</b> For each reviewer: how often the pull requests it flagged had trouble, against the ones it reviewed and passed quietly. A reviewer worth listening to flags the ones that go wrong more often. Until both sides have 20 rated pull requests and 5 had trouble, it says it's too early rather than guessing.</li>
+</ol>
+<p><b>Called it.</b> When a pull request had trouble, its page lists the AI warnings it got. Mark the one that named what went wrong. That's the clearest evidence a reviewer is worth listening to, and it counts in that reviewer's record.</p>
+<p><b>Where to see it.</b> The After merge page has a table of every AI reviewer. Each pull request page shows its AI findings next to each reviewer's record in your repo, including open pull requests, read from GitHub at most every 5 minutes. Tools can read the same records at <span class="d-c">GET /api/v1/reviewers</span>.</p>
+<p>Works on GitHub today; GitLab, Forgejo and Gitea aren't read yet. Add an in-house review bot with <span class="d-c">AI_REVIEWERS</span>.</p>
+</section>
+
 <section id="orchestrators">
 <h2>Events and API for other tools <span class="d-tag">preview</span></h2>
 <p>Orchestrators decide who builds what. Cowboy tells them how it turned out. Both ways below only describe: Cowboy still never merges, closes or reviews.</p>
@@ -585,6 +600,7 @@ cowboy guide --repo acme/app --write AGENTS.md   # put it in the file</pre>
 <tr><td>GET /api/v1/prs</td><td>Pull requests by state, pen, repo or agent</td></tr>
 <tr><td>GET /api/v1/pr</td><td>One pull request: every reason, and what happened after merge</td></tr>
 <tr><td>GET /api/v1/rules</td><td>A repo's rules in force</td></tr>
+<tr><td>GET /api/v1/reviewers</td><td>Each AI reviewer's track record: trouble where it flagged something against where it stayed quiet, and warnings marked "called it"</td></tr>
 <tr><td>GET /api/v1/scorecards</td><td>How each agent's merged pull requests held up, with a 95% range, overall and by area of the code</td></tr>
 </tbody></table></div>
 <p>Both are version 1: within a version, fields are only added, never renamed or removed. Scorecards come with the same honesty as the rest of Cowboy: small counts give wide ranges, and agents given easier work will look safer. The full payloads, a signature check in Python and JavaScript, and the delivery rules are in <a href="https://github.com/sgracia13/Cowboy/blob/main/docs/api.md">docs/api.md</a>.</p>

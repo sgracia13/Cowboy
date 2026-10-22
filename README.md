@@ -172,6 +172,7 @@ REPOS=your-group/your-project cowboy serve
 | `EVENT_HOOK_SECRET` | signs each event (`X-Cowboy-Signature`) |
 | `EVENT_HOOK_TYPES` | only these event types, e.g. `pr.sorted,outcome.found` (optional) |
 | `API_TOKEN` | lets a tool read `/api/v1/...` with `Authorization: Bearer` (read-only) |
+| `AI_REVIEWERS` | more AI review bots to score, e.g. `acme-review[bot]=Acme review` (known ones are found without this) |
 
 ## turn on the local model (optional)
 
@@ -346,13 +347,21 @@ add it to your agent's mcp settings:
 
 or, in claude code: `claude mcp add cowboy -- cowboy mcp`. the agent guide (`cowboy guide`) now tells agents to run the check before opening a pull request. the check on the pr itself still runs either way: an agent checks itself, it doesn't grade itself.
 
+## AI reviewers: whose warnings mean something here?
+
+if your pull requests get comments from AI reviewers (Copilot, CodeRabbit, Greptile, Cursor Bugbot, Sentry Seer, Vercel Agent, cubic, Graphite and others), cowboy keeps score. when a pull request merges, it reads what each AI reviewer flagged before merge. once the trouble window has passed, the after-merge page shows, for each reviewer, how often the pull requests it flagged went wrong, against the ones it passed quietly. a reviewer worth listening to flags the ones that go wrong more often. until there's enough history it says so, rather than guessing.
+
+when a pull request had trouble, its page lists the AI warnings, and you can mark the one that **called it**. that's the clearest evidence a reviewer is worth listening to, and it's counted in its record. open pull requests show the AI findings too, next to each reviewer's record in your repo.
+
+works on github today (other hosts: not yet). cowboy keeps a one-line summary of each finding, not the whole comment. `AI_REVIEWERS="acme-review[bot]=Acme review"` adds an in-house review bot. the same records are in the api: `/api/v1/reviewers`.
+
 ## for orchestrators: events and the API
 
 orchestrators decide who builds what. cowboy tells them how it turned out.
 
 **events.** set `EVENT_HOOKS` to one or more urls and cowboy POSTs each thing that happens there as signed json: `pr.sorted`, `pr.moved`, `pr.merged`, `pr.closed`, `outcome.found`, `outcome.confirmed`, `incident.received`. each carries the pull request as cowboy sees it: pen, the careful reasons, shortcuts found, which agent wrote it, and a link. delivery is in order and retried; it never slows sorting down. `cowboy hooks test` checks your receiver can hear it.
 
-**the read API.** set `API_TOKEN` and a tool can read `/api/v1/prs`, `/api/v1/pr`, `/api/v1/rules` and `/api/v1/scorecards` (how each agent's merged prs held up, with a 95% range, overall and by area). the token reads and nothing else.
+**the read API.** set `API_TOKEN` and a tool can read `/api/v1/prs`, `/api/v1/pr`, `/api/v1/rules`, `/api/v1/reviewers` and `/api/v1/scorecards` (how each agent's merged prs held up, with a 95% range, overall and by area). the token reads and nothing else.
 
 both are version 1: fields are only added within a version. the event types, payloads, signature check, retry rules and endpoints are in [docs/api.md](docs/api.md). cowboy still never merges, closes or reviews; what to do with a careful pen is your orchestrator's call.
 
@@ -450,6 +459,7 @@ internal/check      self-check of a local checkout (cowboy check, the mcp check_
 internal/mcp        a small stdio mcp server (json-rpc, tools only)
 internal/outcome    after merge: reverts, broken main, fixes, incidents, survival; report card, scorecards, benchmark
 internal/audit      the hash-chained audit record
+internal/reviewers  which bots are ai reviewers, and one-line summaries of their findings
 internal/web        the corral ui, and the read api (/api/v1)
 testdata/           sample repo + 10 sample prs with expected pens
 ```

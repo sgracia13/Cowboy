@@ -77,6 +77,13 @@
 <p class="small">Cowboy never changes the rules itself. If you agree, edit <code>cowboy.json</code> on the default branch.</p>
 <ul class="trail">{{range $r.Suggestions}}<li><b>{{if .Repo}}{{.Repo}}: {{end}}{{capFirst .Change}}</b>. {{.Why}}</li>{{end}}</ul></section>{{end}}
 
+{{if .AIRecords}}<section class="box" id="ai-reviewers">
+<h2>AI reviewers <span class="h2small">do their warnings mean anything here?</span></h2>
+<p>For each AI reviewer, the merged pull requests it reviewed at least {{.AIWindow}} days ago: how often the ones it flagged had trouble after merge, against the ones it passed without a comment. A reviewer worth listening to flags the pull requests that go wrong more often than the ones that don't.</p>
+<div class="scroll"><table class="sig"><tr><th>Reviewer</th><th>Flagged, then had trouble</th><th>Passed, then had trouble</th><th>Called it</th></tr>{{range .AIRecords}}<tr><td><b>{{.Reviewer}}</b><div class="small">{{.Says}}</div></td><td>{{if .Flagged.N}}{{pctRate .Flagged.P}} <span class="small">· {{.Flagged.Bad}} of {{.Flagged.N}}, likely {{pctRate .Flagged.Low}}–{{pctRate .Flagged.High}}</span>{{else}}<span class="small">none yet</span>{{end}}</td><td>{{if .Quiet.N}}{{pctRate .Quiet.P}} <span class="small">· {{.Quiet.Bad}} of {{.Quiet.N}}, likely {{pctRate .Quiet.Low}}–{{pctRate .Quiet.High}}</span>{{else}}<span class="small">none yet</span>{{end}}</td><td>{{.CalledIt}}</td></tr>{{end}}</table></div>
+<p class="small">"Called it" counts warnings a person marked as naming what went wrong, on the pull request's page. Trouble means a revert, broken main, or a fix or incident a person confirmed. Small counts give wide ranges: compare the ranges, not just the rates.</p>
+</section>{{end}}
+
 {{if or .Cards .CardsRest}}<section class="box">
 <h2>Scorecards</h2>
 <p>Trouble after merge by who wrote the pull request and which part of the code it touched.{{if .CardsRest}} Groups with fewer than 20 pull requests are folded below: too few to read.{{end}}</p>

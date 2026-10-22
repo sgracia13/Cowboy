@@ -1,0 +1,5 @@
+{"reviewers": ["demo-reviewer[bot]"],
+ "notes": [
+  {"login": "demo-reviewer[bot]", "path": "billing/totals.py", "line": 10, "at": "2026-01-01T00:00:00Z",
+   "text": "**Bug:** `except Exception: pass` hides every error and the function then returns 0, so a bad invoice line silently totals to zero."}
+ ]}

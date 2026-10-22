@@ -116,6 +116,8 @@ type outcomesPage struct {
 	Error       string
 	CanFill     bool
 	Filling     string
+	AIRecords   []outcome.ReviewerRecord
+	AIWindow    int // days
 }
 
 func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
@@ -167,6 +169,8 @@ func (s *Server) outcomes(w http.ResponseWriter, r *http.Request) {
 		p.Incidents = p.Incidents[:20]
 	}
 	p.AuditN, p.AuditFP = o.Audit.Fingerprint()
+	p.AIRecords = outcome.ReviewerRecords(o.State, "", o.now(), o.Window)
+	p.AIWindow = int(o.Window.Hours() / 24)
 	p.CanFill = o.Backfill != nil
 	if o.BackfillStatus != nil {
 		p.Filling = o.BackfillStatus()
