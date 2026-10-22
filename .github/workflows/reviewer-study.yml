@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
+      - name: can this token read other public repos?
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api repos/getsentry/sentry/pulls/1/reviews --jq length && gh api rate_limit --jq .resources.core
       - name: collect
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -29,12 +29,16 @@ def get(url):
                     time.sleep(wait)
                 return body, link
         except urllib.error.HTTPError as e:
-            if e.code in (403, 429):
+            limited = e.code == 429 or e.headers.get("X-RateLimit-Remaining") == "0" or e.headers.get("Retry-After")
+            if e.code in (403, 429) and limited:
                 reset = e.headers.get("X-RateLimit-Reset")
                 wait = max(30, int(reset) - int(time.time()) + 5) if reset else 60
                 print(f"{e.code}: sleeping {wait}s", flush=True)
                 time.sleep(wait)
                 continue
+            if e.code in (403, 451):
+                print(f"refused {e.code} for {url}: {e.read()[:300]!r}", flush=True)
+                raise SystemExit(1)
             if e.code == 404:
                 return None, ""
             raise
