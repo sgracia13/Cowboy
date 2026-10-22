@@ -71,6 +71,8 @@ def clip(s, n=2000):
 
 def main():
     items = json.load(open(sys.argv[1]))
+    if os.environ.get("ORDER") == "reverse":
+        items.reverse()  # a second run works from the other end; merge results by (repo, n)
     done = set()
     if os.path.exists(OUT):
         for l in open(OUT):

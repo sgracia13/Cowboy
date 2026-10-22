@@ -18,10 +18,11 @@ jobs:
       - name: collect
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORDER: reverse
         run: python3 scripts/study/collect.py scripts/study/sample.json results.jsonl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reviewer-study-results
+          name: reviewer-study-results-reverse
           path: results.jsonl
           retention-days: 7
