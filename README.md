@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Cowboy: a herd of pixel-art cows tagged PR. Keep the review rules that work. Drop the ones that don't." width="840">
-</p>
-
-<p align="center">
   <a href="https://github.com/sgracia13/Cowboy/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/sgracia13/Cowboy?include_prereleases&style=flat-square&color=111111&labelColor=ffd400"></a>
   <a href="https://github.com/sgracia13/Cowboy/actions/workflows/ci.yml"><img alt="ci" src="https://img.shields.io/github/actions/workflow/status/sgracia13/Cowboy/ci.yml?branch=main&style=flat-square&label=ci&labelColor=ffd400&color=111111"></a>
   <a href="LICENSE"><img alt="license: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-111111?style=flat-square&labelColor=ffd400"></a>
